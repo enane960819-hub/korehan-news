@@ -539,55 +539,90 @@ body.mobile-light .home-story-grid .story-card { background: #0b1626 !important;
 /* Today card — one place for greeting, streak and today's 3 steps
    (replaced the welcome pill + Beginner's Guide banner + First Journey
    panel that used to stack above the hero). */
-#kh-today { margin: 4px 0 18px; }
+#kh-today { margin: 18px 0 6px; }
 #kh-today:empty { display: none; }
-.kt-card { background:#fff; border:1px solid #e2e8f0; border-radius:18px; box-shadow:0 6px 24px rgba(15,23,42,.06); padding:18px 22px; display:grid; grid-template-columns:minmax(200px,1fr) 2fr auto; gap:22px; align-items:center; }
-.kt-date { font-size:11px; font-weight:800; color:#64748b; letter-spacing:.06em; text-transform:uppercase; }
-.kt-hi { font-size:21px; font-weight:800; color:#0f172a; margin-top:2px; line-height:1.25; }
-.kt-chips { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
-.kt-chip { font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; background:#f1f5f9; color:#334155; text-decoration:none; white-space:nowrap; }
-.kt-chip.streak { background:#fff1f2; color:#be123c; }
-.kt-chip.fj { background:#eff6ff; color:#1d4ed8; border:none; cursor:pointer; font-family:inherit; }
-.kt-steps-h { font-size:12px; font-weight:800; color:#0f172a; margin-bottom:8px; }
-.kt-steps-h span { color:#64748b; font-weight:600; }
-.kt-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-.kt-step { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0; text-decoration:none; min-width:0; transition:border-color .15s, background .15s; }
-.kt-step:hover { border-color:#93c5fd; background:#eff6ff; }
-.kt-num { min-width:24px; height:24px; padding:0 5px; border-radius:999px; background:var(--kt-c,#2563eb); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; }
-.kt-txt { min-width:0; }
-.kt-t { display:block; font-size:13px; font-weight:800; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.kt-s { display:block; font-size:11px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.kt-step.done { background:#f0fdf4; border-color:#bbf7d0; }
-.kt-mix { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:8px; font-size:11px; font-weight:700; color:#64748b; }
-.kt-mix i { font-style:normal; padding:2px 7px; border-radius:7px; }
-.kt-mix .d { background:#dbeafe; color:#1d4ed8; } .kt-mix .m { background:#fee2e2; color:#b91c1c; } .kt-mix .n { background:#dcfce7; color:#15803d; }
-body.kh-neon-on .kt-mix .d { background:rgba(96,165,250,.16); color:#93c5fd; } body.kh-neon-on .kt-mix .m { background:rgba(248,113,113,.16); color:#fca5a5; } body.kh-neon-on .kt-mix .n { background:rgba(52,211,153,.14); color:#6ee7b7; }
-.kt-step.done .kt-num { background:#16a34a; }
-.kt-step.done .kt-t { color:#15803d; }
-.kt-bar { height:6px; border-radius:99px; background:#e2e8f0; margin-top:10px; overflow:hidden; }
-.kt-bar > div { height:100%; background:linear-gradient(90deg,#2563eb,#7c3aed); transition:width .2s; }
-.kt-go { display:inline-flex; align-items:center; justify-content:center; padding:12px 20px; border-radius:12px; background:#2563eb; color:#fff; font-weight:800; font-size:14px; text-decoration:none; white-space:nowrap; }
-.kt-go:hover { background:#1d4ed8; }
-.kt-go.all { background:#16a34a; }
-@media (max-width: 1120px) { .kt-card { grid-template-columns:1fr 2fr; } .kt-cta { grid-column:1 / -1; } .kt-go { width:100%; } }
-@media (max-width: 640px) {
-  #kh-today { margin: 10px 0 12px; }
-  .kt-card { display:block; padding:12px 14px; border-radius:16px; }
-  .kt-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .kt-date, .kt-steps-h, .kt-bar, .kt-cta, .kt-s { display:none; }
-  .kt-hi { font-size:15px; margin:0; }
-  .kt-chips { margin:0; }
-  .kt-chips .kt-chip:not(.streak):not(.kt-count) { display:none; }
-  .kt-chip { font-size:11px; padding:3px 8px; }
-  .kt-steps { gap:6px; margin-top:9px; }
-  .kt-step { padding:7px 8px; gap:6px; border-radius:10px; }
-  .kt-num { min-width:20px; height:20px; font-size:10px; }
-  .kt-t { font-size:12px; }
+/* Signed in: the card replaces the daily strip, and the floating Daily Mission (its goals are
+   the card's Bonus row) would cover the News title. Guests keep the phrase + start card. */
+body.kh-has-today .daily-strip, body.kh-has-today #kh-daily-mission { display: none !important; }
+.daily-strip .ds-actions { display: none; }
+.kt { background: linear-gradient(160deg,#121c3a,#1c1b4a); border-radius: 20px; color: #e2e8f0; padding: 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+.kt-top { display: flex; align-items: flex-start; gap: 10px; }
+.kt-date { font-size: 11px; color: #94a3b8; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.kt-hi { font-size: 19px; font-weight: 800; color: #fff; margin-top: 2px; line-height: 1.25; }
+.kt-chips { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.kt-chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 5px 10px; font-weight: 800; font-size: 12px; white-space: nowrap; text-decoration: none; font-family: inherit; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #cbd5e1; cursor: pointer; }
+.kt-chip svg { width: 14px; height: 14px; }
+.kt-chip.streak { background: rgba(251,146,60,.16); color: #fdba74; border-color: rgba(251,146,60,.35); cursor: default; }
+.kt-week { display: flex; gap: 6px; margin: 12px 0 2px; max-width: 380px; }
+.kt-wd { flex: 1; text-align: center; font-size: 10px; color: #64748b; font-weight: 700; }
+.kt-wd i { display: block; height: 6px; border-radius: 4px; background: rgba(255,255,255,.08); margin-bottom: 4px; }
+.kt-wd.on i { background: linear-gradient(90deg,#f59e0b,#fb923c); }
+.kt-wd.today { color: #fdba74; }
+.kt-wd.today i { outline: 2px solid rgba(253,186,116,.6); outline-offset: 1px; }
+.kt-ph { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 8px; }
+.kt-ph b, .kt-k { font-size: 12px; letter-spacing: .1em; color: #7dd3fc; text-transform: uppercase; font-weight: 800; }
+.kt-ph small { font-size: 12px; color: #94a3b8; font-weight: 700; }
+.kt-prog { height: 6px; border-radius: 6px; background: rgba(255,255,255,.08); overflow: hidden; margin-bottom: 10px; }
+.kt-prog i { display: block; height: 100%; background: linear-gradient(90deg,#22c55e,#38bdf8); border-radius: 6px; transition: width .2s; }
+.kt-st { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); margin-bottom: 8px; text-decoration: none; color: inherit; transition: background .15s; }
+.kt-st:hover { background: rgba(255,255,255,.07); }
+.kt-ic { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex: none; }
+.kt-ic svg { width: 18px; height: 18px; }
+.kt-tx { flex: 1; min-width: 0; }
+.kt-tx b { display: block; font-size: 14px; color: #fff; }
+.kt-tx small { display: block; font-size: 12px; color: #94a3b8; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kt-tx .ko { font-family: 'Noto Sans KR', sans-serif; font-weight: 700; color: #e0e7ff; }
+.kt-st.done { opacity: .6; }
+.kt-st.done .kt-tx b { text-decoration: line-through; text-decoration-color: rgba(255,255,255,.35); }
+.kt-st.next { background: rgba(37,99,235,.14); border-color: rgba(96,165,250,.5); }
+.kt-chk { width: 24px; height: 24px; border-radius: 50%; background: #16a34a; display: flex; align-items: center; justify-content: center; flex: none; }
+.kt-chk svg { width: 14px; height: 14px; color: #fff; }
+.kt-go { border-radius: 999px; background: #2563eb; color: #fff; font-weight: 800; font-size: 13px; padding: 9px 14px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex: none; }
+.kt-go svg { width: 14px; height: 14px; }
+.kt-later { font-size: 12px; color: #64748b; font-weight: 700; white-space: nowrap; flex: none; }
+.kt-play { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.08); border: 0; display: flex; align-items: center; justify-content: center; flex: none; cursor: pointer; color: #c4b5fd; }
+.kt-play svg { width: 15px; height: 15px; }
+.kt-keep { font-size: 12px; color: #fdba74; margin-top: 4px; display: flex; gap: 6px; align-items: center; }
+.kt-keep svg { width: 14px; height: 14px; }
+.kt-bonus { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 8px; }
+.kt-bonus b { font-size: 12px; letter-spacing: .1em; color: #c4b5fd; text-transform: uppercase; font-weight: 800; }
+.kt-bonus span { font-size: 11.5px; font-weight: 800; color: #fcd34d; background: rgba(251,191,36,.12); border-radius: 999px; padding: 3px 8px; }
+.kt-bonus span.got { color: #86efac; background: rgba(34,197,94,.14); }
+.kt-mini { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+.kt-mi { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 8px 9px; min-width: 0; }
+.kt-mi b { font-size: 12px; color: #fff; }
+.kt-mi small { font-size: 10.5px; color: #94a3b8; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kt-mi i { display: block; height: 4px; border-radius: 4px; background: rgba(255,255,255,.08); margin-top: 6px; overflow: hidden; }
+.kt-mi i em { display: block; height: 100%; background: #a78bfa; }
+.kt-mi.done i em { background: #22c55e; }
+.kt-weak { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); text-decoration: none; }
+.kt-weak .kt-tx small { color: #6ee7b7; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: 11px; }
+.kt-weak .kt-tx b { font-family: 'Noto Sans KR', sans-serif; }
+.kt-weak em { font-style: normal; font-size: 12.5px; font-weight: 800; color: #6ee7b7; white-space: nowrap; }
+.kt-cele { text-align: center; padding: 10px 0 4px; }
+.kt-cele .big { width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 8px; background: linear-gradient(135deg,#22c55e,#16a34a); display: flex; align-items: center; justify-content: center; }
+.kt-cele .big svg { width: 28px; height: 28px; color: #fff; }
+.kt-cele b { display: block; font-size: 17px; color: #fff; }
+.kt-cele small { font-size: 12.5px; color: #94a3b8; }
+.kt-more { display: flex; gap: 8px; margin-top: 12px; }
+.kt-more a { flex: 1; text-align: center; padding: 10px 6px; border-radius: 12px; background: rgba(255,255,255,.06); color: #e2e8f0; font-weight: 800; font-size: 12.5px; text-decoration: none; border: 1px solid rgba(255,255,255,.08); }
+.kt-side { display: none; }
+.kt-panel { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 16px; padding: 16px; }
+.kt-pko { font-family: 'Noto Sans KR', sans-serif; font-weight: 900; font-size: 24px; color: #fff; margin: 8px 0 4px; line-height: 1.35; }
+.kt-pen { color: #93c5fd; font-size: 14px; line-height: 1.5; }
+.kt-pbtns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.kt-pbtns .kt-go { background: rgba(255,255,255,.08); border: 0; cursor: pointer; font-family: inherit; text-decoration: none; }
+.kt-pbtns a.kt-go { background: transparent; color: #93c5fd; }
+@media (min-width: 900px) {
+  .kt { display: grid; grid-template-columns: 1.25fr 1fr; gap: 22px; padding: 22px; }
+  .kt-side { display: flex; flex-direction: column; gap: 12px; }
+  .kt-main .kt-bonus, .kt-main .kt-mini, .kt-main .kt-weak { display: none; }
+  .kt-side .kt-bonus { margin-top: 0; }
 }
-@media (min-width: 641px) { .kt-chip.kt-count { display:none; } }
-body.kh-neon-on .kt-card { background:#0f1a2e; border-color:rgba(125,211,252,.22); }
-body.kh-neon-on .kt-hi, body.kh-neon-on .kt-steps-h, body.kh-neon-on .kt-t { color:#e2e8f0; }
-body.kh-neon-on .kt-step { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); }
+@media (max-width: 640px) {
+  #kh-today { margin: 14px 0 4px; }
+  .kt { padding: 16px; border-radius: 18px; }
+}
 
 /* Beginner's Guide banner — dismiss button */
 #kh-welcome-action-banner > a { position: relative; }
@@ -1011,11 +1046,12 @@ window._khLoaderClearAuto = function() {};
   })();
   </script>
 
-  <!-- TODAY (signed-in only; filled by renderTodayCard) -->
-  <div id="kh-today"></div>
-
   <!-- HERO -->
   <div id="dyn-hero" class="home-hero-loading"><div class="home-hero-skeleton-main"></div><div class="home-hero-skeleton-side"><span></span><span></span><span></span><span></span></div></div>
+
+  <!-- TODAY (signed-in only; filled by renderTodayCard). Replaces the daily strip below for
+       signed-in learners: today's plan, streak week, phrase, daily-mission bonus, weak spot. -->
+  <div id="kh-today"></div>
 
   <!-- REVIEW NOTIFICATIONS (home page) -->
   <div id="home-review-banners" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;margin-bottom:12px"></div>
@@ -1398,10 +1434,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', async function() {
-  // Today card — greeting + streak + today's 3 steps (read an article,
-  // review due words, today's phrase). Signed-in only. Data comes from
-  // what the page already keeps (daily mission counters, streak) plus the
-  // review queue summary (js/features/review-queue.js).
+  // Today card (approved mockup 2026-10-30): greeting, streak week, today's 3 steps with one
+  // "next" button, today's phrase, the Daily Mission as a bonus row, and the weakest grammar
+  // point. Signed-in only; it replaces the daily strip (body.kh-has-today). Data comes from the
+  // daily mission counters + daily_missions rows, the review queue (js/features/review-queue.js),
+  // the phrase block the page already fills, and user_grammar_stats.
   async function renderTodayCard() {
     var box = document.getElementById('kh-today');
     if (!box) return;
@@ -1409,94 +1446,133 @@ document.addEventListener('DOMContentLoaded', async function() {
       await new Promise(function(r){ setTimeout(r, 100); });
     }
     var u = window.supaUser;
-    if (!u) { box.innerHTML = ''; return; }
+    if (!u) { box.innerHTML = ''; document.body.classList.remove('kh-has-today'); return; }
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    var name = '', streak = 0, due = 0, dbArticles = 0, mix = null;
+    var name = '', streak = 0, due = 0, dbDm = null, weekDb = {}, weak = null, gotRq = false;
     try {
       var fn = (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '';
       name = String(fn).split(/[\s.]/)[0] || '';
     } catch (_) {}
     try { streak = (typeof getCurrentStreak === 'function') ? (getCurrentStreak() || 0) : 0; } catch (_) {}
     var esc = function(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+    var ic = function(n){ return '<i data-lucide="' + n + '" aria-hidden="true"></i>'; };
+    var kstKey = function(ms){ return new Date(ms + 9 * 3600000).toISOString().slice(0, 10); };
     function paint() {
       var dm = {};
       try { dm = window.dmGet ? window.dmGet() : {}; } catch (_) {}
-      var today = new Date();
-      // Same KST day key Study Room writes when the daily review finishes.
-      var dKey = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
-      var readDone = Math.max(dm.articles || 0, dbArticles) > 0;
+      if (dbDm) ['articles', 'words', 'quizzes', 'fill'].forEach(function(k){ dm[k] = Math.max(dm[k] || 0, Number(dbDm[k]) || 0); });
+      var dKey = kstKey(Date.now());
+      var readDone = (dm.articles || 0) > 0;
       var reviewDone = false, phraseDone = false;
       try { reviewDone = !!localStorage.getItem('kh_daily_review_done_' + dKey); } catch (_) {}
       try { phraseDone = localStorage.getItem('kh_phrase_seen_' + dKey) === '1'; } catch (_) {}
-      if (!reviewDone && due === 0 && readDone) reviewDone = true;
-      var phraseKo = (document.getElementById('pb-ko') || {}).textContent || '';
-      var phraseHref = (document.getElementById('pb-phrase-block') || {}).getAttribute ? document.getElementById('pb-phrase-block').getAttribute('href') : 'korehan-phrase.html';
+      // Nothing due (once the queue answered) means there is no review to do today.
+      if (!reviewDone && gotRq && due === 0) reviewDone = true;
+      var phraseKo = ((document.getElementById('pb-ko') || {}).textContent || '').trim();
+      var phraseEn = ((document.getElementById('pb-en') || {}).textContent || '').trim();
+      var pb = document.getElementById('pb-phrase-block');
+      var phraseHref = (pb && pb.getAttribute('href')) || 'korehan-phrase.html';
       var steps = [
-        { done: readDone, n: '1', t: 'Read 1 article', s: readDone ? 'Done today' : 'Any level, ~5 min', href: 'korehan-all.html', c: '#16a34a', short: 'Article' },
-        // The review queue holds up to 20 items (due, missed, new today).
-        { done: reviewDone, n: due > 0 ? String(due) : '2', t: due > 0 ? ('Review ' + due + ' word' + (due === 1 ? '' : 's')) : 'Daily review', s: due > 0 ? ('~' + Math.max(1, Math.ceil(due / 4)) + ' min') : (reviewDone ? 'Done today' : 'Nothing due yet'), href: 'korehan-study-room.html?review=daily', c: '#2563eb', short: 'Review' },
-        { done: phraseDone, n: '3', t: 'Today’s phrase', s: phraseKo || 'One expression a day', href: phraseHref || 'korehan-phrase.html', c: '#7c3aed', short: 'Phrase' }
+        { done: readDone, icon: 'newspaper', tint: 'rgba(34,197,94,.15)', col: '#4ade80', t: 'Read 1 article',
+          s: readDone ? 'Done today' : 'Any level · about 5 min', href: 'korehan-all.html', go: 'Read', min: 5 },
+        { done: reviewDone, icon: 'layers', tint: 'rgba(59,130,246,.2)', col: '#93c5fd',
+          t: due > 0 ? ('Review ' + due + ' word' + (due === 1 ? '' : 's')) : 'Daily review',
+          s: reviewDone ? 'Done today' : (due > 0 ? 'From your saved words · about ' + Math.max(1, Math.ceil(due / 4)) + ' min' : 'Checking your words…'),
+          href: 'korehan-study-room.html?review=daily', go: 'Start', min: Math.max(1, Math.ceil(due / 4)) },
+        { done: phraseDone, icon: 'quote', tint: 'rgba(139,92,246,.18)', col: '#c4b5fd', t: 'Today’s phrase',
+          s: phraseKo || 'One expression a day', ko: !!phraseKo, href: phraseHref, go: 'Open', min: 1, phrase: true }
       ];
       var doneN = steps.filter(function(x){ return x.done; }).length;
       var next = steps.filter(function(x){ return !x.done; })[0];
-      var fj = (typeof khFjProgress === 'function') ? khFjProgress() : null;
-      var fjChip = (fj && !fj.allDone && !window._isAdmin)
-        ? '<button type="button" class="kt-chip fj" onclick="khFjOpen()">First Journey ' + fj.done + '/' + fj.total + '</button>'
-        : '<a class="kt-chip" href="beginner-guide.html">Beginner’s Guide</a>';
-      var dateTxt = today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-      box.innerHTML =
-          '<div class="kt-card">'
-        +   '<div class="kt-head">'
-        +     '<div><div class="kt-date">' + esc(dateTxt) + '</div>'
-        +     '<div class="kt-hi">' + (name ? 'Hi, ' + esc(name) : 'Welcome back') + ' 👋</div></div>'
-        +     '<div class="kt-chips">'
-        +       (streak > 0 ? '<span class="kt-chip streak">🔥 ' + streak + (streak === 1 ? ' day' : ' days') + '</span>' : '')
-        +       '<span class="kt-chip kt-count">Today ' + doneN + '/3</span>'
-        +       fjChip
-        +     '</div>'
-        +   '</div>'
-        +   '<div><div class="kt-steps-h">Today’s 3 steps <span>· ' + doneN + ' of 3 done</span></div>'
-        +     '<div class="kt-steps">' + steps.map(function(x){
-                return '<a class="kt-step' + (x.done ? ' done' : '') + '" href="' + esc(x.href) + '" style="--kt-c:' + x.c + '">'
-                  + '<span class="kt-num">' + (x.done ? '✓' : esc(x.n)) + '</span>'
-                  + '<span class="kt-txt"><span class="kt-t"><span class="kt-long">' + esc(x.t) + '</span></span><span class="kt-s">' + esc(x.s) + '</span></span></a>';
-              }).join('') + '</div>'
-        +     (mix && due > 0 && !reviewDone ? '<div class="kt-mix">Review: '
-                + [mix.due ? '<i class="d">' + mix.due + ' due</i>' : '', mix.missed ? '<i class="m">' + mix.missed + ' missed</i>' : '', mix.fresh ? '<i class="n">' + mix.fresh + ' new today</i>' : ''].filter(Boolean).join('')
-                + '</div>' : '')
-        +     '<div class="kt-bar"><div style="width:' + Math.round(doneN / 3 * 100) + '%"></div></div>'
-        +   '</div>'
-        +   '<div class="kt-cta">' + (next
-              ? '<a class="kt-go" href="' + esc(next.href) + '">Continue: ' + esc(next.t) + ' →</a>'
-              : '<a class="kt-go all" href="korehan-learning-overview.html">All done · See progress →</a>') + '</div>'
-        + '</div>';
-      // Phones get the short step labels (Article / Review / Phrase).
-      if (window.matchMedia && window.matchMedia('(max-width:640px)').matches) {
-        box.querySelectorAll('.kt-step').forEach(function(a, k){ var l = a.querySelector('.kt-long'); if (l) l.textContent = steps[k].short; });
+      var minsLeft = steps.reduce(function(a, x){ return a + (x.done ? 0 : x.min); }, 0);
+      var today = new Date();
+      // Same KST day as the plan, the week bar and the mission counters.
+      var dateTxt = today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Seoul' });
+      // Last 7 days (KST): a day counts when anything was studied (same rule as the streak).
+      var localDays = {};
+      try { localDays = (typeof lsGet === 'function' ? lsGet('kh_study_days', {}) : {}) || {}; } catch (_) {}
+      var week = '';
+      for (var k = 6; k >= 0; k--) {
+        var ms = Date.now() - k * 86400000, key = kstKey(ms);
+        var on = !!(weekDb[key] || localDays[key]) || (k === 0 && doneN > 0);
+        var wd = new Date(ms + 9 * 3600000).toUTCString().slice(0, 1);
+        week += '<div class="kt-wd' + (on ? ' on' : '') + (k === 0 ? ' today' : '') + '"><i></i>' + wd + '</div>';
       }
+      var stepHtml = steps.map(function(x){
+        var right = x.done ? '<span class="kt-chk">' + ic('check') + '</span>'
+          : (x === next ? '<span class="kt-go">' + x.go + ic('arrow-right') + '</span>'
+          : (x.phrase && phraseKo ? '<button type="button" class="kt-play" aria-label="Listen" data-kt-play>' + ic('volume-2') + '</button>' : '<span class="kt-later">Next</span>'));
+        return '<a class="kt-st' + (x.done ? ' done' : '') + (x === next ? ' next' : '') + '" href="' + esc(x.href) + '">'
+          + '<span class="kt-ic" style="background:' + x.tint + ';color:' + x.col + '">' + ic(x.icon) + '</span>'
+          + '<span class="kt-tx"><b>' + esc(x.t) + '</b><small' + (x.ko ? ' class="ko"' : '') + '>' + esc(x.s) + '</small></span>' + right + '</a>';
+      }).join('');
+      // Daily Mission = bonus (same goals and +50 XP as the mission engine).
+      var M = [['articles', 'Articles', 3], ['words', 'Words saved', 20], ['quizzes', 'Quizzes', 3], ['fill', 'Fill-in', 1]];
+      var missionDone = M.every(function(m){ return (dm[m[0]] || 0) >= m[2]; });
+      var bonus = '<div class="kt-bonus"><b>Bonus · daily mission</b><span' + (missionDone ? ' class="got"' : '') + '>' + (missionDone ? 'Done · +50 XP' : '+50 XP') + '</span></div>'
+        + '<div class="kt-mini">' + M.map(function(m){
+            var c = Math.min(dm[m[0]] || 0, m[2]);
+            return '<div class="kt-mi' + (c >= m[2] ? ' done' : '') + '"><b>' + c + '/' + m[2] + '</b><small>' + m[1] + '</small><i><em style="width:' + Math.round(c / m[2] * 100) + '%"></em></i></div>';
+          }).join('') + '</div>'
+        + (weak ? '<a class="kt-weak" href="korehan-study-room.html?focus=' + encodeURIComponent(weak) + '&source=home-weak-grammar"><span class="kt-tx"><small>Weak spot</small><b>' + esc(weak) + '</b></span><em>Practice 2 min →</em></a>' : '');
+      var fj = (typeof khFjProgress === 'function') ? khFjProgress() : null;
+      var chips = (streak > 0 ? '<span class="kt-chip streak">' + ic('flame') + streak + (streak === 1 ? ' day' : ' days') + '</span>' : '')
+        + ((fj && !fj.allDone && !window._isAdmin) ? '<button type="button" class="kt-chip" onclick="khFjOpen()">First Journey ' + fj.done + '/' + fj.total + '</button>' : '');
+      var body = next
+        ? '<div class="kt-ph"><b>Today’s plan</b><small>' + doneN + ' of 3 · about ' + minsLeft + ' min' + (doneN ? ' left' : '') + '</small></div>'
+          + '<div class="kt-prog"><i style="width:' + Math.max(3, Math.round(doneN / 3 * 100)) + '%"></i></div>' + stepHtml
+          + (doneN === 0 && streak > 0 ? '<div class="kt-keep">' + ic('flame') + 'Do one step to keep your ' + streak + '-day streak</div>' : '')
+        : '<div class="kt-cele"><div class="big">' + ic('check') + '</div><b>Today’s plan is done</b><small>Streak safe · +' + (typeof dmXPFromData === 'function' ? dmXPFromData(dm) : 0) + ' XP today · see you tomorrow</small></div>'
+          + '<div class="kt-more"><a href="korehan-conversations.html">A conversation</a><a href="korehan-stories.html">A story</a><a href="korehan-mypage.html#mp-miniroom-section">My Room</a></div>';
+      box.innerHTML =
+          '<div class="kt">'
+        +   '<div class="kt-main">'
+        +     '<div class="kt-top"><div><div class="kt-date">' + esc(dateTxt) + '</div><div class="kt-hi">' + (name ? 'Hi, ' + esc(name) : 'Welcome back') + '</div></div>'
+        +       '<div class="kt-chips">' + chips + '</div></div>'
+        +     '<div class="kt-week">' + week + '</div>'
+        +     body + bonus
+        +   '</div>'
+        +   '<div class="kt-side">'
+        +     (phraseKo ? '<div class="kt-panel"><div class="kt-k">Today’s phrase</div><div class="kt-pko">' + esc(phraseKo) + '</div><div class="kt-pen">' + esc(phraseEn) + '</div>'
+        +       '<div class="kt-pbtns"><button type="button" class="kt-go" data-kt-play>' + ic('volume-2') + 'Listen</button><a class="kt-go" href="' + esc(phraseHref) + '">Details →</a></div></div>' : '')
+        +     '<div class="kt-panel">' + bonus + '</div>'
+        +   '</div>'
+        + '</div>';
+      document.body.classList.add('kh-has-today');
+      box.querySelectorAll('[data-kt-play]').forEach(function(btn){
+        btn.addEventListener('click', function(ev){
+          ev.preventDefault(); ev.stopPropagation();
+          if (window.khSpeak) khSpeak(phraseKo, 'female', btn);
+          // Listening to the phrase counts as today's phrase step.
+          try { localStorage.setItem('kh_phrase_seen_' + kstKey(Date.now()), '1'); } catch (_) {}
+          setTimeout(paint, 400);
+        });
+      });
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
     }
     paint();
+    window._khTodayRepaint = paint;
     if (!sb) return;
+    var weekSince = kstKey(Date.now() - 6 * 86400000);
     var res = await Promise.all([
-      sb.from('user_stats').select('streak, display_name').eq('user_id', u.id).maybeSingle(),
-      // Other devices' reads today (the local counters only know this browser).
-      typeof dmToday === 'function'
-        ? sb.from('daily_missions').select('articles').eq('user_id', u.id).eq('date', dmToday()).maybeSingle()
-        : Promise.resolve(null),
-      // Same queue the review session asks (js/features/review-queue.js).
+      sb.from('user_stats').select('display_name').eq('user_id', u.id).maybeSingle(),
+      // This week's activity (other devices included); today's row feeds the bonus row.
+      sb.from('daily_missions').select('date, articles, words, quizzes, fill').eq('user_id', u.id).gte('date', weekSince),
       window.khReviewQueue ? khReviewQueue.summary() : null,
-      // Same streak source as Today's Progress below (daily_missions, KST).
-      typeof fetchActivityStreakFromDB === 'function' ? fetchActivityStreakFromDB(sb, u.id) : 0
+      typeof fetchActivityStreakFromDB === 'function' ? fetchActivityStreakFromDB(sb, u.id) : 0,
+      typeof getUnifiedWeakGrammarItems === 'function' ? getUnifiedWeakGrammarItems(1) : []
     ].map(function(q){ return Promise.resolve(q).then(function(r){ return r; }, function(){ return null; }); }));
-    var st = res[0] && res[0].data, dmRow = res[1] && res[1].data, rq = res[2];
-    if (st) {
-      if (st.display_name) name = String(st.display_name).trim();
-      // user_stats.streak is counted differently and disagreed with the
-      // Today's Progress pill — use the activity streak everywhere.
-    }
-    if (dmRow) dbArticles = Number(dmRow.articles) || 0;
-    if (rq && rq.items) { due = rq.items.length; mix = rq.counts; }
+    var st = res[0] && res[0].data, rows = (res[1] && res[1].data) || [], rq = res[2], wk = res[4];
+    if (st && st.display_name) name = String(st.display_name).trim();
+    var todayKey = kstKey(Date.now());
+    rows.forEach(function(r){
+      if (((r.articles || 0) + (r.words || 0) + (r.quizzes || 0) + (r.fill || 0)) > 0) weekDb[r.date] = true;
+      if (r.date === todayKey) dbDm = r;
+    });
+    if (rq) { gotRq = true; if (rq.items) due = rq.items.length; }
     if (typeof res[3] === 'number') streak = Math.max(streak, res[3]);
+    // Only a real weak spot (missed at least once) — never a placeholder.
+    if (wk && wk[0] && (wk[0].wrong_count || 0) > 0) weak = wk[0].grammar_point;
     paint();
   }
   renderTodayCard();
@@ -1640,6 +1716,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (en)  en.textContent  = p.en;
     var pbBlock = document.getElementById('pb-phrase-block');
     if (pbBlock) pbBlock.href = 'korehan-phrase.html?i=' + phraseIndex;
+    // The Today card shows this phrase too; it may have painted before the phrases loaded.
+    if (window._khTodayRepaint) window._khTodayRepaint();
   }
   // 먼저 localStorage 캐시된 phrases로 즉시 렌더 (네트워크 불필요)
   renderTodaysPhrase();
