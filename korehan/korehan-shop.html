@@ -49,7 +49,7 @@ body{margin:0;font-family:'Happy Monkey','Jua','DM Sans',Inter,'Noto Sans KR',sa
 .sh-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#2563eb);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;position:relative;z-index:1}
 .sh-hint{font-size:11.5px;color:rgba(255,255,255,.45);margin:8px 2px;line-height:1.5}
 .sh-note{padding:10px 12px;border-radius:12px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.3);color:#fde68a;font-size:12.5px;margin-bottom:10px}
-.sh-ov{position:fixed;inset:0;z-index:5000;background:rgba(2,6,23,.6);display:flex;align-items:flex-end;justify-content:center}
+.sh-ov{position:fixed;inset:0;z-index:8500;background:rgba(2,6,23,.6);display:flex;align-items:flex-end;justify-content:center}
 .sh-sheet{width:100%;max-width:520px;background:#111c38;border:1px solid rgba(255,255,255,.12);border-bottom:0;border-radius:20px 20px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));transform:translateY(20px);opacity:0;transition:transform .18s,opacity .18s}
 .sh-ov.open .sh-sheet{transform:none;opacity:1}
 .sh-st{font-family:'DM Sans',sans-serif;font-weight:800;font-size:19px;color:#fff;margin-top:2px}
@@ -166,11 +166,11 @@ body{margin:0;font-family:'Happy Monkey','Jua','DM Sans',Inter,'Noto Sans KR',sa
 <script src="js/features/fill-blank.js?v=20261029s"></script>
 <script src="korehan-shared.js?v=20261029y"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
-<script src="shop-client.js?v=20261029l"></script>
+<script src="shop-client.js?v=20261029room"></script>
 <script>
 function shopHowToEarn() {
   var ov = document.createElement('div'); ov.className = 'sh-ov'; ov.id = 'sh-ov';
-  ov.innerHTML = '<div class="sh-sheet"><div class="sh-st">How to earn nyang</div><ul class="sh-earn-list"><li>Study Room lessons and writing</li><li>Articles, conversations and quizzes</li><li>Streak milestones</li><li>New badges</li></ul><button type="button" class="sh-buy" onclick="location.href=\'korehan-study-room.html\'">Go to Study Room</button><button type="button" class="sh-cancel" onclick="shopClose()">Close</button></div>';
+  ov.innerHTML = '<div class="sh-sheet"><div class="sh-st">How to earn nyang</div><ul class="sh-earn-list"><li>Finish the Daily Mission: +20 bonus a day</li><li>Read articles and conversations: +3 each</li><li>Save words: +2 each</li><li>Quizzes, writing and reviews: +3 to +12</li><li>First Journey steps: +100 once</li></ul><button type="button" class="sh-buy" onclick="location.href=\'korehan-study-room.html\'">Go to Study Room</button><button type="button" class="sh-cancel" onclick="shopClose()">Close</button></div>';
   ov.addEventListener('click', function(e){ if (e.target === ov) shopClose(); });
   document.body.appendChild(ov); requestAnimationFrame(function(){ ov.classList.add('open'); });
 }

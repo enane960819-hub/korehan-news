@@ -507,7 +507,10 @@ body.kh-neon-on .mypage-hero {
 /* Shop modal */
 .room-shop-overlay {
   position:fixed; inset:0; background:rgba(5,12,24,.78); display:flex;
-  align-items:center; justify-content:center; z-index:3000; padding:16px;
+  align-items:center; justify-content:center; padding:16px;
+  /* Above the mobile tab bar (1600) and the floating First Journey /
+     goal buttons (7999–8000); toasts (9999) and dialogs (10000) stay on top. */
+  z-index:8500;
 }
 .room-shop-modal {
   background:#fff; border-radius:20px; width:min(520px,96vw); max-height:80vh;
@@ -535,9 +538,17 @@ body.kh-neon-on .mypage-hero {
   background:#f8fbff; transition:border-color .15s, box-shadow .15s;
 }
 .room-shop-card:hover { border-color:#93c5fd; box-shadow:0 4px 16px rgba(37,99,235,.08); }
-.room-shop-sprite {
-  width:60px; height:60px; margin:0 auto 10px;
-  background-size:contain; background-repeat:no-repeat; background-position:center;
+.room-shop-card { display:flex; flex-direction:column; align-items:center; }
+.room-shop-thumb {
+  width:100%; height:104px; margin:0 auto 10px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 50% 60%,rgba(37,99,235,.07),transparent 70%);
+}
+.room-shop-img { max-width:86%; max-height:96px; object-fit:contain; display:block; }
+@media (max-width:480px) {
+  .room-shop-modal { max-height:calc(100vh - 120px); max-height:calc(100dvh - 120px); }
+  .room-shop-thumb { height:88px; }
+  .room-shop-img { max-height:80px; }
 }
 .room-shop-name { font-size:12px; font-weight:800; color:#0b1626; margin-bottom:4px; }
 .room-shop-price { font-size:11px; font-weight:700; color:#d97706; margin-bottom:8px; }
@@ -562,19 +573,13 @@ body.kh-neon-on .mypage-hero {
   font-family: inherit; color: #0b1626; min-height: 36px; line-height: 1;
 }
 .room-ctrl-btn:hover { background: #f1f5f9; }
+.room-ctrl-btn .kh-ui-icon { width:14px; height:14px; vertical-align:-2px; }
 .room-ctrl-btn.room-ctrl-icon { padding: 0; width: 36px; min-width: 36px; font-size: 18px; font-weight: 800; }
 .room-ctrl-btn.room-ctrl-danger { background: #ef4444; border-color: #dc2626; color: #fff; font-weight: 800; }
 .room-ctrl-btn.room-ctrl-danger:hover { background: #dc2626; }
 @media (pointer: coarse) {
   .room-ctrl-btn { min-height: 44px; padding: 10px 16px; font-size: 13px; }
   .room-ctrl-btn.room-ctrl-icon { width: 44px; min-width: 44px; font-size: 20px; }
-}
-
-/* Room badges on wall */
-.room-badge-icon {
-  width:28px; height:28px; border-radius:6px; display:flex; align-items:center;
-  justify-content:center; font-size:14px; background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.15); cursor:default;
 }
 
 /* ── Room light switch ───────────────────────────── */
@@ -661,7 +666,7 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
    - Time-of-day color overlay so morning/afternoon/evening/night look
      different even before any wallpaper system exists
    - SVG clock hands, window tints, rain animation
-   - Pet idle slide + click-react hop
+   - Pet click-react hop (pets stand still otherwise)
    - BGM toggle button + drawer
    ────────────────────────────────────────────────────────────── */
 @media(min-width:760px){#miniroom-container{max-width:920px!important}}
@@ -681,7 +686,8 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
 
 /* Pet idle hop on click + heart popup */
 @keyframes roomHeartUp{0%{opacity:0;transform:translate(-50%,0) scale(.6)}30%{opacity:1;transform:translate(-50%,-10px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-32px) scale(.9)}}
-.room-pet-heart{position:absolute;left:50%;top:0;transform:translate(-50%,0);font-size:18px;animation:roomHeartUp .9s ease forwards;pointer-events:none;z-index:6}
+.room-pet-heart{position:absolute;left:50%;top:0;transform:translate(-50%,0);font-size:18px;line-height:0;color:#f43f5e;animation:roomHeartUp .9s ease forwards;pointer-events:none;z-index:6}
+.room-pet-heart svg{width:20px;height:20px;fill:currentColor;filter:drop-shadow(0 1px 3px rgba(0,0,0,.3))}
 .room-placed-item.room-pet{cursor:pointer}
 .room-placed-item.room-pet-hop{animation:roomPetHop .35s ease}
 @keyframes roomPetHop{0%{transform:translateY(0)}40%{transform:translateY(-12px)}100%{transform:translateY(0)}}
@@ -702,7 +708,6 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
 /* ── My Room Phase-2 ──
    - Hub-ified furniture (desk/bookshelf/TV/etc become shortcuts to
      the matching learning area)
-   - Seasonal particle layer (snow / blossoms / leaves)
    - Pet affinity badge
    ────────────────────────────────────────────────────────────── */
 
@@ -724,16 +729,6 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
 .room-placed-item.room-hub-pulse .room-placed-sprite{animation:roomHubPulse .35s ease}
 @keyframes roomHubPulse{0%{transform:scale(var(--hub-sx,1),var(--hub-s,1))}50%{transform:scale(calc(var(--hub-sx,1) * 1.06),calc(var(--hub-s,1) * 1.06))}100%{transform:scale(var(--hub-sx,1),var(--hub-s,1))}}
 
-/* Seasonal particles — floats over everything but light/clock UI */
-.room-season-layer{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
-.room-season-flake{position:absolute;top:-24px;animation:roomSeasonFall linear infinite;will-change:transform;text-shadow:0 1px 4px rgba(0,0,0,.25)}
-@keyframes roomSeasonFall{
-  0%{transform:translate3d(0,-30px,0) rotate(0deg);opacity:0}
-  10%{opacity:1}
-  90%{opacity:1}
-  100%{transform:translate3d(40px,440px,0) rotate(360deg);opacity:0}
-}
-
 /* Pet affinity badge — small heart + count under each pet */
 .room-pet-badge{
   position:absolute;bottom:-2px;left:50%;
@@ -747,7 +742,10 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
   z-index:6;
   box-shadow:0 2px 6px rgba(0,0,0,.25);
   opacity:.9;
+  display:inline-flex;align-items:center;gap:3px;
 }
+.room-pet-badge svg{width:10px;height:10px;color:#fda4af;fill:currentColor}
+.room-bgm-track .room-bgm-emoji svg{width:16px;height:16px}
 .room-pet-badge.bump{animation:petBadgeBump .35s ease}
 @keyframes petBadgeBump{0%{transform:translateX(-50%) scale(1)}40%{transform:translateX(-50%) scale(1.18)}100%{transform:translateX(-50%) scale(1)}}
 
@@ -774,108 +772,6 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
    Items still snap to the same grid coordinates — the floor is a
    non-interactive cosmetic strip across the bottom 32% of the room. */
 .room-floor-layer{position:absolute;left:0;right:0;bottom:0;height:32%;pointer-events:none;z-index:2;background-size:cover;background-position:center bottom;transition:opacity .35s ease,background .4s ease}
-
-/* ── Room FX layer — ambient overlay effects ───────────────────────
-   Driven by owned shop items of item_type='room_fx' (cash_fx_sakura,
-   cash_fx_snow, cash_fx_fireflies, cash_fx_rain, cash_fx_moonlight,
-   cash_fx_fireworks). renderRoomFx() in JS populates child particles
-   based on which effects the user owns. CSS animations only — JS
-   only places the particles, doesn't tick them. */
-.room-fx-layer{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
-.room-fx-particle{position:absolute;will-change:transform,opacity}
-
-/* Sakura petals — pink, drift diagonally, gentle rotation */
-.room-fx-sakura .room-fx-particle{
-  width:12px;height:12px;border-radius:50% 0 50% 50%;
-  background:radial-gradient(circle at 35% 35%,#ffd6e7,#ff8fbd 70%,#e63d83);
-  opacity:.85;
-  animation:roomFxSakuraFall var(--d,9s) linear infinite;
-}
-@keyframes roomFxSakuraFall {
-  0%{transform:translate3d(0,-12%,0) rotate(0)}
-  100%{transform:translate3d(40px,110%,0) rotate(520deg)}
-}
-
-/* Snow — white, drift straight down with tiny side sway, varied sizes */
-.room-fx-snow .room-fx-particle{
-  background:#fff;border-radius:50%;opacity:.85;box-shadow:0 0 4px rgba(255,255,255,.8);
-  animation:roomFxSnowFall var(--d,7s) linear infinite;
-}
-@keyframes roomFxSnowFall {
-  0%{transform:translate3d(0,-10%,0)}
-  50%{transform:translate3d(6px,55%,0)}
-  100%{transform:translate3d(-4px,110%,0)}
-}
-
-/* Fireflies — small yellow glow, float up + side-to-side, pulse opacity */
-.room-fx-fireflies .room-fx-particle{
-  width:6px;height:6px;border-radius:50%;
-  background:#fff6b3;box-shadow:0 0 10px 2px rgba(255,232,120,.85),0 0 22px 4px rgba(255,200,80,.45);
-  animation:roomFxFireflyFloat var(--d,9s) ease-in-out infinite, roomFxFireflyBlink calc(var(--d,9s) / 3) ease-in-out infinite;
-}
-@keyframes roomFxFireflyFloat {
-  0%{transform:translate3d(0,90%,0)}
-  25%{transform:translate3d(20px,55%,0)}
-  50%{transform:translate3d(-15px,30%,0)}
-  75%{transform:translate3d(18px,15%,0)}
-  100%{transform:translate3d(0,90%,0)}
-}
-@keyframes roomFxFireflyBlink {
-  0%,100%{opacity:.25} 50%{opacity:1}
-}
-
-/* Window-rain — re-use existing room-window-rain CSS pattern but
-   scoped to the FX layer so it stretches the full room (not just
-   inside a window asset). */
-.room-fx-rain{
-  background-image:repeating-linear-gradient(105deg,rgba(125,211,252,0) 0 9px,rgba(125,211,252,.18) 9px 11px);
-  background-size:40px 80px;
-  animation:roomFxRain .65s linear infinite;
-  opacity:.7;
-}
-@keyframes roomFxRain { to { background-position:-40px 80px } }
-
-/* Moonlight — soft blue wash + drifting tiny stars */
-.room-fx-moonlight{
-  background:radial-gradient(ellipse at 70% 25%,rgba(189,224,255,.28),transparent 55%),
-             linear-gradient(180deg,rgba(60,100,180,.12),rgba(20,30,80,.05));
-  mix-blend-mode:screen;
-}
-.room-fx-moonlight .room-fx-particle{
-  width:2px;height:2px;border-radius:50%;background:#fff;
-  box-shadow:0 0 4px rgba(255,255,255,.9);
-  animation:roomFxStarDrift var(--d,12s) linear infinite;
-}
-@keyframes roomFxStarDrift {
-  0%{transform:translate3d(-20px,0,0);opacity:0}
-  10%,90%{opacity:.9}
-  100%{transform:translate3d(120%,0,0);opacity:0}
-}
-
-/* Fireworks — single burst element, JS triggers a class-toggle on a
-   timer to replay the animation. Keep modest so it's celebratory not
-   distracting. */
-.room-fx-fireworks{}
-.room-fx-firework-burst{
-  position:absolute;width:6px;height:6px;border-radius:50%;
-  background:radial-gradient(circle,#fff 0,#ffd56b 35%,transparent 70%);
-  box-shadow:0 0 0 0 rgba(255,213,107,.9);
-  opacity:0;
-}
-.room-fx-firework-burst.go{animation:roomFxFireworkBurst 1.4s ease-out forwards}
-@keyframes roomFxFireworkBurst {
-  0%{opacity:0;transform:scale(.2);box-shadow:0 0 0 0 rgba(255,213,107,.9)}
-  20%{opacity:1}
-  100%{opacity:0;transform:scale(1);box-shadow:0 0 0 70px rgba(255,213,107,0)}
-}
-
-/* Reduce motion: hide ambient effects entirely. */
-@media (prefers-reduced-motion: reduce) {
-  .room-fx-layer .room-fx-particle,
-  .room-fx-rain,
-  .room-fx-firework-burst { animation: none !important; }
-  .room-fx-moonlight { mix-blend-mode: normal; }
-}
 
 /* ── Progress section: Up Next badges + activity heatmap ── */
 .mp-up-next-title{font-size:11px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
@@ -1241,7 +1137,6 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
     <div id="miniroom-container" style="position:relative;width:100%;max-width:600px;aspect-ratio:10/9;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:auto">
       <div id="miniroom-items"></div>
       <div id="room-floor-layer" class="room-floor-layer" aria-hidden="true"></div>
-      <div id="room-fx-layer" class="room-fx-layer" aria-hidden="true"></div>
       <div id="room-time-overlay" class="room-time-overlay" aria-hidden="true"></div>
       <div id="room-light-switch" class="room-light-switch" onclick="toggleRoomLights()"
            style="background-image:url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)"
@@ -1267,9 +1162,9 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
         <span id="room-size-value" style="font-size:12px;font-weight:800;color:#0b1626;min-width:42px;text-align:left">100%</span>
       </div>
       <div style="display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap">
-        <button class="room-ctrl-btn" onclick="flipSelectedItem()" title="Flip">↔ Flip</button>
-        <button class="room-ctrl-btn" onclick="moveSelectedLayer(1)" title="Bring forward">↑ Front</button>
-        <button class="room-ctrl-btn" onclick="moveSelectedLayer(-1)" title="Send back">↓ Back</button>
+        <button class="room-ctrl-btn" onclick="flipSelectedItem()" title="Flip"><i data-lucide="flip-horizontal-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Flip</button>
+        <button class="room-ctrl-btn" onclick="moveSelectedLayer(1)" title="Bring forward"><i data-lucide="arrow-up" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Front</button>
+        <button class="room-ctrl-btn" onclick="moveSelectedLayer(-1)" title="Send back"><i data-lucide="arrow-down" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Back</button>
         <button id="room-remove-btn" class="room-ctrl-btn room-ctrl-danger" onclick="removeSelectedRoomItem()" style="display:none">Remove</button>
       </div>
       <div style="font-size:10px;color:#94a3b8;margin-top:6px">Tap → resize/flip/layer · Hold → remove</div>
@@ -2776,13 +2671,13 @@ function renderOwnedAndGiftSections(coin, data) {
   var ownedEl = document.getElementById('mp-owned-items');
   var owned = (data && data.owned) || [];
   // Also include room items
-  var roomOwned = getRoomOwned();
+  var roomOwned = getRoomOwned().filter(function(rid){ var d = getRoomItemDef(rid); return d && !roomImgMissing(d); });
   var roomHtml = roomOwned.length ? '<div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">Room Items</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">'
     + roomOwned.map(function(rid){
-        var def = getRoomItemDef(rid); if(!def) return '';
-        // An <img> so art that hasn't been uploaded yet can swap to the placeholder.
-        return '<div style="width:56px;height:56px;border-radius:10px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;'+(roomImgMissing(def) ? roomItemThumbBgStyle(def) : '')+'" title="'+def.name+'">'
-          + (roomImgMissing(def) ? '' : '<img src="'+def.img+'" alt="" style="width:76%;height:76%;object-fit:contain" onerror="this.parentNode.style.cssText+=\';background:url(&quot;'+ROOM_IMG_PLACEHOLDER+'&quot;) center/52% no-repeat\';this.remove()">')
+        var def = getRoomItemDef(rid);
+        // Art not uploaded yet → the tile removes itself instead of showing a broken image.
+        return '<div style="width:56px;height:56px;border-radius:10px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center" title="'+_escapeHtml(def.name)+'">'
+          + '<img src="'+def.img+'" alt="" style="width:76%;height:76%;object-fit:contain" onerror="this.parentNode.remove()">'
           + '</div>';
       }).join('') + '</div>' : '';
   if (ownedEl) {
@@ -2862,115 +2757,115 @@ function applyThemeItem(itemId, btn) {
 // those names into /korehan/assets/room/ and they render automatically.
 var ROOM_ITEMS_FALLBACK = [
   {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png', size:160, category:'character'},
-  {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', size:130, category:'pet'},
-  {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', size:100, category:'deco'},
-  {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', size:140, category:'furniture'},
-  {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', size:110, category:'furniture'},
-  {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', size:150, category:'furniture'},
-  {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', size:110, category:'deco'},
-  {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', size:120, category:'pet'},
+  {id:'cat',        name:'Sleeping Cat',     price:180,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', size:130, category:'pet'},
+  {id:'poop',       name:'Happy Poop',       price:60,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', size:100, category:'deco'},
+  {id:'cushion',    name:'Reading Cushion',  price:120,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', size:140, category:'furniture'},
+  {id:'lamp',       name:'Korean Lamp',      price:140,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', size:110, category:'furniture'},
+  {id:'bookshelf',  name:'Bookshelf',        price:300,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', size:150, category:'furniture'},
+  {id:'plant',      name:'Potted Plant',     price:100,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', size:110, category:'deco'},
+  {id:'fennec',     name:'Fennec Fox',       price:240,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', size:120, category:'pet'},
   {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', size:192, category:'character'},
   {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', size:192, category:'character'},
   // ── NEW · Furniture (images to be added at assets/room/<id>.png) ──
-  {id:'desk',             name:'Study Desk',          price:30,  img:'assets/room/desk.png',             size:140, category:'furniture'},
-  {id:'chair',            name:'Ergo Chair',          price:22,  img:'assets/room/chair.png',            size:120, category:'furniture'},
-  {id:'rug',              name:'Hanji Rug',           price:18,  img:'assets/room/rug.png',              size:170, category:'furniture'},
-  {id:'bed',              name:'Cozy Bed',            price:45,  img:'assets/room/bed.png',              size:180, category:'furniture'},
-  {id:'wardrobe',         name:'Wardrobe',            price:35,  img:'assets/room/wardrobe.png',         size:150, category:'furniture'},
-  {id:'coffee_table',     name:'Coffee Table',        price:20,  img:'assets/room/coffee-table.png',     size:140, category:'furniture'},
-  {id:'tv_unit',          name:'TV Unit',             price:40,  img:'assets/room/tv-unit.png',          size:160, category:'furniture'},
-  {id:'mini_fridge',      name:'Mini Fridge',         price:38,  img:'assets/room/mini-fridge.png',      size:120, category:'furniture'},
-  {id:'piano',            name:'Upright Piano',       price:120, img:'assets/room/piano.png',            size:170, category:'furniture'},
-  {id:'gaming_chair',     name:'Gaming Chair',        price:55,  img:'assets/room/gaming-chair.png',     size:140, category:'furniture'},
-  {id:'floor_pillow',     name:'Floor Pillow',        price:9,   img:'assets/room/floor-pillow.png',     size:120, category:'furniture'},
-  {id:'tea_table',        name:'Korean Tea Table',    price:28,  img:'assets/room/tea-table.png',        size:140, category:'furniture'},
+  {id:'desk',             name:'Study Desk',          price:360,  img:'assets/room/desk.png',             size:140, category:'furniture'},
+  {id:'chair',            name:'Ergo Chair',          price:260,  img:'assets/room/chair.png',            size:120, category:'furniture'},
+  {id:'rug',              name:'Hanji Rug',           price:220,  img:'assets/room/rug.png',              size:170, category:'furniture'},
+  {id:'bed',              name:'Cozy Bed',            price:540,  img:'assets/room/bed.png',              size:180, category:'furniture'},
+  {id:'wardrobe',         name:'Wardrobe',            price:420,  img:'assets/room/wardrobe.png',         size:150, category:'furniture'},
+  {id:'coffee_table',     name:'Coffee Table',        price:240,  img:'assets/room/coffee-table.png',     size:140, category:'furniture'},
+  {id:'tv_unit',          name:'TV Unit',             price:480,  img:'assets/room/tv-unit.png',          size:160, category:'furniture'},
+  {id:'mini_fridge',      name:'Mini Fridge',         price:460,  img:'assets/room/mini-fridge.png',      size:120, category:'furniture'},
+  {id:'piano',            name:'Upright Piano',       price:1440, img:'assets/room/piano.png',            size:170, category:'furniture'},
+  {id:'gaming_chair',     name:'Gaming Chair',        price:660,  img:'assets/room/gaming-chair.png',     size:140, category:'furniture'},
+  {id:'floor_pillow',     name:'Floor Pillow',        price:110,   img:'assets/room/floor-pillow.png',     size:120, category:'furniture'},
+  {id:'tea_table',        name:'Korean Tea Table',    price:340,  img:'assets/room/tea-table.png',        size:140, category:'furniture'},
   // ── NEW · Deco ──
-  {id:'window_city',      name:'City Window',         price:50,  img:'assets/room/window-city.png',      size:180, category:'deco'},
-  {id:'window_sunrise',   name:'Sunrise Window',      price:55,  img:'assets/room/window-sunrise.png',   size:180, category:'deco'},
-  {id:'window_rain',      name:'Rainy Window',        price:55,  img:'assets/room/window-rain.png',      size:180, category:'deco'},
-  {id:'wall_clock',       name:'Wall Clock',          price:14,  img:'assets/room/wall-clock.png',       size:90,  category:'deco'},
-  {id:'poster_kpop',      name:'K-Pop Poster',        price:12,  img:'assets/room/poster-kpop.png',      size:110, category:'deco'},
-  {id:'poster_hangul',    name:'Hangul Poster',       price:12,  img:'assets/room/poster-hangul.png',    size:110, category:'deco'},
-  {id:'calligraphy',      name:'Korean Calligraphy',  price:30,  img:'assets/room/calligraphy.png',      size:130, category:'deco'},
-  {id:'lantern',          name:'Paper Lantern',       price:16,  img:'assets/room/lantern.png',          size:110, category:'deco'},
-  {id:'fairy_lights',     name:'Fairy Lights',        price:22,  img:'assets/room/fairy-lights.png',     size:200, category:'deco'},
-  {id:'neon_sign',        name:'Hangul Neon Sign',    price:48,  img:'assets/room/neon-sign.png',        size:150, category:'deco'},
-  {id:'rain_cloud',       name:'Rain Cloud',          price:25,  img:'assets/room/rain-cloud.png',       size:120, category:'deco'},
-  {id:'star_lamp',        name:'Star Projector',      price:32,  img:'assets/room/star-lamp.png',        size:110, category:'deco'},
-  {id:'light_stick',      name:'K-Pop Light Stick',   price:24,  img:'assets/room/light-stick.png',      size:100, category:'deco'},
-  {id:'tea_set',          name:'Tea Set',             price:18,  img:'assets/room/tea-set.png',          size:110, category:'deco'},
-  {id:'cup_noodles',      name:'Cup Noodles',         price:6,   img:'assets/room/cup-noodles.png',      size:90,  category:'deco'},
-  {id:'rice_cooker',      name:'Rice Cooker',         price:28,  img:'assets/room/rice-cooker.png',      size:110, category:'deco'},
-  {id:'globe',            name:'Desk Globe',          price:15,  img:'assets/room/globe.png',            size:100, category:'deco'},
-  {id:'books_stack',      name:'Stack of Books',      price:10,  img:'assets/room/books-stack.png',      size:100, category:'deco'},
-  {id:'pencil_holder',    name:'Pencil Holder',       price:5,   img:'assets/room/pencil-holder.png',    size:80,  category:'deco'},
-  {id:'backpack',         name:'Student Backpack',    price:12,  img:'assets/room/backpack.png',         size:110, category:'deco'},
-  {id:'bicycle',          name:'City Bicycle',        price:40,  img:'assets/room/bicycle.png',          size:160, category:'deco'},
-  {id:'skateboard',       name:'Skateboard',          price:28,  img:'assets/room/skateboard.png',       size:130, category:'deco'},
-  {id:'guitar',           name:'Acoustic Guitar',     price:45,  img:'assets/room/guitar.png',           size:150, category:'deco'},
-  {id:'camera',           name:'Vintage Camera',      price:26,  img:'assets/room/camera.png',           size:100, category:'deco'},
-  {id:'radio',            name:'Vintage Radio',       price:22,  img:'assets/room/radio.png',            size:110, category:'deco'},
-  {id:'temple_mini',      name:'Mini Temple',         price:65,  img:'assets/room/temple-mini.png',      size:150, category:'deco'},
-  {id:'bonsai',           name:'Bonsai Tree',         price:28,  img:'assets/room/bonsai.png',           size:110, category:'deco'},
-  {id:'cherry_blossom',   name:'Cherry Blossom Branch', price:24, img:'assets/room/cherry-blossom.png', size:150, category:'deco'},
-  {id:'study_buddy_bear', name:'Study Buddy Bear',    price:18,  img:'assets/room/study-buddy-bear.png', size:120, category:'deco'},
+  {id:'window_city',      name:'City Window',         price:600,  img:'assets/room/window-city.png',      size:180, category:'deco'},
+  {id:'window_sunrise',   name:'Sunrise Window',      price:660,  img:'assets/room/window-sunrise.png',   size:180, category:'deco'},
+  {id:'window_rain',      name:'Rainy Window',        price:660,  img:'assets/room/window-rain.png',      size:180, category:'deco'},
+  {id:'wall_clock',       name:'Wall Clock',          price:170,  img:'assets/room/wall-clock.png',       size:90,  category:'deco'},
+  {id:'poster_kpop',      name:'K-Pop Poster',        price:140,  img:'assets/room/poster-kpop.png',      size:110, category:'deco'},
+  {id:'poster_hangul',    name:'Hangul Poster',       price:140,  img:'assets/room/poster-hangul.png',    size:110, category:'deco'},
+  {id:'calligraphy',      name:'Korean Calligraphy',  price:360,  img:'assets/room/calligraphy.png',      size:130, category:'deco'},
+  {id:'lantern',          name:'Paper Lantern',       price:190,  img:'assets/room/lantern.png',          size:110, category:'deco'},
+  {id:'fairy_lights',     name:'Fairy Lights',        price:260,  img:'assets/room/fairy-lights.png',     size:200, category:'deco'},
+  {id:'neon_sign',        name:'Hangul Neon Sign',    price:580,  img:'assets/room/neon-sign.png',        size:150, category:'deco'},
+  {id:'rain_cloud',       name:'Rain Cloud',          price:300,  img:'assets/room/rain-cloud.png',       size:120, category:'deco'},
+  {id:'star_lamp',        name:'Star Projector',      price:380,  img:'assets/room/star-lamp.png',        size:110, category:'deco'},
+  {id:'light_stick',      name:'K-Pop Light Stick',   price:290,  img:'assets/room/light-stick.png',      size:100, category:'deco'},
+  {id:'tea_set',          name:'Tea Set',             price:220,  img:'assets/room/tea-set.png',          size:110, category:'deco'},
+  {id:'cup_noodles',      name:'Cup Noodles',         price:70,   img:'assets/room/cup-noodles.png',      size:90,  category:'deco'},
+  {id:'rice_cooker',      name:'Rice Cooker',         price:340,  img:'assets/room/rice-cooker.png',      size:110, category:'deco'},
+  {id:'globe',            name:'Desk Globe',          price:180,  img:'assets/room/globe.png',            size:100, category:'deco'},
+  {id:'books_stack',      name:'Stack of Books',      price:120,  img:'assets/room/books-stack.png',      size:100, category:'deco'},
+  {id:'pencil_holder',    name:'Pencil Holder',       price:60,   img:'assets/room/pencil-holder.png',    size:80,  category:'deco'},
+  {id:'backpack',         name:'Student Backpack',    price:140,  img:'assets/room/backpack.png',         size:110, category:'deco'},
+  {id:'bicycle',          name:'City Bicycle',        price:480,  img:'assets/room/bicycle.png',          size:160, category:'deco'},
+  {id:'skateboard',       name:'Skateboard',          price:340,  img:'assets/room/skateboard.png',       size:130, category:'deco'},
+  {id:'guitar',           name:'Acoustic Guitar',     price:540,  img:'assets/room/guitar.png',           size:150, category:'deco'},
+  {id:'camera',           name:'Vintage Camera',      price:310,  img:'assets/room/camera.png',           size:100, category:'deco'},
+  {id:'radio',            name:'Vintage Radio',       price:260,  img:'assets/room/radio.png',            size:110, category:'deco'},
+  {id:'temple_mini',      name:'Mini Temple',         price:780,  img:'assets/room/temple-mini.png',      size:150, category:'deco'},
+  {id:'bonsai',           name:'Bonsai Tree',         price:340,  img:'assets/room/bonsai.png',           size:110, category:'deco'},
+  {id:'cherry_blossom',   name:'Cherry Blossom Branch', price:290, img:'assets/room/cherry-blossom.png', size:150, category:'deco'},
+  {id:'study_buddy_bear', name:'Study Buddy Bear',    price:220,  img:'assets/room/study-buddy-bear.png', size:120, category:'deco'},
   // ── NEW · Pets ──
-  {id:'hamster',          name:'Hamster in Wheel',    price:28,  img:'assets/room/hamster.png',          size:110, category:'pet'},
-  {id:'aquarium',         name:'Aquarium',            price:50,  img:'assets/room/aquarium.png',         size:160, category:'pet'},
-  {id:'dog_shiba',        name:'Shiba Inu',           price:35,  img:'assets/room/dog-shiba.png',        size:130, category:'pet'},
-  {id:'parrot',           name:'Green Parrot',        price:30,  img:'assets/room/parrot.png',           size:110, category:'pet'},
-  {id:'turtle',           name:'Pet Turtle',          price:22,  img:'assets/room/turtle.png',           size:100, category:'pet'},
-  {id:'bunny',            name:'Lop Bunny',           price:28,  img:'assets/room/bunny.png',            size:110, category:'pet'},
+  {id:'hamster',          name:'Hamster in Wheel',    price:340,  img:'assets/room/hamster.png',          size:110, category:'pet'},
+  {id:'aquarium',         name:'Aquarium',            price:600,  img:'assets/room/aquarium.png',         size:160, category:'pet'},
+  {id:'dog_shiba',        name:'Shiba Inu',           price:420,  img:'assets/room/dog-shiba.png',        size:130, category:'pet'},
+  {id:'parrot',           name:'Green Parrot',        price:360,  img:'assets/room/parrot.png',           size:110, category:'pet'},
+  {id:'turtle',           name:'Pet Turtle',          price:260,  img:'assets/room/turtle.png',           size:100, category:'pet'},
+  {id:'bunny',            name:'Lop Bunny',           price:340,  img:'assets/room/bunny.png',            size:110, category:'pet'},
   // ── NEW · Characters ──
-  {id:'char_hanbok',      name:'Hanbok Doll',         price:40,  img:'assets/room/char-hanbok.png',      size:180, category:'character'},
-  {id:'char_scholar',     name:'Joseon Scholar',      price:55,  img:'assets/room/char-scholar.png',     size:190, category:'character'},
-  {id:'char_tiger',       name:'Korean Tiger',        price:65,  img:'assets/room/char-tiger.png',       size:180, category:'character'},
-  {id:'char_dokkaebi',    name:'Dokkaebi (도깨비)',   price:70,  img:'assets/room/char-dokkaebi.png',    size:190, category:'character'},
+  {id:'char_hanbok',      name:'Hanbok Doll',         price:480,  img:'assets/room/char-hanbok.png',      size:180, category:'character'},
+  {id:'char_scholar',     name:'Joseon Scholar',      price:660,  img:'assets/room/char-scholar.png',     size:190, category:'character'},
+  {id:'char_tiger',       name:'Korean Tiger',        price:780,  img:'assets/room/char-tiger.png',       size:180, category:'character'},
+  {id:'char_dokkaebi',    name:'Dokkaebi (도깨비)',   price:840,  img:'assets/room/char-dokkaebi.png',    size:190, category:'character'},
   // ── NEW · Furniture (8) ──
-  {id:'modern_desk',      name:'Modern White Desk',   price:42,  img:'assets/room/modern-desk.png',      size:160, category:'furniture'},
-  {id:'standing_desk',    name:'Standing Desk',       price:55,  img:'assets/room/standing-desk.png',    size:170, category:'furniture'},
-  {id:'gaming_desk',      name:'RGB Gaming Desk',     price:80,  img:'assets/room/gaming-desk.png',      size:170, category:'furniture'},
-  {id:'sofa_2seat',       name:'Two-Seat Sofa',       price:60,  img:'assets/room/sofa-2seat.png',       size:180, category:'furniture'},
-  {id:'recliner',         name:'Recliner Chair',      price:48,  img:'assets/room/recliner.png',         size:140, category:'furniture'},
-  {id:'bean_bag',         name:'Bean Bag',            price:22,  img:'assets/room/bean-bag.png',         size:120, category:'furniture'},
-  {id:'kotatsu',          name:'Korean Kotatsu',      price:65,  img:'assets/room/kotatsu.png',          size:160, category:'furniture'},
-  {id:'vanity_desk',      name:'Vanity Mirror Desk',  price:50,  img:'assets/room/vanity-desk.png',      size:150, category:'furniture'},
+  {id:'modern_desk',      name:'Modern White Desk',   price:500,  img:'assets/room/modern-desk.png',      size:160, category:'furniture'},
+  {id:'standing_desk',    name:'Standing Desk',       price:660,  img:'assets/room/standing-desk.png',    size:170, category:'furniture'},
+  {id:'gaming_desk',      name:'RGB Gaming Desk',     price:960,  img:'assets/room/gaming-desk.png',      size:170, category:'furniture'},
+  {id:'sofa_2seat',       name:'Two-Seat Sofa',       price:720,  img:'assets/room/sofa-2seat.png',       size:180, category:'furniture'},
+  {id:'recliner',         name:'Recliner Chair',      price:580,  img:'assets/room/recliner.png',         size:140, category:'furniture'},
+  {id:'bean_bag',         name:'Bean Bag',            price:260,  img:'assets/room/bean-bag.png',         size:120, category:'furniture'},
+  {id:'kotatsu',          name:'Korean Kotatsu',      price:780,  img:'assets/room/kotatsu.png',          size:160, category:'furniture'},
+  {id:'vanity_desk',      name:'Vanity Mirror Desk',  price:600,  img:'assets/room/vanity-desk.png',      size:150, category:'furniture'},
   // ── NEW · Deco (12) ──
-  {id:'espresso_machine', name:'Espresso Machine',    price:32,  img:'assets/room/espresso-machine.png', size:110, category:'deco'},
-  {id:'vinyl_player',     name:'Vinyl Player',        price:38,  img:'assets/room/vinyl-player.png',     size:120, category:'deco'},
-  {id:'lava_lamp',        name:'Lava Lamp',           price:18,  img:'assets/room/lava-lamp.png',        size:90,  category:'deco', effect:'glow_warm'},
-  {id:'moon_lamp',        name:'Moon Lamp',           price:24,  img:'assets/room/moon-lamp.png',        size:100, category:'deco', effect:'glow_warm'},
-  {id:'floor_lamp',       name:'Floor Lamp',          price:26,  img:'assets/room/floor-lamp.png',       size:170, category:'deco', effect:'glow_warm'},
-  {id:'aroma_diffuser',   name:'Aroma Diffuser',      price:16,  img:'assets/room/aroma-diffuser.png',   size:80,  category:'deco'},
-  {id:'humidifier',       name:'Humidifier',          price:20,  img:'assets/room/humidifier.png',       size:100, category:'deco'},
-  {id:'wall_mirror',      name:'Round Wall Mirror',   price:28,  img:'assets/room/wall-mirror.png',      size:120, category:'deco'},
-  {id:'whiteboard',       name:'Study Whiteboard',    price:24,  img:'assets/room/whiteboard.png',       size:160, category:'deco'},
-  {id:'cork_board',       name:'Cork Pin Board',      price:18,  img:'assets/room/cork-board.png',       size:130, category:'deco'},
-  {id:'map_korea',        name:'Map of Korea',        price:20,  img:'assets/room/map-korea.png',        size:150, category:'deco'},
-  {id:'string_lights',    name:'String Lights',       price:22,  img:'assets/room/string-lights.png',    size:200, category:'deco', effect:'sparkle'},
+  {id:'espresso_machine', name:'Espresso Machine',    price:380,  img:'assets/room/espresso-machine.png', size:110, category:'deco'},
+  {id:'vinyl_player',     name:'Vinyl Player',        price:460,  img:'assets/room/vinyl-player.png',     size:120, category:'deco'},
+  {id:'lava_lamp',        name:'Lava Lamp',           price:220,  img:'assets/room/lava-lamp.png',        size:90,  category:'deco', effect:'glow_warm'},
+  {id:'moon_lamp',        name:'Moon Lamp',           price:290,  img:'assets/room/moon-lamp.png',        size:100, category:'deco', effect:'glow_warm'},
+  {id:'floor_lamp',       name:'Floor Lamp',          price:310,  img:'assets/room/floor-lamp.png',       size:170, category:'deco', effect:'glow_warm'},
+  {id:'aroma_diffuser',   name:'Aroma Diffuser',      price:190,  img:'assets/room/aroma-diffuser.png',   size:80,  category:'deco'},
+  {id:'humidifier',       name:'Humidifier',          price:240,  img:'assets/room/humidifier.png',       size:100, category:'deco'},
+  {id:'wall_mirror',      name:'Round Wall Mirror',   price:340,  img:'assets/room/wall-mirror.png',      size:120, category:'deco'},
+  {id:'whiteboard',       name:'Study Whiteboard',    price:290,  img:'assets/room/whiteboard.png',       size:160, category:'deco'},
+  {id:'cork_board',       name:'Cork Pin Board',      price:220,  img:'assets/room/cork-board.png',       size:130, category:'deco'},
+  {id:'map_korea',        name:'Map of Korea',        price:240,  img:'assets/room/map-korea.png',        size:150, category:'deco'},
+  {id:'string_lights',    name:'String Lights',       price:260,  img:'assets/room/string-lights.png',    size:200, category:'deco', effect:'sparkle'},
   // ── NEW · Korean Traditional (6) ──
-  {id:'byobu',            name:'Folding Screen 병풍', price:55,  img:'assets/room/byobu.png',            size:200, category:'deco'},
-  {id:'norigae',          name:'Norigae 노리개',      price:18,  img:'assets/room/norigae.png',          size:90,  category:'deco'},
-  {id:'jangdok',          name:'Korean Jar 장독',     price:25,  img:'assets/room/jangdok.png',          size:120, category:'deco'},
-  {id:'celadon_vase',     name:'Celadon 청자',        price:48,  img:'assets/room/celadon-vase.png',     size:110, category:'deco'},
-  {id:'white_porcelain',  name:'Joseon Porcelain 백자', price:45, img:'assets/room/white-porcelain.png', size:110, category:'deco'},
-  {id:'maedeup',          name:'Korean Knot 매듭',    price:20,  img:'assets/room/maedeup.png',          size:100, category:'deco'},
+  {id:'byobu',            name:'Folding Screen 병풍', price:660,  img:'assets/room/byobu.png',            size:200, category:'deco'},
+  {id:'norigae',          name:'Norigae 노리개',      price:220,  img:'assets/room/norigae.png',          size:90,  category:'deco'},
+  {id:'jangdok',          name:'Korean Jar 장독',     price:300,  img:'assets/room/jangdok.png',          size:120, category:'deco'},
+  {id:'celadon_vase',     name:'Celadon 청자',        price:580,  img:'assets/room/celadon-vase.png',     size:110, category:'deco'},
+  {id:'white_porcelain',  name:'Joseon Porcelain 백자', price:540, img:'assets/room/white-porcelain.png', size:110, category:'deco'},
+  {id:'maedeup',          name:'Korean Knot 매듭',    price:240,  img:'assets/room/maedeup.png',          size:100, category:'deco'},
   // ── NEW · Pets (4) ──
-  {id:'cat_white',        name:'White Cat',           price:32,  img:'assets/room/cat-white.png',        size:120, category:'pet'},
-  {id:'cat_black',        name:'Black Cat',           price:32,  img:'assets/room/cat-black.png',        size:120, category:'pet'},
-  {id:'corgi_dog',        name:'Pet Corgi',           price:38,  img:'assets/room/corgi-dog.png',        size:130, category:'pet'},
-  {id:'koi_pond',         name:'Koi Pond',            price:52,  img:'assets/room/koi-pond.png',         size:160, category:'pet'},
+  {id:'cat_white',        name:'White Cat',           price:380,  img:'assets/room/cat-white.png',        size:120, category:'pet'},
+  {id:'cat_black',        name:'Black Cat',           price:380,  img:'assets/room/cat-black.png',        size:120, category:'pet'},
+  {id:'corgi_dog',        name:'Pet Corgi',           price:460,  img:'assets/room/corgi-dog.png',        size:130, category:'pet'},
+  {id:'koi_pond',         name:'Koi Pond',            price:620,  img:'assets/room/koi-pond.png',         size:160, category:'pet'},
   // ── NEW · Plants (5) ──
-  {id:'plant_pothos',     name:'Pothos Vine',         price:14,  img:'assets/room/plant-pothos.png',     size:120, category:'deco'},
-  {id:'plant_aloe',       name:'Aloe Vera',           price:12,  img:'assets/room/plant-aloe.png',       size:90,  category:'deco'},
-  {id:'plant_orchid',     name:'Orchid Pot',          price:24,  img:'assets/room/plant-orchid.png',     size:110, category:'deco'},
-  {id:'plant_snake',      name:'Snake Plant',         price:18,  img:'assets/room/plant-snake.png',      size:130, category:'deco'},
-  {id:'plant_lucky_bamboo', name:'Lucky Bamboo',      price:16,  img:'assets/room/plant-lucky-bamboo.png', size:110, category:'deco'},
+  {id:'plant_pothos',     name:'Pothos Vine',         price:170,  img:'assets/room/plant-pothos.png',     size:120, category:'deco'},
+  {id:'plant_aloe',       name:'Aloe Vera',           price:140,  img:'assets/room/plant-aloe.png',       size:90,  category:'deco'},
+  {id:'plant_orchid',     name:'Orchid Pot',          price:290,  img:'assets/room/plant-orchid.png',     size:110, category:'deco'},
+  {id:'plant_snake',      name:'Snake Plant',         price:220,  img:'assets/room/plant-snake.png',      size:130, category:'deco'},
+  {id:'plant_lucky_bamboo', name:'Lucky Bamboo',      price:190,  img:'assets/room/plant-lucky-bamboo.png', size:110, category:'deco'},
   // ── NEW · Seasonal (4) ──
-  {id:'xmas_tree',        name:'Christmas Tree',      price:50,  img:'assets/room/xmas-tree.png',        size:200, category:'deco', effect:'sparkle'},
-  {id:'xmas_wreath',      name:'Christmas Wreath',    price:18,  img:'assets/room/xmas-wreath.png',      size:100, category:'deco'},
-  {id:'jack_pumpkin',     name:'Jack O\'Lantern',     price:14,  img:'assets/room/jack-pumpkin.png',     size:90,  category:'deco', effect:'glow_warm'},
-  {id:'chuseok_lantern',  name:'Chuseok Lantern',     price:24,  img:'assets/room/chuseok-lantern.png',  size:100, category:'deco', effect:'glow_warm'}
+  {id:'xmas_tree',        name:'Christmas Tree',      price:600,  img:'assets/room/xmas-tree.png',        size:200, category:'deco', effect:'sparkle'},
+  {id:'xmas_wreath',      name:'Christmas Wreath',    price:220,  img:'assets/room/xmas-wreath.png',      size:100, category:'deco'},
+  {id:'jack_pumpkin',     name:'Jack O\'Lantern',     price:170,  img:'assets/room/jack-pumpkin.png',     size:90,  category:'deco', effect:'glow_warm'},
+  {id:'chuseok_lantern',  name:'Chuseok Lantern',     price:290,  img:'assets/room/chuseok-lantern.png',  size:100, category:'deco', effect:'glow_warm'}
 ];
 var ROOM_ITEMS = ROOM_ITEMS_FALLBACK.slice(); // will be replaced by DB data
 var _roomItemsLoaded = false;
@@ -3025,120 +2920,8 @@ async function loadRoomItemsFromDB() {
   return ROOM_ITEMS;
 }
 
-// ── Gacha → Room sync ────────────────────────────────────────────────
-// Gacha pulls that yielded a pet / room item land in gacha_owned_items
-// but the room renderer only knows about ROOM_ITEMS + kh_room_owned.
-// This sync pulls every gacha_pet_* / gacha_room_* the user owns,
-// injects metadata into ROOM_ITEMS so getRoomItemDef resolves them,
-// and adds the ids to kh_room_owned so the My Items shelf surfaces
-// them as placeable. Idempotent.
-var KH_GACHA_ROOM_DEFS = {
-  // Pets
-  'gacha_pet_chick':       { name:'Chick',             size:120, category:'pet' },
-  'gacha_pet_pup':         { name:'Pomeranian Pup',    size:140, category:'pet' },
-  'gacha_pet_redpanda':    { name:'Red Panda',         size:150, category:'pet' },
-  'gacha_pet_kpop_pup':    { name:'Idol Pup',          size:140, category:'pet' },
-  'gacha_pet_gold_dragon': { name:'Golden Mini Dragon',size:160, category:'pet' },
-  'gacha_pet_jade_phoenix':{ name:'Jade Phoenix',      size:170, category:'pet' },
-  // Room items
-  'gacha_room_easel_rare': { name:'Painter\'s Easel',  size:150, category:'deco' },
-  'gacha_room_lantern':    { name:'Traditional Lantern',size:130, category:'deco' },
-  'gacha_room_neon_namsan':{ name:'Neon Namsan Tower', size:160, category:'deco' }
-};
-
-async function syncGachaRoomItems() {
-  if (!window.supaUser) return;
-  var sb = getSupa(); if (!sb) return;
-  var gachaSlugs = [];
-  try {
-    var r = await sb.from('gacha_owned_items').select('item_id, quantity').eq('user_id', supaUser.id);
-    (r && r.data || []).forEach(function(o) {
-      if (o && o.item_id && KH_GACHA_ROOM_DEFS[o.item_id] && (o.quantity == null || o.quantity > 0)) {
-        gachaSlugs.push(o.item_id);
-      }
-    });
-  } catch (_) { return; /* gacha_owned_items missing in this env */ }
-  if (!gachaSlugs.length) return;
-
-  // Augment ROOM_ITEMS catalog with gacha entries (filter dupes by id).
-  var seen = {};
-  ROOM_ITEMS.forEach(function(it){ seen[it.id] = true; });
-  gachaSlugs.forEach(function(slug) {
-    if (seen[slug]) return;
-    var meta = KH_GACHA_ROOM_DEFS[slug];
-    ROOM_ITEMS.push({
-      id:        slug,
-      name:      meta.name,
-      price:     0,                                  // owned via gacha, not coin
-      img:       'assets/gacha/' + slug.replace(/_/g, '-') + '.png',
-      size:      meta.size,
-      effect:    'none',
-      thumbnail: 'assets/gacha/' + slug.replace(/_/g, '-') + '.png',
-      category:  meta.category
-    });
-  });
-
-  // Auto-grant in kh_room_owned so the items appear in the My Items
-  // shelf without a manual "place" step.
-  var owned = getRoomOwned();
-  var added = 0;
-  gachaSlugs.forEach(function(slug) {
-    if (owned.indexOf(slug) === -1) { owned.push(slug); added++; }
-  });
-  if (added > 0) setRoomOwned(owned);
-}
-
-
-// Turn each earned badge into a virtual ROOM_ITEMS entry so it can be placed
-// in My Room just like purchased decorations. Badge icons are pixel-art SVG
-// strings (from pxBadge); we convert them to data URLs on demand so the
-// normal room sprite pipeline can render them.
-function _badgeSvgToDataURL(svg) {
-  if (!svg) return '';
-  try {
-    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
-  } catch(e) { return ''; }
-}
-
-function _mergeEarnedBadgeItems() {
-  if (typeof BADGE_DEFS === 'undefined' || typeof getEarnedBadges !== 'function') return;
-  var earned = getEarnedBadges();
-  var have = {};
-  ROOM_ITEMS.forEach(function(it) { have[it.id] = true; });
-  var ownedChanged = false;
-  var owned = getRoomOwned();
-  var ownedSet = {}; owned.forEach(function(id){ ownedSet[id] = true; });
-  BADGE_DEFS.forEach(function(b) {
-    if (!earned[b.id]) return; // Only earned badges
-    var id = 'badge_' + b.id;
-    if (!have[id]) {
-      var img = _badgeSvgToDataURL(b.icon);
-      if (!img) return;
-      ROOM_ITEMS.push({
-        id: id,
-        name: b.name + ' Badge',
-        price: 0,
-        img: img,
-        thumbnail: img,
-        size: 90,
-        category: 'badge',
-        effect: 'none',
-        isBadge: true,
-        badgeDesc: b.desc || '',
-        badgeTier: b.tier || 'bronze'
-      });
-      have[id] = true;
-    }
-    // Earned badges are automatically "owned" as room items — no purchase.
-    if (!ownedSet[id]) { owned.push(id); ownedSet[id] = true; ownedChanged = true; }
-  });
-  if (ownedChanged) {
-    try { localStorage.setItem(K_ROOM_OWNED, JSON.stringify(owned)); } catch(e) {}
-  }
-}
-
 var K_ROOM_LAYOUT = 'kh_room_layout';
-var K_ROOM_OWNED  = 'kh_room_owned';
+var K_ROOM_OWNED  = 'kh_room_owned';   // local cache of user_room_state.owned (server is the truth)
 var _roomEditing  = false;
 var _dragItem     = null;
 var _dragOffset   = {x:0, y:0};
@@ -3148,10 +2931,6 @@ var _selectedRoomItemId = null;
 function roomItemBgStyle(item) {
   if (roomImgMissing(item)) return 'background-image:url(\'' + ROOM_IMG_PLACEHOLDER + '\');background-size:46% 46%;background-repeat:no-repeat;background-position:center;';
   return 'background-image:url(' + item.img + ');background-size:contain;background-repeat:no-repeat;background-position:center;';
-}
-function roomItemThumbBgStyle(item) {
-  if (roomImgMissing(item)) return 'background-image:url(\'' + ROOM_IMG_PLACEHOLDER + '\');background-size:52% 52%;background-repeat:no-repeat;background-position:center;';
-  return 'background-image:url(' + item.img + ');background-size:76% 76%;background-repeat:no-repeat;background-position:center;';
 }
 
 // ── Get item def by id ───────────────────────────────────────
@@ -3171,13 +2950,24 @@ function getRoomItemDef(id) {
 }
 
 // ── Owned items helpers ──────────────────────────────────────
-function getRoomOwned() {
-  try { return JSON.parse(localStorage.getItem(K_ROOM_OWNED) || '[]'); } catch(e) { return []; }
+// Ownership is server-only (20261029_my_room_ownership_prices.sql): only
+// buy_room_item writes user_room_state.owned. The browser keeps a cache in
+// localStorage and never sends `owned` back. Price-0 items are free starters
+// that every learner owns.
+function _roomFreeIds() {
+  return ROOM_ITEMS.filter(function(it){ return Number(it.price) === 0; }).map(function(it){ return it.id; });
 }
+function getRoomOwned() {
+  var list = [];
+  try { list = JSON.parse(localStorage.getItem(K_ROOM_OWNED) || '[]'); } catch(e) { list = []; }
+  if (!Array.isArray(list)) list = [];
+  _roomFreeIds().forEach(function(id){ if (list.indexOf(id) === -1) list.push(id); });
+  return list;
+}
+// Cache only — the server row is updated by buy_room_item / the column default.
 function setRoomOwned(arr) {
-  try { localStorage.setItem(K_ROOM_OWNED, JSON.stringify(arr)); }
-  catch(e) { console.warn('room owned write failed (private mode?)', e); }
-  _syncRoomToServer();
+  try { localStorage.setItem(K_ROOM_OWNED, JSON.stringify(arr || [])); }
+  catch(e) { console.warn('room owned cache write failed (private mode?)', e); }
 }
 function isRoomItemOwned(id) {
   return getRoomOwned().indexOf(id) !== -1;
@@ -3192,15 +2982,62 @@ function setRoomLayout(arr) {
   catch(e) { console.warn('room layout write failed (private mode?)', e); }
 }
 
-// ── Supabase sync (cross-device) ─────────────────────────────
-// Primary store is `user_room_state` (per-user RLS). Until the migration
-// lands in Supabase we fall back to `app_settings` under a synthetic key.
-function _roomServerKey() { return 'room_data_' + (supaUser ? supaUser.id : 'anon'); }
-var _roomUseUserTable = true; // flips to false on first "relation missing" error
+// ── Room prefs (wallpaper/floor, sound, pet affinity) ────────
+// Saved in user_room_state.prefs so they follow the learner across devices;
+// the localStorage keys below stay as the fast local cache.
+var _ROOM_THEME_KEY = 'kh_room_theme_v1';
+var _BGM_KEY = 'kh_room_bgm_v1';
+var _PET_AFF_KEY = 'kh_room_pet_affinity_v1';
+function _roomLsJson(key) {
+  try { var v = JSON.parse(localStorage.getItem(key) || '{}'); return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; }
+  catch(e) { return {}; }
+}
+function _roomLsSet(key, obj) {
+  try { localStorage.setItem(key, JSON.stringify(obj || {})); } catch(e) {}
+}
+function _roomPrefsBlob() {
+  var bgm = _roomLsJson(_BGM_KEY);
+  var aff = _roomLsJson(_PET_AFF_KEY);
+  var affOut = {};
+  Object.keys(aff).slice(0, 60).forEach(function(k){ var n = Number(aff[k]); if (n > 0) affOut[String(k).slice(0, 60)] = Math.min(n, 1000000); });
+  var theme = _roomLsJson(_ROOM_THEME_KEY);
+  return {
+    theme: { wallpaper: String(theme.wallpaper || 'default').slice(0, 40), floor: String(theme.floor || 'none').slice(0, 40) },
+    bgm: { track: String(bgm.track || 'off').slice(0, 20), volume: typeof bgm.volume === 'number' ? bgm.volume : 0.4 },
+    pet_affinity: affOut
+  };
+}
+function _applyServerRoomPrefs(p) {
+  if (!p || typeof p !== 'object') return;
+  if (p.theme && typeof p.theme === 'object') _roomLsSet(_ROOM_THEME_KEY, { wallpaper: p.theme.wallpaper || 'default', floor: p.theme.floor || 'none' });
+  if (p.bgm && typeof p.bgm === 'object') {
+    var cur = _roomLsJson(_BGM_KEY);
+    cur.track = p.bgm.track || 'off';
+    if (typeof p.bgm.volume === 'number') cur.volume = p.bgm.volume;
+    _roomLsSet(_BGM_KEY, cur);
+  }
+  if (p.pet_affinity && typeof p.pet_affinity === 'object') {
+    // Counters only grow — keep the higher of local / server per pet.
+    var local = _roomLsJson(_PET_AFF_KEY);
+    Object.keys(p.pet_affinity).forEach(function(k){ local[k] = Math.max(Number(local[k]) || 0, Number(p.pet_affinity[k]) || 0); });
+    _roomLsSet(_PET_AFF_KEY, local);
+  }
+}
 
-// Debounced so rapid purchases / drags coalesce into one upsert.
+// ── Supabase sync (cross-device) ─────────────────────────────
+// Writes layout + prefs to user_room_state. `owned` is never sent: the
+// column is server-only and an upsert that names it is rejected.
+// Debounced so rapid drags / swatch taps coalesce into one upsert.
 var _roomSyncTimer = null;
 var _roomSyncInFlight = false;
+// Until 20261029_my_room_ownership_prices.sql lands, `prefs` doesn't exist;
+// PostgREST then errors (42703 / PGRST204) and we retry without it.
+var _roomPrefsCol = true;
+function _isMissingPrefsCol(err) {
+  if (!err) return false;
+  var code = String(err.code || ''), msg = String(err.message || '');
+  return (code === '42703' || code === 'PGRST204' || code === 'PGRST200') && /prefs/i.test(msg);
+}
 function _syncRoomToServer() {
   if (!supaUser) return;
   if (_roomSyncTimer) clearTimeout(_roomSyncTimer);
@@ -3209,122 +3046,58 @@ function _syncRoomToServer() {
     var sb = getSupa(); if (!sb) return;
     if (_roomSyncInFlight) { _syncRoomToServer(); return; }
     _roomSyncInFlight = true;
-    var layout = getRoomLayout();
-    var owned  = getRoomOwned();
-
-    var writeUserTable = function() {
-      return sb.from('user_room_state').upsert({
-        user_id: supaUser.id,
-        layout: layout,
-        owned:  owned,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+    var write = function() {
+      var row = { user_id: supaUser.id, layout: getRoomLayout(), updated_at: new Date().toISOString() };
+      if (_roomPrefsCol) row.prefs = _roomPrefsBlob();
+      return sb.from('user_room_state').upsert(row, { onConflict: 'user_id' });
     };
-    var writeAppSettings = function() {
-      var data = JSON.stringify({ room_layout: layout, room_owned: owned });
-      return sb.from('app_settings').upsert({
-        key: _roomServerKey(), value: data, updated_at: new Date().toISOString()
-      }, { onConflict: 'key' });
-    };
-
-    var primary = _roomUseUserTable ? writeUserTable() : writeAppSettings();
-    primary.then(function(r) {
-      if (r.error && _roomUseUserTable && _isMissingRelation(r.error)) {
-        _roomUseUserTable = false;
-        return writeAppSettings();
-      }
+    write().then(function(r) {
+      if (r && r.error && _roomPrefsCol && _isMissingPrefsCol(r.error)) { _roomPrefsCol = false; return write(); }
       return r;
-    }).then(function(r){
+    }).then(function(r) {
       _roomSyncInFlight = false;
       if (r && r.error) {
         console.warn('room sync error:', r.error.message);
         if (typeof toast === 'function') toast('Room not saved — check connection.');
       }
+    }, function() {
+      _roomSyncInFlight = false;
+      if (typeof toast === 'function') toast('Room not saved — check connection.');
     });
   }, 400);
 }
 
-function _isMissingRelation(err) {
-  if (!err) return false;
-  var code = String(err.code || '');
-  var msg  = String(err.message || '').toLowerCase();
-  return code === '42P01' || msg.indexOf('does not exist') >= 0 || msg.indexOf('not found') >= 0;
-}
-
 async function _loadRoomFromServer() {
-  // Returns { loaded, foundRow } so the caller can distinguish three states
-  // that previously all looked the same to it:
-  //   { loaded:false }              — network/RLS/auth failure; DO NOT
-  //                                   speculate, server state is unknown
-  //   { loaded:true, foundRow:false } — server reachable, no row for this
-  //                                   user yet → true first-time visitor
-  //   { loaded:true, foundRow:true }  — row exists; localStorage was updated
-  //                                   from it (or row was empty-but-present
-  //                                   meaning user intentionally cleared)
-  // The starter-grant block in loadRoomLayout() was firing on
-  // {loaded:false} too, then upserting `['character','plant']` over the
-  // user's real `user_room_state.owned` array — wiping purchased items
-  // every time the server load silently failed. See PR #7R commit msg.
+  // Returns { loaded, foundRow } so the caller can tell apart:
+  //   { loaded:false }                — network/RLS/auth failure; server state
+  //                                     unknown → keep the local cache as is
+  //   { loaded:true, foundRow:false } — no row yet → genuine first visit
+  //   { loaded:true, foundRow:true }  — row exists; cache refreshed from it
   if (!supaUser) return { loaded: false, foundRow: false };
   var sb = getSupa(); if (!sb) return { loaded: false, foundRow: false };
   try {
-    var d = null;
-    var sawRow = false;
-    if (_roomUseUserTable) {
-      var r = await sb.from('user_room_state')
-        .select('layout, owned')
-        .eq('user_id', supaUser.id)
-        .maybeSingle();
-      if (r.error && _isMissingRelation(r.error)) {
-        _roomUseUserTable = false;
-      } else if (r.error) {
-        // Any other error (network, RLS, etc.) — treat as "unknown server
-        // state" so the starter-grant block stays gated.
-        return { loaded: false, foundRow: false };
-      } else if (r.data) {
-        sawRow = true;
-        d = { room_layout: r.data.layout, room_owned: r.data.owned };
-      }
+    var r = await sb.from('user_room_state')
+      .select(_roomPrefsCol ? 'layout, owned, prefs' : 'layout, owned')
+      .eq('user_id', supaUser.id)
+      .maybeSingle();
+    if (r.error && _roomPrefsCol && _isMissingPrefsCol(r.error)) {
+      _roomPrefsCol = false;
+      r = await sb.from('user_room_state').select('layout, owned').eq('user_id', supaUser.id).maybeSingle();
     }
-    if (!d && !sawRow) {
-      var key = _roomServerKey();
-      var r2 = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
-      if (r2.error && !_isMissingRelation(r2.error)) {
-        return { loaded: false, foundRow: false };
+    if (r.error) return { loaded: false, foundRow: false };
+    if (!r.data) return { loaded: true, foundRow: false };
+    try {
+      if (Array.isArray(r.data.layout)) {
+        // Don't let an empty server layout wipe a non-empty local one that
+        // hasn't synced yet; a real server layout always wins.
+        var _localLayout = getRoomLayout();
+        if (r.data.layout.length || !_localLayout.length) setRoomLayout(r.data.layout);
       }
-      if (r2.data && r2.data.value) {
-        sawRow = true;
-        d = typeof r2.data.value === 'string' ? JSON.parse(r2.data.value) : r2.data.value;
-      }
-    }
-    if (d) {
-      try {
-        if (Array.isArray(d.room_layout)) {
-          // Don't let an empty/stale server layout wipe a non-empty local one
-          // (e.g. while layout writes are being rejected — placements, flips
-          // and front/back changes would otherwise vanish on reload). If the
-          // server genuinely has a layout it wins; if it's empty but we have
-          // local placements, keep them.
-          var _localLayout = getRoomLayout();
-          if (d.room_layout.length || !_localLayout.length) {
-            localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(d.room_layout));
-          }
-        }
-        if (Array.isArray(d.room_owned)) {
-          // Owned is append-only: UNION the server list with anything already
-          // known locally. A stale or empty server row — e.g. after a write
-          // that was silently rejected (RLS / missing table) — must never wipe
-          // items the user already purchased on this device. This is the
-          // safety net behind the "냥 spent but items gone" report.
-          var _localOwned = getRoomOwned();
-          var _merged = d.room_owned.slice();
-          _localOwned.forEach(function(id){ if (_merged.indexOf(id) === -1) _merged.push(id); });
-          localStorage.setItem(K_ROOM_OWNED, JSON.stringify(_merged));
-        }
-      } catch(e) { /* private mode */ }
-      console.log('room loaded from server');
-    }
-    return { loaded: true, foundRow: sawRow };
+      // Server is authoritative for ownership (only buy_room_item writes it).
+      if (Array.isArray(r.data.owned)) setRoomOwned(r.data.owned);
+      _applyServerRoomPrefs(r.data.prefs);
+    } catch(e) { /* private mode */ }
+    return { loaded: true, foundRow: true };
   } catch(e) {
     console.warn('room load from server failed:', e);
     return { loaded: false, foundRow: false };
@@ -3373,13 +3146,18 @@ function _updateRoomEmptyState(isEmpty) {
 function renderRoomItems() {
   var container = document.getElementById('miniroom-items');
   if (!container) return;
-  var layout = getRoomLayout();
+  // Only items the learner owns (server list + free starters) and whose art
+  // exists are drawn; art-less items appear once their image is uploaded.
+  var owned = getRoomOwned();
+  var layout = getRoomLayout().filter(function(placed) {
+    var d = placed && getRoomItemDef(placed.id);
+    return d && owned.indexOf(placed.id) !== -1 && !roomImgMissing(d);
+  });
   container.innerHTML = '';
   _updateRoomEmptyState(layout.length === 0);
 
   layout.forEach(function(placed) {
     var def = getRoomItemDef(placed.id);
-    if (!def) return;
     var div = document.createElement('div');
     div.className = 'room-placed-item';
     div.dataset.itemId = placed.id;
@@ -3411,7 +3189,7 @@ function renderRoomItems() {
     );
     div.title = def.name;
     div.setAttribute('role', 'button');
-    div.setAttribute('aria-label', (def.isBadge ? 'Badge: ' : 'Item: ') + def.name);
+    div.setAttribute('aria-label', 'Item: ' + def.name);
     div.dataset.scale = String(scale);
     div.dataset.sizePct = String(sizePct);
     div.dataset.hitboxRatio = String(hitboxRatio);
@@ -3423,7 +3201,6 @@ function renderRoomItems() {
     var s = (scale / 100) * spriteCompensate;
     sprite.setAttribute('style', roomItemBgStyle(def)
       + 'width:100%;height:100%;position:absolute;inset:0;'
-      + (def.isBadge ? 'image-rendering:pixelated;' : '')
       + 'transform:scale(' + (sx * s) + ',' + s + ');');
     if (flipped) sprite.dataset.flipped = '1';
     div.appendChild(sprite);
@@ -3474,57 +3251,41 @@ function renderRoomItems() {
     container.appendChild(div);
 
     // Per-item decorators (Phase-1 polish): clock hands, window tints,
-    // pet idle slide. All are passive — they hook on top of the existing
+    // pet tap reaction. All are passive — they hook on top of the existing
     // sprite without changing its sizing or drag math.
     if (placed.id === 'wall_clock') _decorateClock(div);
     else if (placed.id && placed.id.indexOf('window_') === 0) _decorateWindow(div, def);
     if (def.category === 'pet') _decoratePet(div);
     // Phase-2: hub-ify learning-related furniture (desk → study room,
-    // bookshelf → vocab, TV → conversations, etc).
+    // bookshelf → saved words, vinyl → conversations, etc).
     _decorateHub(div, placed.id);
   });
   _ensureClockTicker();
   _updateRoomTimeOfDay();
   _ensureTimeOfDayTicker();
-  _ensureSeasonalParticles();
   _applyRoomTheme();
 }
 
 // ── Phase-2: Hub actions ──────────────────────────────────────
-// Maps furniture IDs to learning destinations. Tap (in non-edit mode)
-// → navigate to the matching learning area, with a hover label that
-// hints what the click does.
+// Maps room_items ids to learning destinations. Tap (in non-edit mode)
+// → navigate there; the hover label says where. Only ids that exist in
+// room_items are listed (an item without art yet simply isn't drawn).
 var ROOM_HUB_ACTIONS = {
-  // Study desks
-  'desk':         { url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
-  'wooden_desk':  { url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
-  'modern_desk':  { url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
-  'pencil_holder':{ url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
-  'backpack':     { url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
-  // Bookshelves / books → vocab
-  'bookshelf':    { url: 'korehan-mypage.html#vocab', emoji: '📔', label: 'My Vocab' },
-  'books_stack':  { url: 'korehan-mypage.html#vocab', emoji: '📔', label: 'My Vocab' },
-  // Screens / posters → conversations
-  'tv_unit':      { url: 'korehan-conversations.html', emoji: '💬', label: 'Conversations' },
-  'poster_kpop':  { url: 'korehan-conversations.html', emoji: '💬', label: 'Conversations' },
-  // Calligraphy / Korean culture → Korea Buzz (Stories retired)
-  'calligraphy':  { url: 'korehan-section.html?s=buzz', emoji: '🔥', label: 'Korea Buzz' },
-  'poster_hangul':{ url: 'korehan-section.html?s=buzz', emoji: '🔥', label: 'Korea Buzz' },
-  // Music / fun
-  'piano':        { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
-  'guitar':       { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
-  'radio':        { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
-  'light_stick':  { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
-  // Globe → news (world section)
-  'globe':        { url: 'korehan-all.html',    emoji: '🌐', label: 'Latest News' },
-  // Camera → news again (kind of like 'fresh stories')
-  'camera':       { url: 'korehan-all.html',    emoji: '🌐', label: 'Latest News' }
+  'bookshelf':     { url: 'korehan-saved.html',          label: 'Saved words' },
+  'modern_desk':   { url: 'korehan-study-room.html',     label: 'Study Room' },
+  'standing_desk': { url: 'korehan-study-room.html',     label: 'Study Room' },
+  'whiteboard':    { url: 'korehan-study-room.html',     label: 'Study Room' },
+  'cushion':       { url: 'korehan-all.html',            label: 'Read the news' },
+  'vinyl_player':  { url: 'korehan-conversations.html',  label: 'Conversations' },
+  'map_korea':     { url: 'korehan-life.html',           label: 'Life in Korea' },
+  'gaming_desk':   { url: 'korehan-fun.html',            label: 'Playground' }
 };
 function _decorateHub(div, itemId) {
   var action = ROOM_HUB_ACTIONS[itemId];
   if (!action) return;
   div.classList.add('room-hub');
-  div.dataset.hubLabel = action.emoji + '  ' + action.label;
+  div.dataset.hubLabel = action.label;
+  div.setAttribute('aria-label', action.label);
   div.addEventListener('click', function(e) {
     if (_roomEditing) return; // edit mode owns clicks (selection)
     // Tap-flash, then navigate.
@@ -3534,61 +3295,22 @@ function _decorateHub(div, itemId) {
   });
 }
 
-// ── Phase-2: Seasonal particle layer ──────────────────────────
-// Auto-pick by month. Snow Dec/Jan/Feb, blossoms Mar/Apr, leaves
-// Oct/Nov, nothing the rest of the year. Pure DOM particles — cheap,
-// CSS animation handles the movement.
-var _seasonalStarted = false;
-function _ensureSeasonalParticles() {
-  if (_seasonalStarted) return;
-  var month = new Date().getMonth() + 1;
-  var glyph = null, count = 0;
-  if (month === 12 || month === 1 || month === 2) { glyph = '❄'; count = 14; }
-  else if (month === 3 || month === 4)            { glyph = '🌸'; count = 12; }
-  else if (month === 10 || month === 11)          { glyph = '🍁'; count = 10; }
-  if (!glyph) return;
-  var host = document.getElementById('miniroom-container');
-  if (!host) return;
-  // Don't double-mount across re-renders.
-  var existing = host.querySelector('.room-season-layer');
-  if (existing) existing.remove();
-  var layer = document.createElement('div');
-  layer.className = 'room-season-layer';
-  for (var i = 0; i < count; i++) {
-    var p = document.createElement('span');
-    p.className = 'room-season-flake';
-    p.textContent = glyph;
-    p.style.left = (Math.random() * 95) + '%';
-    p.style.fontSize = (10 + Math.random() * 14) + 'px';
-    p.style.animationDuration = (10 + Math.random() * 10) + 's';
-    p.style.animationDelay = (-Math.random() * 18) + 's';
-    layer.appendChild(p);
-  }
-  host.appendChild(layer);
-  _seasonalStarted = true;
-}
-
 // ── Phase-2: Pet affinity ─────────────────────────────────────
-// Click a pet → bump its affinity counter (saved in localStorage).
-// A small heart+count badge appears under the pet, level emoji
-// upgrades at 10 / 30 / 100 clicks. No leaderboard, no DB hit —
-// just a personal "loved this pet N times" stat.
-var _PET_AFF_KEY = 'kh_room_pet_affinity_v1';
-function _getPetAffinity() {
-  try { return JSON.parse(localStorage.getItem(_PET_AFF_KEY) || '{}'); }
-  catch(e) { return {}; }
-}
+// Click a pet → bump its affinity counter (localStorage cache, synced to
+// user_room_state.prefs). A small icon + count badge appears under the
+// pet; the icon upgrades at 10 / 30 / 100 taps. Personal stat only.
+function _getPetAffinity() { return _roomLsJson(_PET_AFF_KEY); }
 function _bumpPetAffinity(petId) {
   var aff = _getPetAffinity();
-  aff[petId] = (aff[petId] || 0) + 1;
-  try { localStorage.setItem(_PET_AFF_KEY, JSON.stringify(aff)); } catch(e) {}
+  aff[petId] = (Number(aff[petId]) || 0) + 1;
+  _roomLsSet(_PET_AFF_KEY, aff);
+  _syncRoomToServer();
   return aff[petId];
 }
-function _petLevelEmoji(count) {
-  if (count >= 100) return '👑';
-  if (count >= 30)  return '⭐';
-  if (count >= 10)  return '❤';
-  return '🤍';
+function _petLevelIcon(count) {
+  if (count >= 100) return 'crown';
+  if (count >= 30)  return 'star';
+  return 'heart';
 }
 // ── Phase-3: Wallpaper + Floor (theme system) ─────────────────
 // All swatches are CSS gradients today so we ship variety without
@@ -3613,13 +3335,10 @@ var FLOORS = [
   { id: 'marble', name: 'Marble', bg: 'linear-gradient(135deg,#f1f5f9 0%,#cbd5e1 60%,#94a3b8 100%)' },
   { id: 'tile',   name: 'Tile',   bg: 'repeating-linear-gradient(0deg,#e2e8f0 0 30px,#cbd5e1 30px 32px),repeating-linear-gradient(90deg,#e2e8f0 0 30px,#cbd5e1 30px 32px)' }
 ];
-var _ROOM_THEME_KEY = 'kh_room_theme_v1';
-function _getRoomTheme() {
-  try { return JSON.parse(localStorage.getItem(_ROOM_THEME_KEY) || '{}'); }
-  catch(e) { return {}; }
-}
+function _getRoomTheme() { return _roomLsJson(_ROOM_THEME_KEY); }
 function _saveRoomTheme(t) {
-  try { localStorage.setItem(_ROOM_THEME_KEY, JSON.stringify(t)); } catch(e) {}
+  _roomLsSet(_ROOM_THEME_KEY, t);
+  _syncRoomToServer();
 }
 function _applyRoomTheme() {
   var theme = _getRoomTheme();
@@ -3702,7 +3421,8 @@ function _renderPetBadge(div, count, animate) {
     b.className = 'room-pet-badge';
     div.appendChild(b);
   }
-  b.textContent = _petLevelEmoji(count) + ' ' + count;
+  b.innerHTML = '<i data-lucide="' + _petLevelIcon(count) + '" aria-hidden="true"></i><span>' + Number(count || 0) + '</span>';
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
   if (animate) {
     b.classList.remove('bump');
     void b.offsetWidth;
@@ -3821,28 +3541,26 @@ function _ensureTimeOfDayTicker() {
 
 // ── Room BGM (Web Audio, generative — no audio files) ──────────
 // Browsers block autoplay until a gesture, which is fine here because
-// the user clicks the 🎵 button to open the drawer and pick a track.
+// the user clicks the music button to open the drawer and pick a track.
 // We synthesize three flavors:
 //   • brown  — deep, soft white-noise filtered low (good background hum)
 //   • rain   — pink-ish noise filtered + amplitude jitter (rainfall)
 //   • cafe   — brown noise base + occasional voice-like burble bursts
 // All loop indefinitely until the user picks 'off' or navigates away.
 var _bgm = null;
-var _BGM_KEY = 'kh_room_bgm_v1';
 var BGM_TRACKS = [
-  { id: 'off',   label: 'Off',         emoji: '🚫' },
-  { id: 'brown', label: 'White noise', emoji: '🌫' },
-  { id: 'rain',  label: 'Rain',        emoji: '🌧' },
-  { id: 'cafe',  label: 'Cafe hum',    emoji: '☕' },
-  { id: 'lofi',  label: 'Lo-fi pulse', emoji: '🎧' }
+  { id: 'off',   label: 'Off',         icon: 'volume-x' },
+  { id: 'brown', label: 'White noise', icon: 'wind' },
+  { id: 'rain',  label: 'Rain',        icon: 'cloud-rain' },
+  { id: 'cafe',  label: 'Cafe hum',    icon: 'coffee' },
+  { id: 'lofi',  label: 'Lo-fi pulse', icon: 'headphones' }
 ];
 
-function _bgmGetSavedState() {
-  try { return JSON.parse(localStorage.getItem(_BGM_KEY) || '{}'); }
-  catch(e) { return {}; }
-}
+function _bgmGetSavedState() { return _roomLsJson(_BGM_KEY); }
+// Volume slider fires ~60x/s; the debounced room sync coalesces the writes.
 function _bgmSaveState(state) {
-  try { localStorage.setItem(_BGM_KEY, JSON.stringify(state)); } catch(e) {}
+  _roomLsSet(_BGM_KEY, state);
+  _syncRoomToServer();
 }
 
 function _bgmEnsureCtx() {
@@ -4013,7 +3731,7 @@ function _bgmRenderDrawer() {
   d.innerHTML = BGM_TRACKS.map(function(t) {
     var on = t.id === current ? ' active' : '';
     return '<div class="room-bgm-track' + on + '" role="menuitem" data-track="' + t.id + '">'
-      + '<span class="room-bgm-emoji">' + t.emoji + '</span>'
+      + '<span class="room-bgm-emoji"><i data-lucide="' + t.icon + '" aria-hidden="true"></i></span>'
       + '<span>' + t.label + '</span>'
       + '</div>';
   }).join('')
@@ -4032,6 +3750,7 @@ function _bgmRenderDrawer() {
   });
   var rng = d.querySelector('input[type=range]');
   if (rng) rng.addEventListener('input', function() { _bgmSetVolume(rng.value); });
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
 }
 
 function toggleRoomBGMDrawer(ev) {
@@ -4060,36 +3779,16 @@ function toggleRoomBGMDrawer(ev) {
 }
 window.toggleRoomBGMDrawer = toggleRoomBGMDrawer;
 
-// Pets: gentle left-right slide using transform translateX so the saved
-// position (placed.x) is untouched. Click triggers a hop + a heart popup
-// (only when not in edit mode — edit mode keeps the existing select/drag
-// behavior). Affinity tracking can hook in later via the 'click' event.
+// Pets stand still in place (no idle walking). Tap → a small hop + heart
+// popup (only outside edit mode — edit mode keeps select/drag) and the
+// pet's affinity counter goes up.
 function _decoratePet(div) {
   div.classList.add('room-pet');
   // Render existing affinity badge (if any) on first paint so a returning
   // user sees their pet's stat immediately.
   var pid = div.dataset.itemId;
-  var existingCount = (_getPetAffinity())[pid] || 0;
+  var existingCount = Number((_getPetAffinity())[pid]) || 0;
   if (existingCount > 0) _renderPetBadge(div, existingCount, false);
-
-  if (div._petAnim) return;
-  var phase = Math.random() * Math.PI * 2;
-  var range = 22; // px swing
-  var period = 5 + Math.random() * 3; // seconds per full sway
-  var t0 = Date.now();
-  function tick() {
-    if (!div.isConnected) { div._petAnim = null; return; }
-    if (_roomEditing) {
-      // Pause sliding while editing so dragging feels accurate.
-      div.style.transform = '';
-    } else {
-      var t = (Date.now() - t0) / 1000;
-      var x = Math.sin((t / period) * Math.PI * 2 + phase) * range;
-      div.style.transform = 'translateX(' + x.toFixed(2) + 'px)';
-    }
-    div._petAnim = requestAnimationFrame(tick);
-  }
-  div._petAnim = requestAnimationFrame(tick);
 
   div.addEventListener('click', function(e) {
     if (_roomEditing) return; // edit mode owns clicks (selection)
@@ -4101,16 +3800,15 @@ function _decoratePet(div) {
     // Heart popup
     var heart = document.createElement('div');
     heart.className = 'room-pet-heart';
-    heart.textContent = ['❤️','💕','💖','✨'][Math.floor(Math.random()*4)];
+    heart.innerHTML = '<i data-lucide="' + (Math.random() < 0.75 ? 'heart' : 'sparkles') + '" aria-hidden="true"></i>';
     div.appendChild(heart);
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
     setTimeout(function() { heart.remove(); }, 900);
     // Affinity++ + badge update
     var newCount = _bumpPetAffinity(pid);
     _renderPetBadge(div, newCount, true);
   });
 }
-
-// Badges on wall removed
 
 // ── Load room (call on page init) ────────────────────────────
 // Hitbox ratio flips at 700px (see renderRoomItems); on rotate / split-screen
@@ -4135,145 +3833,48 @@ async function loadRoomLayout() {
   try {
     // Load room item catalog from DB (replaces hardcoded array)
     await loadRoomItemsFromDB();
-    // Pull gacha pets/items the user owns into ROOM_ITEMS + auto-grant
-    // them in kh_room_owned so they appear in the My Items shelf.
-    try { await syncGachaRoomItems(); } catch(_) {}
     // Try loading from server first (cross-device sync)
     var _srvResult = await _loadRoomFromServer();
 
-    var owned = getRoomOwned();
-    var layout = getRoomLayout();
-
-    // First-time setup: give starter items.
-    //
-    // CRITICAL — must only fire when the server confirms there is no row
-    // for this user. Previously this block fired whenever local arrays
-    // were empty, which silently overwrote real purchased items every
-    // time _loadRoomFromServer hit a network/RLS/auth error: server load
-    // returned nothing → local stayed empty → starter grant ran →
-    // _syncRoomToServer upserted ['character','plant'] over the user's
-    // real owned array on the server. Result: purchased items kept
-    // disappearing across reloads.
-    //
-    // Now: require loadResult.loaded === true AND loadResult.foundRow ===
-    // false (genuine first-time visitor). If the server load failed
-    // (loaded:false) we leave local untouched and skip the grant — the
-    // worst case is an empty room until the next reload, which is far
-    // better than wiping real purchases.
-    var _shouldGrantStarter = _srvResult && _srvResult.loaded === true
-      && _srvResult.foundRow === false
-      && owned.length === 0 && layout.length === 0;
-    if (_shouldGrantStarter) {
-      var starterOwned = ['character', 'plant'];
-      var starterLayout = [
-        {id:'character', x:150, y:160, scale:100},
-        {id:'plant',     x:280, y:220, scale:100}
-      ];
-      setRoomOwned(starterOwned);
-      setRoomLayout(starterLayout);
+    // First visit (the server confirms there is no row yet): the row is
+    // created by the layout save below and gets the starter items from the
+    // owned column's DEFAULT (["character","plant"]) — the browser never
+    // writes `owned`. Only when loaded === true && foundRow === false: a
+    // failed load must never be mistaken for a first visit.
+    if (_srvResult && _srvResult.loaded === true && _srvResult.foundRow === false) {
+      setRoomOwned(['character', 'plant']);
+      if (!getRoomLayout().length) {
+        setRoomLayout([
+          {id:'character', x:150, y:160, scale:100},
+          {id:'plant',     x:280, y:220, scale:100}
+        ]);
+      }
+      _syncRoomToServer();
     }
 
     renderRoomItems();
     updateRoomSizeUI();
-    // Ambient room_fx items (sakura petals, snow, fireflies, etc.) live
-    // separately from placed items — they apply to the whole room, not
-    // a coordinate. Failure here is non-fatal; the room renders without
-    // effects if the owned_items query fails.
-    try { await renderRoomFx(); } catch (e) { console.warn('renderRoomFx failed', e && e.message); }
   } finally {
     _showRoomLoading(false);
   }
+  _handlePlaceParam();
 }
 
-// ── Room FX renderer ────────────────────────────────────────────────
-// Reads the current user's owned shop items with item_type='room_fx'
-// and populates #room-fx-layer with particles for each active effect.
-// One DOM rebuild per call; CSS animations carry the visuals from
-// there. Safe to call multiple times — wipes the layer first.
-window.renderRoomFx = async function renderRoomFx() {
-  var layer = document.getElementById('room-fx-layer');
-  if (!layer) return;
-  layer.innerHTML = '';
-  layer.className = 'room-fx-layer';
-  if (window._roomFxFireworkTimer) { try { clearInterval(window._roomFxFireworkTimer); } catch(_){} window._roomFxFireworkTimer = null; }
-
-  var sb = (typeof getSupa === 'function') ? getSupa() : null;
-  if (!sb || !window.supaUser) return;
-
-  var ownedFx = [];
+// korehan-shop.html → "Place it now" links here with ?place=<item id>:
+// put the item in the room (if owned and not placed yet) and scroll to it.
+function _handlePlaceParam() {
+  var id = null;
+  try { id = new URLSearchParams(location.search).get('place'); } catch(e) {}
+  if (!id) return;
   try {
-    var r = await sb.from('owned_items')
-      .select('item_id, quantity')
-      .eq('user_id', window.supaUser.id);
-    if (r && r.data) {
-      ownedFx = r.data
-        .filter(function(o){ return o && o.item_id && /^cash_fx_/.test(o.item_id) && (o.quantity == null || o.quantity > 0); })
-        .map(function(o){ return o.item_id; });
-    }
-  } catch (_) { return; }
-
-  // The cash_fx_bundle ("Weather Pack") grants all 5 individual effects;
-  // expand it so the renderer doesn't need to know about bundles.
-  if (ownedFx.indexOf('cash_fx_bundle') >= 0) {
-    ['cash_fx_sakura','cash_fx_snow','cash_fx_fireflies','cash_fx_rain','cash_fx_moonlight'].forEach(function(id){
-      if (ownedFx.indexOf(id) < 0) ownedFx.push(id);
-    });
-  }
-  if (!ownedFx.length) return;
-
-  function _spawnParticles(cls, n, dRange) {
-    layer.classList.add(cls);
-    var frag = document.createDocumentFragment();
-    for (var i = 0; i < n; i++) {
-      var p = document.createElement('div');
-      p.className = 'room-fx-particle';
-      var d = dRange[0] + Math.random() * (dRange[1] - dRange[0]);
-      var sz = 6 + Math.floor(Math.random() * 6);
-      p.style.left = Math.floor(Math.random() * 100) + '%';
-      p.style.top = Math.floor(Math.random() * 100) + '%';
-      p.style.width = sz + 'px';
-      p.style.height = sz + 'px';
-      p.style.setProperty('--d', d.toFixed(2) + 's');
-      p.style.animationDelay = (-Math.random() * d).toFixed(2) + 's';
-      frag.appendChild(p);
-    }
-    layer.appendChild(frag);
-  }
-
-  if (ownedFx.indexOf('cash_fx_sakura') >= 0)    _spawnParticles('room-fx-sakura', 14, [7, 12]);
-  if (ownedFx.indexOf('cash_fx_snow') >= 0)      _spawnParticles('room-fx-snow', 24, [5, 11]);
-  if (ownedFx.indexOf('cash_fx_fireflies') >= 0) _spawnParticles('room-fx-fireflies', 10, [7, 13]);
-  if (ownedFx.indexOf('cash_fx_moonlight') >= 0) {
-    layer.classList.add('room-fx-moonlight');
-    _spawnParticles('room-fx-moonlight', 8, [10, 16]); // drifting stars
-  }
-  if (ownedFx.indexOf('cash_fx_rain') >= 0) {
-    var rain = document.createElement('div');
-    rain.className = 'room-fx-rain';
-    rain.style.cssText = 'position:absolute;inset:0;pointer-events:none';
-    layer.appendChild(rain);
-  }
-  if (ownedFx.indexOf('cash_fx_fireworks') >= 0) {
-    layer.classList.add('room-fx-fireworks');
-    function _firework() {
-      var b = document.createElement('div');
-      b.className = 'room-fx-firework-burst';
-      // Burst in the upper window region (top 45% of the room).
-      b.style.left = (15 + Math.random() * 70) + '%';
-      b.style.top = (5 + Math.random() * 35) + '%';
-      // Random warm-palette tint.
-      var hues = ['255,213,107', '255,150,180', '180,200,255', '180,255,210'];
-      var h = hues[Math.floor(Math.random() * hues.length)];
-      b.style.background = 'radial-gradient(circle,#fff 0,rgba(' + h + ',1) 35%,transparent 70%)';
-      b.style.boxShadow = '0 0 0 0 rgba(' + h + ',.9)';
-      layer.appendChild(b);
-      requestAnimationFrame(function(){ b.classList.add('go'); });
-      setTimeout(function(){ try { b.remove(); } catch(_){} }, 1600);
-    }
-    window._roomFxFireworkTimer = setInterval(_firework, 4500 + Math.random() * 2500);
-    setTimeout(_firework, 600); // first burst quickly so user sees it
-  }
-};
+    var u = new URL(location.href); u.searchParams.delete('place');
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  } catch(e) {}
+  var sec = document.getElementById('mp-miniroom-section');
+  if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (isRoomItemOwned(id) && !isItemPlaced(id)) placeRoomItem(id);
+  else if (!isRoomItemOwned(id)) openRoomShop(true);
+}
 
 function _showRoomLoading(on) {
   var host = document.getElementById('miniroom-container');
@@ -4312,8 +3913,8 @@ function toggleRoomLights() {
       container.style.backgroundBlendMode = 'multiply';
     } else {
       container.classList.remove('room-lights-off');
-      container.style.background = 'url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat';
       container.style.backgroundBlendMode = '';
+      _applyRoomTheme(); // back to the learner's wallpaper
     }
   }
   if (sw) {
@@ -4736,18 +4337,22 @@ async function openRoomShop(ownedOnly) {
   _armRoomShopEsc();
 
   var coin = _userCoin || 0;
-  var owned = getRoomOwned();
-  // Filter to owned-only when invoked from MY ROOM controls.
-  var items = ownedOnly
-    ? ROOM_ITEMS.filter(function(it){ return owned.indexOf(it.id) !== -1; })
-    : ROOM_ITEMS.filter(function(it){ return owned.indexOf(it.id) !== -1 || !roomImgMissing(it); });
+  var owned = getRoomOwned();   // server list + free starters
+  // Items whose art isn't uploaded yet are left out (and any card whose image
+  // still fails to load removes itself), so they appear once art exists.
+  // My Items = what the learner owns; Item Shop = owned + buyable (price > 0).
+  var items = ROOM_ITEMS.filter(function(it) {
+    if (roomImgMissing(it)) return false;
+    var isOwned = owned.indexOf(it.id) !== -1;
+    return ownedOnly ? isOwned : (isOwned || Number(it.price) > 0);
+  });
 
   var overlay = document.createElement('div');
   overlay.className = 'room-shop-overlay';
   overlay.addEventListener('click', function(e) { if (e.target === overlay) closeRoomShop(); });
 
-  var catLabels = { all:'All', character:'Characters', pet:'Pets', furniture:'Furniture', deco:'Deco', badge:'Badges' };
-  var cats = ['all','character','pet','furniture','deco','badge'];
+  var catLabels = { all:'All', character:'Characters', pet:'Pets', furniture:'Furniture', deco:'Deco' };
+  var cats = ['all','character','pet','furniture','deco'];
 
   var headerTitle = ownedOnly ? 'My Items' : 'Item Shop';
   var headerRight = ownedOnly
@@ -4778,21 +4383,20 @@ async function openRoomShop(ownedOnly) {
   items.forEach(function(item) {
     var isOwned = owned.indexOf(item.id) !== -1;
     var placed = isItemPlaced(item.id);
-    var canBuy = coin >= item.price;
-    var s = 60;
+    var price = Number(item.price) || 0;
+    var canBuy = coin >= price;
     var cat = item.category || 'deco';
-    var isBadge = !!item.isBadge;
-    var priceLabel = isBadge ? 'Earned' : (isOwned ? 'Owned' : item.price + ' nyang');
+    var priceLabel = isOwned ? (price === 0 ? 'Free starter' : 'Owned') : price.toLocaleString() + ' nyang';
 
     html += '<div class="room-shop-card" data-item-id="' + item.id + '" data-cat="' + cat + '">'
-      + '<div class="room-shop-sprite" style="width:' + s + 'px;height:' + s + 'px;' + roomItemThumbBgStyle(item) + (isBadge ? ';image-rendering:pixelated' : '') + '"></div>'
-      + '<div class="room-shop-name">' + item.name + '</div>'
+      + '<div class="room-shop-thumb"><img class="room-shop-img" src="' + _escapeHtml(item.img) + '" alt="" loading="lazy" onerror="this.closest(\'.room-shop-card\').remove()"></div>'
+      + '<div class="room-shop-name">' + _escapeHtml(item.name) + '</div>'
       + '<div class="room-shop-price">' + priceLabel + '</div>';
 
     if (!isOwned) {
       html += '<button class="room-shop-btn buy" onclick="buyRoomItem(\'' + item.id + '\')"'
         + (canBuy ? '' : ' disabled') + '>'
-        + (canBuy ? 'Buy' : 'Not enough') + '</button>';
+        + (canBuy ? 'Buy' : 'Need ' + (price - coin).toLocaleString() + ' more') + '</button>';
     } else if (!placed) {
       html += '<button class="room-shop-btn place" onclick="placeRoomItem(\'' + item.id + '\')">Place in Room</button>';
     } else {
@@ -4844,44 +4448,74 @@ async function buyRoomItem(itemId) {
   if (!def) return;
   if (isRoomItemOwned(itemId)) { if (typeof toast === 'function') toast('Already owned!'); return; }
   if (_userCoin < def.price) { if (typeof toast === 'function') toast('Not enough nyang!'); return; }
-
-  var newCoin = _userCoin - def.price;
   var sb = getSupa();
-  if (sb && supaUser) {
-    // Server-only purchase: buy_room_item validates the price from
-    // room_items, locks the balance row and records ownership + the
-    // transaction. coin_balance can't be written from the browser.
-    try {
-      var rpc = await sb.rpc('buy_room_item', { p_item_id: itemId });
-      var body = (rpc && rpc.data) || {};
-      if (rpc.error || !body.ok) {
-        if (body.error === 'INSUFFICIENT_NYANG') {
-          if (typeof toast === 'function') toast('Not enough nyang!');
-          if (typeof body.current === 'number') _setNyangBalance(body.current);
-        } else if (typeof toast === 'function') toast('Purchase failed!');
-        return;
-      }
-      newCoin = Number(body.nyang_balance);
-    } catch(e) {
-      if (typeof toast === 'function') toast('Purchase failed!');
+  if (!sb || !supaUser) { if (typeof toast === 'function') toast('Please sign in first'); return; }
+
+  // Server-only purchase: buy_room_item validates the price from room_items,
+  // locks the balance row and records ownership + the transaction. Neither
+  // coin_balance nor user_room_state.owned can be written from the browser.
+  var newCoin;
+  try {
+    var rpc = await sb.rpc('buy_room_item', { p_item_id: itemId });
+    var body = (rpc && rpc.data) || {};
+    if (rpc.error || !body.ok) {
+      if (body.error === 'INSUFFICIENT_NYANG') {
+        if (typeof toast === 'function') toast('Not enough nyang!');
+        if (typeof body.current === 'number') _setNyangBalance(body.current);
+      } else if (typeof toast === 'function') toast('Purchase failed!');
       return;
     }
+    newCoin = Number(body.nyang_balance);
+  } catch(e) {
+    if (typeof toast === 'function') toast('Purchase failed!');
+    return;
   }
 
-  // Update owned list
+  // Local cache of the server's owned list.
   var owned = getRoomOwned();
-  owned.push(itemId);
+  if (owned.indexOf(itemId) === -1) owned.push(itemId);
   setRoomOwned(owned);
-
-  // Update balance displays via the single helper (also sets _userCoin).
   _setNyangBalance(newCoin);
-
-  if (typeof toast === 'function') toast('Purchased ' + def.name + '!');
   if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
 
-  // Refresh shop
+  // Refresh the drawer in its current mode, then offer to place it.
   closeRoomShop();
-  openRoomShop();
+  openRoomShop(_roomShopOwnedOnly);
+  _roomActionToast('Bought ' + def.name, 'Place it now', function() {
+    closeRoomShop();
+    placeRoomItem(itemId);
+    var sec = document.getElementById('mp-miniroom-section');
+    if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+// Small bottom toast with one action button (same look as the remove/undo toast).
+function _roomActionToast(text, btnLabel, onClick) {
+  var existing = document.getElementById('room-undo-toast');
+  if (existing) existing.remove();
+  var el = document.createElement('div');
+  el.id = 'room-undo-toast';
+  el.setAttribute('role', 'status');
+  el.setAttribute('style',
+    'position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);'
+    + 'background:#0b1626;color:#fff;padding:10px 14px;border-radius:12px;max-width:calc(100vw - 32px);'
+    + 'display:flex;align-items:center;gap:12px;font-family:inherit;font-size:13px;'
+    + 'font-weight:700;box-shadow:0 12px 32px rgba(0,0,0,.35);z-index:9999;'
+  );
+  var label = document.createElement('span');
+  label.textContent = text;
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = btnLabel;
+  btn.setAttribute('style',
+    'background:#fbbf24;color:#0b1626;border:none;border-radius:999px;white-space:nowrap;'
+    + 'padding:6px 12px;font-weight:800;cursor:pointer;font-family:inherit;'
+  );
+  btn.addEventListener('click', function() { el.remove(); onClick(); });
+  el.appendChild(label);
+  el.appendChild(btn);
+  document.body.appendChild(el);
+  setTimeout(function(){ if (el.parentNode) el.remove(); }, 8000);
 }
 
 // ── Place item in room ───────────────────────────────────────
@@ -4965,6 +4599,7 @@ function _showRemoveUndoToast(removed) {
     if (!cur.some(function(p){ return p.id === removed.id; })) {
       cur.push(removed);
       setRoomLayout(cur);
+      _syncRoomToServer();
       renderRoomItems();
     }
     el.remove();

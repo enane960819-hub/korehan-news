@@ -291,11 +291,18 @@
     // Seeding writes shop_items (admin-write under RLS) — only admins try it.
     if (window._isAdmin) await ensureDefaultShopItems(sb);
 
-    var [{ data:stats }, itemsRes, { data:owned }] = await Promise.all([
+    var [{ data:stats }, itemsRes, { data:owned }, roomRes] = await Promise.all([
       sb.from('user_stats').select('xp, coin_balance').eq('user_id', supaUser.id).maybeSingle(),
       sb.from('shop_items').select('*').eq('is_active', true).order('sort_order', { ascending:true }),
-      sb.from('owned_items').select('item_id, quantity').eq('user_id', supaUser.id)
+      sb.from('owned_items').select('item_id, quantity').eq('user_id', supaUser.id),
+      // Room ownership lives on the server (only buy_room_item writes it), so a
+      // new device shows "Owned" correctly; localStorage is just a cache.
+      sb.from('user_room_state').select('owned').eq('user_id', supaUser.id).maybeSingle()
     ]);
+    if (roomRes && !roomRes.error) {
+      _shop.roomOwned = (roomRes.data && Array.isArray(roomRes.data.owned)) ? roomRes.data.owned.slice() : [];
+      try { localStorage.setItem('kh_room_owned', JSON.stringify(_shop.roomOwned)); } catch(e) {}
+    }
     var dbItems = (itemsRes && itemsRes.data) || [];
     var usingFallback = !!(itemsRes && itemsRes.error && isShopTableMissingErr(itemsRes.error));
     var liveItems = usingFallback ? await getLocalShopItems(sb) : dbItems;
@@ -326,7 +333,12 @@
   // art (room_items), frames, titles, reporter gifts and Streak Freeze.
   // Badges / themes / sticker packs / art-less room items had no effect
   // anywhere in the app, so they're not sold.
-  var _shop = { catalog: [], owned: {}, coin: 0, xp: 0, preview: false, tab: 'room' };
+  var _shop = { catalog: [], owned: {}, roomOwned: null, coin: 0, xp: 0, preview: false, tab: 'room' };
+  // Owned room item ids: the server list once loaded, else the local cache.
+  function _roomOwnedIds() {
+    if (Array.isArray(_shop.roomOwned)) return _shop.roomOwned;
+    try { var c = JSON.parse(localStorage.getItem('kh_room_owned') || '[]'); return Array.isArray(c) ? c : []; } catch(e) { return []; }
+  }
   var SHOP_FRAME_CLASS = {
     cosmetic_neon_frame: 'kh-frame-neon', cosmetic_sakura_frame: 'kh-frame-sakura', cosmetic_hanbok_frame: 'kh-frame-hanbok',
     cosmetic_gold_frame: 'kh-frame-gold', cosmetic_aurora_frame: 'kh-frame-aurora', cosmetic_mint_frame: 'kh-frame-mint',
@@ -377,13 +389,15 @@
     var el = document.getElementById('shop-grid'); if (!el) return;
     var html = _shop.preview ? '<div class="sh-note">The shop is being restocked — items are a preview and can\'t be bought yet.</div>' : '';
     if (tab === 'room') {
-      var owned = []; try { owned = JSON.parse(localStorage.getItem('kh_room_owned') || '[]'); } catch(e){}
+      var owned = _roomOwnedIds();
+      // Free (price 0) starters are owned by everyone and not sold; items whose
+      // art isn't uploaded yet remove their own tile (onerror) until it lands.
       html += '<div class="sh-grid">' + ROOM_ITEMS_SHOP.filter(function(it){ return it.img && it.price > 0; }).map(function(it) {
         var isOwned = owned.indexOf(it.id) >= 0;
         return '<button type="button" class="sh-tile" onclick="shopOpen(\'room\',\'' + it.id + '\')">'
           + (isOwned ? '<span class="sh-own sh-own-abs">Owned</span>' : '')
           + '<span class="sh-art"><img src="' + _esc(it.img) + '" alt="" loading="lazy" onerror="this.closest(\'.sh-tile\').remove()"></span>'
-          + '<b>' + _esc(it.name) + '</b><small>' + it.price + '</small></button>';
+          + '<b>' + _esc(it.name) + '</b><small>' + Number(it.price).toLocaleString() + '</small></button>';
       }).join('') + '</div>';
     } else if (tab === 'profile') {
       var fr = _items('frame').map(function(it){ return _row(it, _framePv(it)); }).join('');
@@ -406,8 +420,7 @@
     var item, title, preview, price, owned, buy;
     if (kind === 'room') {
       item = ROOM_ITEMS_SHOP.find(function(x){ return x.id === id; }); if (!item) return;
-      var ownedList = []; try { ownedList = JSON.parse(localStorage.getItem('kh_room_owned') || '[]'); } catch(e){}
-      title = item.name; price = item.price; owned = ownedList.indexOf(id) >= 0;
+      title = item.name; price = Number(item.price) || 0; owned = _roomOwnedIds().indexOf(id) >= 0;
       preview = '<div class="sh-room"><img src="' + _esc(item.img) + '" alt=""></div>';
       buy = 'window.buyRoomItem(\'' + id + '\')';
     } else {
@@ -427,10 +440,12 @@
       + '<div class="sh-st">' + _esc(title) + '</div>'
       + (item.description ? '<div class="sh-sd">' + _esc(item.description) + '</div>' : '')
       + preview
-      + '<div class="sh-bal-row"><span>' + _shop.coin.toLocaleString() + ' → ' + (short ? '—' : after.toLocaleString()) + ' nyang</span><b>' + price + '</b></div>'
-      + (owned ? '<button type="button" class="sh-buy" disabled>Owned</button>'
-        : short ? '<button type="button" class="sh-buy" disabled>Need ' + (price - _shop.coin) + ' more nyang</button>'
-        : '<button type="button" class="sh-buy"' + (_shop.preview ? ' disabled' : '') + ' onclick="' + buy + ';shopClose()">Buy for ' + price + ' nyang</button>')
+      + (owned ? '' : '<div class="sh-bal-row"><span>' + _shop.coin.toLocaleString() + ' → ' + (short ? '—' : after.toLocaleString()) + ' nyang</span><b>' + price.toLocaleString() + '</b></div>')
+      + (owned ? (kind === 'room'
+          ? '<button type="button" class="sh-buy" onclick="location.href=\'korehan-mypage.html?place=' + encodeURIComponent(id) + '\'">Owned · Go to My Room</button>'
+          : '<button type="button" class="sh-buy" disabled>Owned</button>')
+        : short ? '<button type="button" class="sh-buy" disabled>Need ' + (price - _shop.coin).toLocaleString() + ' more nyang</button>'
+        : '<button type="button" class="sh-buy"' + (_shop.preview ? ' disabled' : '') + ' onclick="' + buy + ';shopClose()">Buy for ' + price.toLocaleString() + ' nyang</button>')
       + '<button type="button" class="sh-cancel" onclick="shopClose()">Not now</button></div>';
     ov.addEventListener('click', function(e){ if (e.target === ov) shopClose(); });
     document.body.appendChild(ov);
@@ -468,70 +483,70 @@
   var ROOM_ITEMS_FALLBACK = [
     // Existing items (keep their original asset paths so nobody's saved room breaks)
     {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png', category:'character'},
-    {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', category:'pet'},
-    {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', category:'deco'},
-    {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', category:'furniture'},
-    {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', category:'furniture'},
-    {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', category:'furniture'},
-    {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', category:'deco'},
-    {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', category:'pet'},
+    {id:'cat',        name:'Sleeping Cat',     price:180,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', category:'pet'},
+    {id:'poop',       name:'Happy Poop',       price:60,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', category:'deco'},
+    {id:'cushion',    name:'Reading Cushion',  price:120,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', category:'furniture'},
+    {id:'lamp',       name:'Korean Lamp',      price:140,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', category:'furniture'},
+    {id:'bookshelf',  name:'Bookshelf',        price:300,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', category:'furniture'},
+    {id:'plant',      name:'Potted Plant',     price:100,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', category:'deco'},
+    {id:'fennec',     name:'Fennec Fox',       price:240,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', category:'pet'},
     {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', category:'character'},
     {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', category:'character'},
     // ── NEW · Furniture ──
-    {id:'desk',             name:'Study Desk',          price:30,  img:'assets/room/desk.png',             category:'furniture'},
-    {id:'chair',            name:'Ergo Chair',          price:22,  img:'assets/room/chair.png',            category:'furniture'},
-    {id:'rug',              name:'Hanji Rug',           price:18,  img:'assets/room/rug.png',              category:'furniture'},
-    {id:'bed',              name:'Cozy Bed',            price:45,  img:'assets/room/bed.png',              category:'furniture'},
-    {id:'wardrobe',         name:'Wardrobe',            price:35,  img:'assets/room/wardrobe.png',         category:'furniture'},
-    {id:'coffee_table',     name:'Coffee Table',        price:20,  img:'assets/room/coffee-table.png',     category:'furniture'},
-    {id:'tv_unit',          name:'TV Unit',             price:40,  img:'assets/room/tv-unit.png',          category:'furniture'},
-    {id:'mini_fridge',      name:'Mini Fridge',         price:38,  img:'assets/room/mini-fridge.png',      category:'furniture'},
-    {id:'piano',            name:'Upright Piano',       price:120, img:'assets/room/piano.png',            category:'furniture'},
-    {id:'gaming_chair',     name:'Gaming Chair',        price:55,  img:'assets/room/gaming-chair.png',     category:'furniture'},
-    {id:'floor_pillow',     name:'Floor Pillow',        price:9,   img:'assets/room/floor-pillow.png',     category:'furniture'},
-    {id:'tea_table',        name:'Korean Tea Table',    price:28,  img:'assets/room/tea-table.png',        category:'furniture'},
+    {id:'desk',             name:'Study Desk',          price:360,  img:'assets/room/desk.png',             category:'furniture'},
+    {id:'chair',            name:'Ergo Chair',          price:260,  img:'assets/room/chair.png',            category:'furniture'},
+    {id:'rug',              name:'Hanji Rug',           price:220,  img:'assets/room/rug.png',              category:'furniture'},
+    {id:'bed',              name:'Cozy Bed',            price:540,  img:'assets/room/bed.png',              category:'furniture'},
+    {id:'wardrobe',         name:'Wardrobe',            price:420,  img:'assets/room/wardrobe.png',         category:'furniture'},
+    {id:'coffee_table',     name:'Coffee Table',        price:240,  img:'assets/room/coffee-table.png',     category:'furniture'},
+    {id:'tv_unit',          name:'TV Unit',             price:480,  img:'assets/room/tv-unit.png',          category:'furniture'},
+    {id:'mini_fridge',      name:'Mini Fridge',         price:460,  img:'assets/room/mini-fridge.png',      category:'furniture'},
+    {id:'piano',            name:'Upright Piano',       price:1440, img:'assets/room/piano.png',            category:'furniture'},
+    {id:'gaming_chair',     name:'Gaming Chair',        price:660,  img:'assets/room/gaming-chair.png',     category:'furniture'},
+    {id:'floor_pillow',     name:'Floor Pillow',        price:110,   img:'assets/room/floor-pillow.png',     category:'furniture'},
+    {id:'tea_table',        name:'Korean Tea Table',    price:340,  img:'assets/room/tea-table.png',        category:'furniture'},
     // ── NEW · Deco ──
-    {id:'window_city',      name:'City Window',         price:50,  img:'assets/room/window-city.png',      category:'deco'},
-    {id:'window_sunrise',   name:'Sunrise Window',      price:55,  img:'assets/room/window-sunrise.png',   category:'deco'},
-    {id:'window_rain',      name:'Rainy Window',        price:55,  img:'assets/room/window-rain.png',      category:'deco'},
-    {id:'wall_clock',       name:'Wall Clock',          price:14,  img:'assets/room/wall-clock.png',       category:'deco'},
-    {id:'poster_kpop',      name:'K-Pop Poster',        price:12,  img:'assets/room/poster-kpop.png',      category:'deco'},
-    {id:'poster_hangul',    name:'Hangul Poster',       price:12,  img:'assets/room/poster-hangul.png',    category:'deco'},
-    {id:'calligraphy',      name:'Korean Calligraphy',  price:30,  img:'assets/room/calligraphy.png',      category:'deco'},
-    {id:'lantern',          name:'Paper Lantern',       price:16,  img:'assets/room/lantern.png',          category:'deco'},
-    {id:'fairy_lights',     name:'Fairy Lights',        price:22,  img:'assets/room/fairy-lights.png',     category:'deco'},
-    {id:'neon_sign',        name:'Hangul Neon Sign',    price:48,  img:'assets/room/neon-sign.png',        category:'deco'},
-    {id:'rain_cloud',       name:'Rain Cloud',          price:25,  img:'assets/room/rain-cloud.png',       category:'deco'},
-    {id:'star_lamp',        name:'Star Projector',      price:32,  img:'assets/room/star-lamp.png',        category:'deco'},
-    {id:'light_stick',      name:'K-Pop Light Stick',   price:24,  img:'assets/room/light-stick.png',      category:'deco'},
-    {id:'tea_set',          name:'Tea Set',             price:18,  img:'assets/room/tea-set.png',          category:'deco'},
-    {id:'cup_noodles',      name:'Cup Noodles',         price:6,   img:'assets/room/cup-noodles.png',      category:'deco'},
-    {id:'rice_cooker',      name:'Rice Cooker',         price:28,  img:'assets/room/rice-cooker.png',      category:'deco'},
-    {id:'globe',            name:'Desk Globe',          price:15,  img:'assets/room/globe.png',            category:'deco'},
-    {id:'books_stack',      name:'Stack of Books',      price:10,  img:'assets/room/books-stack.png',      category:'deco'},
-    {id:'pencil_holder',    name:'Pencil Holder',       price:5,   img:'assets/room/pencil-holder.png',    category:'deco'},
-    {id:'backpack',         name:'Student Backpack',    price:12,  img:'assets/room/backpack.png',         category:'deco'},
-    {id:'bicycle',          name:'City Bicycle',        price:40,  img:'assets/room/bicycle.png',          category:'deco'},
-    {id:'skateboard',       name:'Skateboard',          price:28,  img:'assets/room/skateboard.png',       category:'deco'},
-    {id:'guitar',           name:'Acoustic Guitar',     price:45,  img:'assets/room/guitar.png',           category:'deco'},
-    {id:'camera',           name:'Vintage Camera',      price:26,  img:'assets/room/camera.png',           category:'deco'},
-    {id:'radio',            name:'Vintage Radio',       price:22,  img:'assets/room/radio.png',            category:'deco'},
-    {id:'temple_mini',      name:'Mini Temple',         price:65,  img:'assets/room/temple-mini.png',      category:'deco'},
-    {id:'bonsai',           name:'Bonsai Tree',         price:28,  img:'assets/room/bonsai.png',           category:'deco'},
-    {id:'cherry_blossom',   name:'Cherry Blossom Branch', price:24, img:'assets/room/cherry-blossom.png', category:'deco'},
-    {id:'study_buddy_bear', name:'Study Buddy Bear',    price:18,  img:'assets/room/study-buddy-bear.png', category:'deco'},
+    {id:'window_city',      name:'City Window',         price:600,  img:'assets/room/window-city.png',      category:'deco'},
+    {id:'window_sunrise',   name:'Sunrise Window',      price:660,  img:'assets/room/window-sunrise.png',   category:'deco'},
+    {id:'window_rain',      name:'Rainy Window',        price:660,  img:'assets/room/window-rain.png',      category:'deco'},
+    {id:'wall_clock',       name:'Wall Clock',          price:170,  img:'assets/room/wall-clock.png',       category:'deco'},
+    {id:'poster_kpop',      name:'K-Pop Poster',        price:140,  img:'assets/room/poster-kpop.png',      category:'deco'},
+    {id:'poster_hangul',    name:'Hangul Poster',       price:140,  img:'assets/room/poster-hangul.png',    category:'deco'},
+    {id:'calligraphy',      name:'Korean Calligraphy',  price:360,  img:'assets/room/calligraphy.png',      category:'deco'},
+    {id:'lantern',          name:'Paper Lantern',       price:190,  img:'assets/room/lantern.png',          category:'deco'},
+    {id:'fairy_lights',     name:'Fairy Lights',        price:260,  img:'assets/room/fairy-lights.png',     category:'deco'},
+    {id:'neon_sign',        name:'Hangul Neon Sign',    price:580,  img:'assets/room/neon-sign.png',        category:'deco'},
+    {id:'rain_cloud',       name:'Rain Cloud',          price:300,  img:'assets/room/rain-cloud.png',       category:'deco'},
+    {id:'star_lamp',        name:'Star Projector',      price:380,  img:'assets/room/star-lamp.png',        category:'deco'},
+    {id:'light_stick',      name:'K-Pop Light Stick',   price:290,  img:'assets/room/light-stick.png',      category:'deco'},
+    {id:'tea_set',          name:'Tea Set',             price:220,  img:'assets/room/tea-set.png',          category:'deco'},
+    {id:'cup_noodles',      name:'Cup Noodles',         price:70,   img:'assets/room/cup-noodles.png',      category:'deco'},
+    {id:'rice_cooker',      name:'Rice Cooker',         price:340,  img:'assets/room/rice-cooker.png',      category:'deco'},
+    {id:'globe',            name:'Desk Globe',          price:180,  img:'assets/room/globe.png',            category:'deco'},
+    {id:'books_stack',      name:'Stack of Books',      price:120,  img:'assets/room/books-stack.png',      category:'deco'},
+    {id:'pencil_holder',    name:'Pencil Holder',       price:60,   img:'assets/room/pencil-holder.png',    category:'deco'},
+    {id:'backpack',         name:'Student Backpack',    price:140,  img:'assets/room/backpack.png',         category:'deco'},
+    {id:'bicycle',          name:'City Bicycle',        price:480,  img:'assets/room/bicycle.png',          category:'deco'},
+    {id:'skateboard',       name:'Skateboard',          price:340,  img:'assets/room/skateboard.png',       category:'deco'},
+    {id:'guitar',           name:'Acoustic Guitar',     price:540,  img:'assets/room/guitar.png',           category:'deco'},
+    {id:'camera',           name:'Vintage Camera',      price:310,  img:'assets/room/camera.png',           category:'deco'},
+    {id:'radio',            name:'Vintage Radio',       price:260,  img:'assets/room/radio.png',            category:'deco'},
+    {id:'temple_mini',      name:'Mini Temple',         price:780,  img:'assets/room/temple-mini.png',      category:'deco'},
+    {id:'bonsai',           name:'Bonsai Tree',         price:340,  img:'assets/room/bonsai.png',           category:'deco'},
+    {id:'cherry_blossom',   name:'Cherry Blossom Branch', price:290, img:'assets/room/cherry-blossom.png', category:'deco'},
+    {id:'study_buddy_bear', name:'Study Buddy Bear',    price:220,  img:'assets/room/study-buddy-bear.png', category:'deco'},
     // ── NEW · Pets ──
-    {id:'hamster',          name:'Hamster in Wheel',    price:28,  img:'assets/room/hamster.png',          category:'pet'},
-    {id:'aquarium',         name:'Aquarium',            price:50,  img:'assets/room/aquarium.png',         category:'pet'},
-    {id:'dog_shiba',        name:'Shiba Inu',           price:35,  img:'assets/room/dog-shiba.png',        category:'pet'},
-    {id:'parrot',           name:'Green Parrot',        price:30,  img:'assets/room/parrot.png',           category:'pet'},
-    {id:'turtle',           name:'Pet Turtle',          price:22,  img:'assets/room/turtle.png',           category:'pet'},
-    {id:'bunny',            name:'Lop Bunny',           price:28,  img:'assets/room/bunny.png',            category:'pet'},
+    {id:'hamster',          name:'Hamster in Wheel',    price:340,  img:'assets/room/hamster.png',          category:'pet'},
+    {id:'aquarium',         name:'Aquarium',            price:600,  img:'assets/room/aquarium.png',         category:'pet'},
+    {id:'dog_shiba',        name:'Shiba Inu',           price:420,  img:'assets/room/dog-shiba.png',        category:'pet'},
+    {id:'parrot',           name:'Green Parrot',        price:360,  img:'assets/room/parrot.png',           category:'pet'},
+    {id:'turtle',           name:'Pet Turtle',          price:260,  img:'assets/room/turtle.png',           category:'pet'},
+    {id:'bunny',            name:'Lop Bunny',           price:340,  img:'assets/room/bunny.png',            category:'pet'},
     // ── NEW · Characters ──
-    {id:'char_hanbok',      name:'Hanbok Doll',         price:40,  img:'assets/room/char-hanbok.png',      category:'character'},
-    {id:'char_scholar',     name:'Joseon Scholar',      price:55,  img:'assets/room/char-scholar.png',     category:'character'},
-    {id:'char_tiger',       name:'Korean Tiger',        price:65,  img:'assets/room/char-tiger.png',       category:'character'},
-    {id:'char_dokkaebi',    name:'Dokkaebi (도깨비)',   price:70,  img:'assets/room/char-dokkaebi.png',    category:'character'}
+    {id:'char_hanbok',      name:'Hanbok Doll',         price:480,  img:'assets/room/char-hanbok.png',      category:'character'},
+    {id:'char_scholar',     name:'Joseon Scholar',      price:660,  img:'assets/room/char-scholar.png',     category:'character'},
+    {id:'char_tiger',       name:'Korean Tiger',        price:780,  img:'assets/room/char-tiger.png',       category:'character'},
+    {id:'char_dokkaebi',    name:'Dokkaebi (도깨비)',   price:840,  img:'assets/room/char-dokkaebi.png',    category:'character'}
   ];
   var ROOM_ITEMS_SHOP = ROOM_ITEMS_FALLBACK.slice();
   var _shopRoomItemsLoaded = false;
@@ -559,30 +574,44 @@
   window.buyRoomItem = async function(itemId) {
     var item = ROOM_ITEMS_SHOP.find(function(x){return x.id===itemId;});
     if (!item) return;
-    var owned = [];
-    try { owned = JSON.parse(localStorage.getItem('kh_room_owned')||'[]'); } catch(e){}
-    if (owned.indexOf(itemId) >= 0) { toast('Already owned', 'warn'); return; }
-
-    if (item.price > 0) {
-      var sb = getSupa();
-      if (!sb || !supaUser) { toast('Please sign in first', 'warn'); return; }
-      // Server-side purchase (price from room_items, balance locked there).
-      var rpc = await sb.rpc('buy_room_item', { p_item_id: itemId });
-      var body = (rpc && rpc.data) || {};
-      if (rpc.error || !body.ok) {
-        if (body.error === 'INSUFFICIENT_NYANG') toast('Not enough nyang — need ' + body.required + ', you have ' + body.current, 'warn');
-        else toast('Purchase failed', 'error');
-        return;
-      }
+    if (_roomOwnedIds().indexOf(itemId) >= 0) { toast('Already owned', 'warn'); return; }
+    var sb = getSupa();
+    if (!sb || !supaUser) { toast('Please sign in first', 'warn'); return; }
+    // Server-side purchase: price from room_items, balance locked there, and
+    // the item appended to user_room_state.owned (the only writer of it).
+    var rpc = await sb.rpc('buy_room_item', { p_item_id: itemId });
+    var body = (rpc && rpc.data) || {};
+    if (rpc.error || !body.ok) {
+      if (body.error === 'INSUFFICIENT_NYANG') toast('Not enough nyang — need ' + body.required + ', you have ' + body.current, 'warn');
+      else toast('Purchase failed', 'error');
+      return;
     }
-
-    owned.push(itemId);
-    // buy_room_item already appended the item to user_room_state.owned.
-    localStorage.setItem('kh_room_owned', JSON.stringify(owned));
+    var owned = _roomOwnedIds().slice();
+    if (owned.indexOf(itemId) < 0) owned.push(itemId);
+    _shop.roomOwned = owned;
+    try { localStorage.setItem('kh_room_owned', JSON.stringify(owned)); } catch(e) {}
+    if (typeof body.nyang_balance === 'number') { _shop.coin = body.nyang_balance; renderBalance(); }
     if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
-    toast('Purchased ' + item.name + ' — place it in My Room', 'success');
+    renderTab();
+    _shopBoughtSheet(item);
     initShop();
   };
+
+  // After a room purchase: offer to place it right away.
+  function _shopBoughtSheet(item) {
+    shopClose();
+    var ov = document.createElement('div');
+    ov.className = 'sh-ov'; ov.id = 'sh-ov';
+    ov.innerHTML = '<div class="sh-sheet" role="dialog" aria-modal="true">'
+      + '<div class="sh-k">Purchased</div>'
+      + '<div class="sh-st">' + _esc(item.name) + ' is yours</div>'
+      + '<div class="sh-room"><img src="' + _esc(item.img) + '" alt=""></div>'
+      + '<button type="button" class="sh-buy" onclick="location.href=\'korehan-mypage.html?place=' + encodeURIComponent(item.id) + '\'">Place it now</button>'
+      + '<button type="button" class="sh-cancel" onclick="shopClose()">Keep shopping</button></div>';
+    ov.addEventListener('click', function(e){ if (e.target === ov) shopClose(); });
+    document.body.appendChild(ov);
+    requestAnimationFrame(function(){ ov.classList.add('open'); });
+  }
 
   document.addEventListener('DOMContentLoaded', function(){
     // Tab click handlers
