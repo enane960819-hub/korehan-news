@@ -20,15 +20,25 @@ learner bugs, 8 game fixes, admin CMS data paths + Today panel
 emoji-icons observer loop fix. Owner preview login: `korehani.com/?p=…`
 (preview-login Edge Function, Premium preview account, expires 2026-11-12).
 
+Hand-reviewed content (no AI calls, two passes each, all live): article
+analyses + Grammar tabs (#937/#938), Word Bank meanings Seed/Sprout (270) and
+Tree/Forest (1,942), 44 conversations, 86 grammar_examples_cache lessons,
+Word Bank re-tag (210), rows marked qa_at so content-qa doesn't requeue them
+(#939–#943). Word Bank +4,993 frequency-ranked 한국어기초사전 words (#945,
+staging table `word_bank_candidates` can be dropped once checked). Three
+hand-written articles (#944, illustrations in /img/articles/).
+
+In progress: **Fake News section** (section key `fake`, `khIsFakeNews()`;
+never in real-news lists; own home rail + section page; banner on every
+article). Mockup A (red stamp) / B (yellow tabloid ribbon) sent — waiting
+for the owner's pick; code is written with B. Rules: obviously absurd,
+harmless; no crime/romance/health/death/politics, no politicians.
+
 Owner decisions still open:
 - **Anthropic credit is empty** — every AI feature fails until topped up.
-- Stored AI content: article analyses (261 articles + 180 Grammar tabs) and
-  Seed/Sprout Word Bank meanings (270 fixes) were hand-reviewed and applied
-  2026-10-29 (PRs #937, #938). Still unreviewed: Tree/Forest vocabulary_bank
-  meanings, grammar_examples_cache (92), conversations (52). Word Bank 'daily'
-  tag is a catch-all (Seed: 189 of 340) — re-tag if topics matter.
 - Azure TTS key (tts-proxy returns 503 → device voice).
 - Word Bank examples from 한국어기초사전 are often too hard for Seed/Sprout.
+- conversations: ctx_en labels wrong on #16/#59, #52 left/right sides mixed.
 
 ---
 
