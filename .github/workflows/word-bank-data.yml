@@ -5,6 +5,8 @@ name: Word bank data
 #   push touching scripts/word-bank/** → dry build: stats + samples in the log
 #   manual run with import=true, or a push whose commit message contains
 #   [import-words]                     → also write vocabulary_bank
+#   extra.py (ungraded words ranked by frequency) always dry-runs; a push whose
+#   commit message contains [stage-extra-words] writes word_bank_candidates
 on:
   workflow_dispatch:
     inputs:
@@ -37,6 +39,11 @@ jobs:
         run: deno run --allow-read --allow-write scripts/word-bank/romanize-list.ts build/words.json build/words_rom.json
       - uses: actions/upload-artifact@v4
         with: { name: words, path: build/words_rom.json }
+      - name: Extra words (ungraded, frequency-ranked)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          STAGE: ${{ contains(github.event.head_commit.message, '[stage-extra-words]') && '1' || '0' }}
+        run: python scripts/word-bank/extra.py
       - name: Import into vocabulary_bank
         if: ${{ github.event.inputs.import == 'true' || contains(github.event.head_commit.message, '[import-words]') }}
         env:
