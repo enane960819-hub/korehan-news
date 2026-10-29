@@ -10,6 +10,27 @@ doesn't keep reminding about closed work.
 
 ---
 
+## 🧭 2026-10-29 sweep — state + owner decisions (READ FIRST)
+
+Done and live (PRs #932–#935): sentence-analysis render no longer injects
+KH_GRAMMAR regex cards (and drops cached injected/forced/wrong ones),
+vocab in dictionary form + rule-based romanization (`khRomanize`), ~30
+learner bugs, 8 game fixes, admin CMS data paths + Today panel
+(`kh_admin_health`), new Beginner's Guide, beauty→real sections migration,
+emoji-icons observer loop fix. Owner preview login: `korehani.com/?p=…`
+(preview-login Edge Function, Premium preview account, expires 2026-11-12).
+
+Owner decisions still open:
+- **Anthropic credit is empty** — every AI feature fails until topped up.
+- **Re-review stored AI content** (needs credit): article_cache 446 rows,
+  vocabulary_bank ~4.2k unreviewed, grammar_examples_cache 92,
+  conversations 52 (`qa_at is null`). Estimate given: Haiku ≈ $6 /
+  Sonnet ≈ $18 for article analyses alone. Ask before running.
+- Azure TTS key (tts-proxy returns 503 → device voice).
+- Word Bank examples from 한국어기초사전 are often too hard for Seed/Sprout.
+
+---
+
 ## 📋 Full fix list — 2026-10-24 audit (START HERE)
 
 Site-wide audit (home/landing/chrome, Study Room, articles/news,

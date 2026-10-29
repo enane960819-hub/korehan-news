@@ -12771,3 +12771,25 @@ document.addEventListener('DOMContentLoaded', function() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();
+
+// ── "Back to the Beginner's Guide" pill ─────────────────────────
+// Set by beginner-guide.html when a step's link is opened; the guide
+// clears it when the learner comes back. Mobile sits above the bottom nav.
+(function khGuideBackPill() {
+  function show() {
+    var on = false;
+    try { on = sessionStorage.getItem('kh_from_guide') === '1'; } catch (_) {}
+    if (!on || /beginner-guide/.test(location.pathname) || document.getElementById('kh-guide-back')) return;
+    var mob = window.matchMedia && matchMedia('(max-width: 768px)').matches;
+    var d = document.createElement('div');
+    d.id = 'kh-guide-back';
+    d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:' + (mob ? 'calc(78px + env(safe-area-inset-bottom, 0px))' : '22px') + ';z-index:1001;display:flex;align-items:center;gap:2px;background:#1e1b4b;border:1px solid rgba(165,180,252,.45);border-radius:999px;box-shadow:0 8px 22px rgba(0,0,0,.3);font:700 13px/1 "DM Sans",sans-serif';
+    d.innerHTML = '<a href="beginner-guide.html#bg-week" style="display:inline-flex;align-items:center;gap:6px;color:#fff;text-decoration:none;padding:10px 6px 10px 14px"><i data-lucide="arrow-left" style="width:15px;height:15px" aria-hidden="true"></i>Back to the guide</a>'
+      + '<button type="button" aria-label="Hide" style="border:0;background:none;color:rgba(255,255,255,.6);padding:10px 12px 10px 6px;cursor:pointer;display:inline-flex"><i data-lucide="x" style="width:14px;height:14px" aria-hidden="true"></i></button>';
+    d.querySelector('button').onclick = function () { try { sessionStorage.removeItem('kh_from_guide'); } catch (_) {} d.remove(); };
+    document.body.appendChild(d);
+    try { if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons(); } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show);
+  else show();
+})();
