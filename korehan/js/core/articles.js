@@ -489,7 +489,8 @@ function dbGet(filter) {
   return all.filter(filter);
 }
 function published(section) {
-  return dbGet(function(a){ return (!a.status || a.status === 'published') && (!section || a.section === section); })
+  // No section = real-news lists, which never include Fake News.
+  return dbGet(function(a){ return (!a.status || a.status === 'published') && (section ? a.section === section : !(typeof khIsFakeNews === 'function' && khIsFakeNews(a))); })
     .sort(function(a, b) {
       // 최신 날짜순 정렬 (date 없으면 id로 역순)
       var da = a.date || a.created_at || '';

@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20261029s">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029x">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -1097,6 +1097,16 @@ window._khLoaderClearAuto = function() {};
     <div class="home-news-grid" id="dyn-buzz-grid"></div>
   </div>
 
+  <!-- FAKE NEWS — made-up joke articles, own rail only (never in News) -->
+  <div id="home-fake-sec" style="display:none">
+    <div class="home-sec" style="border-bottom-color:#111;">
+      <div class="home-sec-title"><i data-lucide="drama" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Fake News</span></div>
+      <a href="korehan-section.html?s=fake" class="home-sec-more" style="color:#111;">All Fake News →</a>
+    </div>
+    <p style="font-size:12.5px;color:var(--gray);margin:-6px 0 12px">Totally made up, just for laughs. Real Korean, fake facts.</p>
+    <div class="home-news-grid" id="dyn-fake-grid"></div>
+  </div>
+
   <!-- KOREAN BASICS — replaces Stories as the beginner on-ramp.
        (#home-story-grid removed → loadHomeStories() no-ops on its null guard.) -->
   <div class="home-sec" style="border-bottom-color:#38bdf8;">
@@ -1134,7 +1144,7 @@ window._khLoaderClearAuto = function() {};
 <script src="js/features/review-queue.js?v=20261028c"></script>
 <script src="js/core/hangul-jamo-input.js?v=20261028a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
-<script src="js/core/articles.js?v=20261025a"></script>
+<script src="js/core/articles.js?v=20261029x"></script>
 <script src="js/core/reporters.js?v=20261029s"></script>
 <script src="js/features/streak.js?v=20260525r" defer></script>
 <script src="js/features/daily-mission.js?v=20261029s" defer></script>
@@ -1145,7 +1155,7 @@ window._khLoaderClearAuto = function() {};
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029v"></script>
+<script src="korehan-shared.js?v=20261029x"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 var HOME_CONVS = [
@@ -1696,8 +1706,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   // News and Korea Buzz each get their own rail (Buzz used to be mixed into News).
   function renderNewsGrid() {
     var pub = getCachedArticles().filter(function(a){ return a.status === 'published'; });
+    var _fake = function(a){ return typeof khIsFakeNews === 'function' && khIsFakeNews(a); };
     _renderArtRail(document.getElementById('dyn-news-grid'),
-      _khPersonalize(pub.filter(function(a){ return !_khIsBuzz(a); }).slice(0, 40)).slice(0, 12));
+      _khPersonalize(pub.filter(function(a){ return !_khIsBuzz(a) && !_fake(a); }).slice(0, 40)).slice(0, 12));
+    var fakes = pub.filter(_fake).slice(0, 12);
+    var fakeSec = document.getElementById('home-fake-sec');
+    if (fakeSec) fakeSec.style.display = fakes.length ? '' : 'none';
+    if (fakes.length) _renderArtRail(document.getElementById('dyn-fake-grid'), fakes);
     var buzz = pub.filter(_khIsBuzz).slice(0, 12);
     var buzzSec = document.getElementById('home-buzz-sec');
     if (buzzSec) buzzSec.style.display = buzz.length ? '' : 'none';
@@ -1731,6 +1746,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         var cat = (typeof getSectionKey === 'function') ? getSectionKey(a.section) : (a.section || '').toLowerCase();
         var thumb = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
         return '<a class="khn-card" data-section="' + cat + '" data-level="' + lvl + '" href="korehan-article.html?id=' + a.id + '">'
+          + (typeof khFakeTag === 'function' ? khFakeTag(a) : '')
           + '<div class="khn-img"' + (thumb ? ' style="background-image:url(\'' + String(thumb).replace(/'/g, '%27') + '\')"' : '') + '></div>'
           + '<div class="khn-grad"></div>'
           + '<div class="khn-body">'
@@ -1753,7 +1769,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         ? '<div class="nc-img" style="background-image:url(\'' + String(thumbUrl).replace(/'/g, "%27") + '\')"></div>'
         : '<div class="nc-img nc-img-fallback"></div>';
       return '<a class="nc nc-overlay" data-section="' + cat + '" data-level="' + lvl + '" href="korehan-article.html?id=' + a.id + '">'
-        + img
+        + img + (typeof khFakeTag === 'function' ? khFakeTag(a) : '')
         + '<div class="nc-overlay-grad"></div>'
         + '<div class="nc-overlay-body">'
         + '<div class="nc-meta"><span class="nc-cat">' + (typeof khSecLabel === 'function' ? khSecLabel(a.section) : (a.section || '')) + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</span></div>'

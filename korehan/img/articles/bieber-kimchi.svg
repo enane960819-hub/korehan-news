@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fdf3e7"/>
+      <stop offset="1" stop-color="#f6e2cf"/>
+    </linearGradient>
+    <linearGradient id="jar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8f5a3c"/>
+      <stop offset=".45" stop-color="#b07650"/>
+      <stop offset="1" stop-color="#7f4e33"/>
+    </linearGradient>
+    <linearGradient id="cover" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f5d73"/>
+      <stop offset="1" stop-color="#23485a"/>
+    </linearGradient>
+    <linearGradient id="mic" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9aa3ad"/>
+      <stop offset=".5" stop-color="#d9dee3"/>
+      <stop offset="1" stop-color="#8b949e"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#bg)"/>
+
+  <!-- soft background shapes -->
+  <circle cx="190" cy="170" r="130" fill="#fbe7d3"/>
+  <circle cx="1030" cy="140" r="160" fill="#fbe9dc"/>
+  <circle cx="620" cy="90" r="60" fill="#fceee2"/>
+
+  <!-- spotlight -->
+  <path d="M600 0 L380 640 L820 640 Z" fill="#fff8ee" opacity=".7"/>
+
+  <!-- floor / stage -->
+  <path d="M0 610 C 260 590, 520 625, 760 608 C 950 595, 1080 612, 1200 600 L1200 800 L0 800 Z" fill="#ead2bb"/>
+  <path d="M0 690 C 300 670, 560 710, 820 690 C 980 678, 1100 695, 1200 686 L1200 800 L0 800 Z" fill="#e0c3a8" opacity=".8"/>
+
+  <!-- music notes (simple shapes) -->
+  <g fill="#d98f84" opacity=".75">
+    <ellipse cx="455" cy="205" rx="20" ry="15" transform="rotate(-20 455 205)"/>
+    <rect x="470" y="120" width="7" height="85" rx="3"/>
+    <path d="M474 120 C 500 128, 512 145, 508 170 C 500 152, 490 145, 474 142 Z"/>
+    <ellipse cx="760" cy="165" rx="18" ry="13" transform="rotate(-20 760 165)"/>
+    <ellipse cx="820" cy="150" rx="18" ry="13" transform="rotate(-20 820 150)"/>
+    <rect x="773" y="90" width="6" height="75" rx="3"/>
+    <rect x="833" y="75" width="6" height="75" rx="3"/>
+    <path d="M776 90 L836 75 L836 92 L776 107 Z"/>
+  </g>
+
+  <!-- confetti -->
+  <g opacity=".8">
+    <rect x="300" y="300" width="16" height="8" rx="3" fill="#e8b04f" transform="rotate(25 308 304)"/>
+    <rect x="880" y="280" width="16" height="8" rx="3" fill="#7fb7a4" transform="rotate(-30 888 284)"/>
+    <rect x="560" y="250" width="14" height="7" rx="3" fill="#e58b7b" transform="rotate(50 567 253)"/>
+    <circle cx="980" cy="360" r="7" fill="#e8b04f"/>
+    <circle cx="240" cy="420" r="6" fill="#7fb7a4"/>
+    <circle cx="700" cy="300" r="5" fill="#9fb5d9"/>
+    <rect x="1080" y="420" width="15" height="7" rx="3" fill="#e58b7b" transform="rotate(15 1087 423)"/>
+    <rect x="130" y="320" width="15" height="7" rx="3" fill="#9fb5d9" transform="rotate(-40 137 323)"/>
+  </g>
+
+  <!-- ===== microphone on a stand (centre) ===== -->
+  <ellipse cx="600" cy="640" rx="120" ry="18" fill="#c9a98d" opacity=".6"/>
+  <ellipse cx="600" cy="628" rx="95" ry="20" fill="#4c5560"/>
+  <ellipse cx="600" cy="622" rx="95" ry="18" fill="#5e6873"/>
+  <rect x="592" y="330" width="16" height="295" rx="7" fill="#5e6873"/>
+  <rect x="595" y="330" width="5" height="295" rx="2" fill="#7c8691"/>
+  <rect x="578" y="400" width="44" height="22" rx="8" fill="#4c5560"/>
+  <!-- clip -->
+  <path d="M572 320 C 572 345, 628 345, 628 320" fill="none" stroke="#4c5560" stroke-width="10" stroke-linecap="round"/>
+  <!-- handle -->
+  <path d="M582 245 L618 245 L610 335 L590 335 Z" fill="#3f4852"/>
+  <rect x="584" y="258" width="32" height="10" rx="4" fill="#59636e"/>
+  <!-- grille -->
+  <circle cx="600" cy="205" r="62" fill="url(#mic)"/>
+  <g stroke="#a7b0b9" stroke-width="3" fill="none" opacity=".9">
+    <path d="M545 185 L655 185"/>
+    <path d="M540 205 L660 205"/>
+    <path d="M545 225 L655 225"/>
+    <path d="M570 147 L570 262"/>
+    <path d="M600 143 L600 267"/>
+    <path d="M630 147 L630 262"/>
+  </g>
+  <circle cx="600" cy="205" r="62" fill="none" stroke="#7e8892" stroke-width="5"/>
+  <rect x="547" y="240" width="106" height="14" rx="7" fill="#c8a24a"/>
+  <ellipse cx="580" cy="178" rx="16" ry="10" fill="#ffffff" opacity=".55" transform="rotate(-30 580 178)"/>
+
+  <!-- ===== passport booklet (left) ===== -->
+  <g transform="rotate(-10 300 520)">
+    <rect x="205" y="395" width="200" height="270" rx="16" fill="#1c3a48" opacity=".25" transform="translate(10 12)"/>
+    <!-- pages edge -->
+    <rect x="212" y="398" width="196" height="266" rx="14" fill="#f4efe4"/>
+    <rect x="216" y="402" width="192" height="262" rx="14" fill="#e9e2d3"/>
+    <!-- little cabbage-leaf bookmark peeking out of the top -->
+    <path d="M338 396 C 332 368, 348 350, 368 354 C 362 368, 360 382, 362 396 Z" fill="#a9cf8f"/>
+    <path d="M350 394 C 350 380, 355 368, 362 360" fill="none" stroke="#86b46c" stroke-width="3" stroke-linecap="round"/>
+    <!-- cover -->
+    <rect x="200" y="392" width="200" height="270" rx="16" fill="url(#cover)"/>
+    <rect x="212" y="404" width="176" height="246" rx="10" fill="none" stroke="#d8b862" stroke-width="2" opacity=".5"/>
+    <!-- abstract emblem: gold ring with petals (no text, no real seal) -->
+    <circle cx="300" cy="495" r="42" fill="none" stroke="#d8b862" stroke-width="5"/>
+    <g fill="#d8b862">
+      <ellipse cx="300" cy="470" rx="9" ry="16"/>
+      <ellipse cx="300" cy="520" rx="9" ry="16"/>
+      <ellipse cx="275" cy="495" rx="16" ry="9"/>
+      <ellipse cx="325" cy="495" rx="16" ry="9"/>
+      <circle cx="300" cy="495" r="9"/>
+    </g>
+    <!-- blank title bars instead of text -->
+    <rect x="245" y="565" width="110" height="10" rx="5" fill="#d8b862" opacity=".8"/>
+    <rect x="265" y="586" width="70" height="8" rx="4" fill="#d8b862" opacity=".55"/>
+    <!-- chip symbol -->
+    <rect x="285" y="612" width="30" height="20" rx="4" fill="none" stroke="#d8b862" stroke-width="3" opacity=".8"/>
+  </g>
+
+  <!-- ===== kimchi jar (right) ===== -->
+  <ellipse cx="900" cy="650" rx="150" ry="22" fill="#c9a98d" opacity=".6"/>
+  <!-- jar body -->
+  <path d="M800 400 C 760 450, 755 560, 790 625 C 810 655, 990 655, 1010 625 C 1045 560, 1040 450, 1000 400 Z" fill="url(#jar)"/>
+  <!-- glaze bands -->
+  <path d="M772 470 C 840 488, 960 488, 1028 470" fill="none" stroke="#6f432b" stroke-width="6" opacity=".5"/>
+  <path d="M790 560 C 850 575, 950 575, 1012 560" fill="none" stroke="#6f432b" stroke-width="4" opacity=".4"/>
+  <path d="M820 500 C 850 520, 880 505, 900 520 C 920 535, 950 515, 980 525" fill="none" stroke="#d8a77c" stroke-width="5" stroke-linecap="round" opacity=".7"/>
+  <ellipse cx="830" cy="470" rx="16" ry="60" fill="#ffffff" opacity=".12"/>
+  <!-- rim -->
+  <ellipse cx="900" cy="400" rx="105" ry="26" fill="#6f432b"/>
+  <ellipse cx="900" cy="396" rx="92" ry="20" fill="#4e2e1d"/>
+  <!-- kimchi overflowing -->
+  <g>
+    <path d="M830 398 C 830 350, 875 330, 900 345 C 925 325, 975 345, 970 398 Z" fill="#d9573f"/>
+    <path d="M850 395 C 852 362, 880 352, 898 362 C 905 375, 900 390, 896 398 Z" fill="#e8745a"/>
+    <path d="M905 396 C 912 360, 945 350, 960 370 C 955 385, 945 393, 940 398 Z" fill="#c9452f"/>
+    <!-- pale cabbage stems -->
+    <path d="M868 398 C 872 375, 880 365, 888 360" fill="none" stroke="#f3d6a8" stroke-width="7" stroke-linecap="round"/>
+    <path d="M925 398 C 928 378, 936 368, 946 364" fill="none" stroke="#f3d6a8" stroke-width="7" stroke-linecap="round"/>
+    <!-- green leaf tips -->
+    <path d="M880 345 C 870 320, 885 300, 905 305 C 900 320, 895 335, 893 348 Z" fill="#8fbf6e"/>
+    <path d="M935 350 C 945 325, 968 318, 980 332 C 965 338, 952 346, 945 356 Z" fill="#7fb05f"/>
+    <!-- chili flakes -->
+    <g fill="#a8301f">
+      <circle cx="860" cy="380" r="3"/><circle cx="890" cy="372" r="2.5"/><circle cx="920" cy="380" r="3"/>
+      <circle cx="950" cy="384" r="2.5"/><circle cx="905" cy="355" r="2"/><circle cx="875" cy="390" r="2"/>
+    </g>
+  </g>
+  <!-- small lid leaning on the jar -->
+  <ellipse cx="1065" cy="610" rx="22" ry="48" fill="#7f4e33" transform="rotate(18 1065 610)"/>
+  <ellipse cx="1068" cy="610" rx="12" ry="36" fill="#9b6544" transform="rotate(18 1068 610)"/>
+
+  <!-- sparkle stars around the jar -->
+  <g fill="#e8b04f">
+    <path d="M1060 330 L1066 346 L1082 352 L1066 358 L1060 374 L1054 358 L1038 352 L1054 346 Z"/>
+    <path d="M760 330 L764 341 L775 345 L764 349 L760 360 L756 349 L745 345 L756 341 Z" opacity=".8"/>
+    <path d="M150 560 L154 571 L165 575 L154 579 L150 590 L146 579 L135 575 L146 571 Z" opacity=".7"/>
+  </g>
+</svg>
