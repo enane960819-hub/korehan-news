@@ -273,11 +273,15 @@ var _TAG_TO_TOPIC={
   try {
     var sb=typeof getSupa==='function'?getSupa():null;
     if(!sb)return;
+    // Every bank row has interest_tag null, so they all land in Daily —
+    // keep that bucket to beginner words (Starter/Beginner levels).
     var result=await sb.from('vocabulary_bank')
-      .select('word_ko,word_en,interest_tag')
+      .select('word_ko,word_en,interest_tag,level')
       .eq('is_active',true)
-      .limit(200);
-    if(result.error||!result.data||!result.data.length)return;
+      .in('level',['Starter','Beginner'])
+      .limit(400);
+    // Too few rows (or schema drift returning []) -> keep the built-in lists.
+    if(result.error||!result.data||result.data.length<20)return;
     // Track which ko words already exist per topic to avoid duplicates
     var existing={};
     Object.keys(TOPICS).forEach(function(k){
@@ -287,6 +291,7 @@ var _TAG_TO_TOPIC={
     // Overflow bucket for untagged or unmatched words — goes into 'daily'
     result.data.forEach(function(r){
       if(!r.word_ko||!r.word_en)return;
+      if(r.level!=='Starter'&&r.level!=='Beginner')return;
       var tag=(r.interest_tag||'').toLowerCase().trim();
       var topicKey=_TAG_TO_TOPIC[tag]||'daily';
       if(!existing[topicKey][r.word_ko]){
@@ -377,15 +382,39 @@ function loop(now){
   updateHints();
 }
 
+// Accepted English answers for a meaning like "section; part",
+// "eat (honorific form)", "to read", "~ person(s)", "borrow, lend".
+function _meaningsOf(en){
+  var out={};
+  var full=String(en||'').toLowerCase().trim();
+  if(full)out[full]=1;
+  full.replace(/\([^)]*\)/g,' ').replace(/\(.*$/,' ').split(/[,\/;]/).forEach(function(part){
+    var m=part.replace(/[~?!.]/g,' ').replace(/\s+/g,' ').trim();
+    if(!m)return;
+    out[m]=1;
+    var bare=m.replace(/^(to|a|an|the)\s+/,'');
+    if(bare)out[bare]=1;
+  });
+  return out;
+}
+function _meaningMatches(en,ans){
+  var a=String(ans||'').toLowerCase().replace(/\s+/g,' ').trim();
+  if(!a)return false;
+  var ok=_meaningsOf(en);
+  return !!(ok[a]||ok[a.replace(/^(to|a|an|the)\s+/,'')]);
+}
+
 window.checkAnswer=function(){
   var inp=document.getElementById('g-input');
   var raw=(inp.value||'').trim();if(!raw)return;
   var ans=raw.toLowerCase();inp.value='';
   var matched=null,matchIdx=-1;
   words.forEach(function(w,i){
+    // KO→EN: type a meaning; EN→KO: type the Korean. Typing the word
+    // that is shown on screen (echo) never counts.
     var hit=_mode==='ko2en'
-      ?(w.en===ans||w.en.split('/').indexOf(ans)>=0||w.en.split(',').map(function(s){return s.trim();}).indexOf(ans)>=0||w.ko===raw)
-      :(w.ko===raw||w.en===ans);
+      ?_meaningMatches(w.en,ans)
+      :(w.ko===raw);
     if(hit&&(!matched||w.y>matched.y)){matched=w;matchIdx=i;}
   });
   if(matched){
