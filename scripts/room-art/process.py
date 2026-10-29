@@ -1,6 +1,10 @@
 """Turn raw room-item pictures into ready sprites for korehan/assets/room/.
 
   python3 scripts/room-art/process.py <folder with raw images>
+  python3 scripts/room-art/process.py --grid <sheet image> <sheet number>
+
+--grid cuts a 3x3 sheet (see catalog.py SHEETS / the prompt guide) into its
+nine items, row by row, and names them from the catalogue.
 
 Each file must already carry the target name (e.g. kotatsu.png — see
 docs/reference/room-art-prompts.md). For every image: the plain background
@@ -50,7 +54,23 @@ def fit(im):
     canvas.paste(im, ((SIZE - im.width) // 2, (SIZE - im.height) // 2), im)
     return canvas
 
+def grid(sheet_path, sheet_no):
+    sys.path.insert(0, os.path.dirname(__file__))
+    from catalog import SHEETS
+    items = SHEETS[int(sheet_no) - 1][1]
+    im = Image.open(sheet_path).convert('RGBA')
+    cw, ch = im.width / 3, im.height / 3
+    os.makedirs(OUT, exist_ok=True)
+    for k, item in enumerate(items):
+        r, c = divmod(k, 3)
+        cell = im.crop((round(c * cw), round(r * ch), round((c + 1) * cw), round((r + 1) * ch)))
+        name = item[0].replace('_', '-') + '.png'
+        fit(clear_background(cell)).save(os.path.join(OUT, name))
+        print('ok', name)
+
 if __name__ == '__main__':
+    if sys.argv[1] == '--grid':
+        grid(sys.argv[2], sys.argv[3]); sys.exit(0)
     src = sys.argv[1]
     os.makedirs(OUT, exist_ok=True)
     for f in sorted(os.listdir(src)):
