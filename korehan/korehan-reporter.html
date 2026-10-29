@@ -176,6 +176,7 @@ body { overflow-x:hidden; }
   .rp-wrap { padding:16px 16px 56px; }
   .rp-profile { grid-template-columns:1fr; gap:0; }
   .rp-photo-col { min-height:280px; }
+  .rp-photo-col.noimg { min-height:170px; }
   .rp-info-col { padding:16px; }
   .rp-name { font-size:26px; }
   .rp-name-rom { display:block; margin:2px 0 0; }
@@ -322,7 +323,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // ── Header ──
     + '<div class="rp-profile">'
-    +   '<div class="rp-photo-col"' + (reporter.image ? ' onclick="rpOpenLb()"' : '') + '>' + photoHtml + '</div>'
+    +   '<div class="rp-photo-col' + (reporter.image ? '" onclick="rpOpenLb()"' : ' noimg"') + '>' + photoHtml + '</div>'
     +   '<div class="rp-info-col">'
     +     '<h1 class="rp-name">' + escHtml(reporter.name) + (rom ? '<span class="rp-name-rom">' + escHtml(rom) + '</span>' : '') + '</h1>'
     +     '<div class="rp-chips">'
@@ -1163,7 +1164,7 @@ function rpArtItem(a) {
   var dTxt = d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }) : '';
   var sec = typeof khSecLabel === 'function' ? khSecLabel(a.section) : (a.section || '');
   var img = String(a.image || '');
-  var thumbStyle = /^https?:\/\//i.test(img) && !/picsum\.photos/i.test(img) ? ' style="background-image:url(\'' + escHtml(img).replace(/'/g, '%27') + '\')"' : '';
+  var thumbStyle = /^https?:\/\//i.test(img) && !/picsum\.photos/i.test(img) ? ' style="background-image:url(\'' + escHtml(img).replace(/'/g, '%27') + '\'),linear-gradient(135deg,#334155,#1e293b)"' : '';
   return '<a class="rp-art-item" href="korehan-article.html?id=' + encodeURIComponent(a.id) + '">'
     + '<span class="rp-art-thumb"' + thumbStyle + '></span>'
     + '<span class="rp-art-body"><span class="rp-art-title" lang="ko">' + escHtml(a.title || '') + '</span>'
