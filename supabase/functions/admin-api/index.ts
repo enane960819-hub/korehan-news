@@ -8,7 +8,7 @@ const ALLOWED_TABLES = new Set([
   'conversations_data','stories_data','korean_slangs','phone_calls',
   'shop_items','study_daily_content','writing_topics','vocab_overrides',
   'article_cache','comments','newsletter_subs','page_views',
-  'saved_words','read_articles','writing_submissions','coin_adjustments',
+  'user_saved_words','read_articles','writing_submissions','coin_adjustments',
   'study_picture_prompts','study_room_grammar','study_room_helpers',
   'vocabulary_bank','fast_track_scenarios','user_submissions',
   'room_items','badges','hover_vocab_master','article_study_content',
@@ -40,9 +40,11 @@ const ALLOWED_TABLES = new Set([
 // hijacked the admin token) call ANY SECURITY DEFINER function in the
 // database — including ones that mutate other users' data. Add new
 // RPCs here as the admin tooling needs them.
+// RPCs that check auth.uid() / is_admin_email() (admin_set_suspension,
+// admin_adjust_coin, admin_resolve_report, kh_admin_*) must NOT be listed:
+// here they run as service_role, where auth.uid() is null. The CMS calls
+// them with the admin's own session instead.
 const ALLOWED_RPCS = new Set([
-  // Admin moderation
-  'admin_set_suspension',
   // Newsletter (called from admin newsletter campaign UI)
   'newsletter_request_subscribe','newsletter_confirm','newsletter_unsubscribe',
   // Streak freeze / awards (claimable from user side too, but admin
@@ -76,26 +78,6 @@ Deno.serve(async (req) => {
   const cors = getCorsHeaders(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
-  // ── DEBUG: temporary diagnostic logger ─────────────────────────
-  // Writes one short row to client_errors per invocation so we can
-  // see, from outside the function, exactly what state every call
-  // reached. Owner reports admin CMS shows 0 counts and we can't get
-  // function_edge_logs via the management API SQL endpoint. Remove
-  // this block in a follow-up PR once we know the root cause.
-  const debugRows: Array<{ stage: string; detail: unknown }> = []
-  const debug = (stage: string, detail: unknown) => debugRows.push({ stage, detail })
-  const flushDebug = async (sbForDebug: ReturnType<typeof createClient> | null) => {
-    if (!sbForDebug || !debugRows.length) return
-    try {
-      await sbForDebug.from('client_errors').insert({
-        message: 'admin-api debug ' + debugRows[debugRows.length - 1].stage,
-        context: { source: 'admin-api-debug', steps: debugRows } as Record<string, unknown>,
-        severity: 'warn',
-        user_agent: req.headers.get('user-agent') || 'unknown',
-      })
-    } catch (_) {}
-  }
-
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -104,18 +86,9 @@ Deno.serve(async (req) => {
       return json({ error: 'Server misconfigured: SUPABASE_ANON_KEY missing' }, 500, cors)
     }
 
-    debug('entry', {
-      method: req.method,
-      origin: req.headers.get('Origin') || null,
-      hasAuth: !!req.headers.get('Authorization'),
-      hasApikey: !!req.headers.get('apikey'),
-    })
-
     // 1. Verify JWT and admin status
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      const debugSb = createClient(supabaseUrl, serviceKey)
-      await flushDebug(debugSb)
       return json({ error: 'No authorization header' }, 401, cors)
     }
 
@@ -123,22 +96,12 @@ Deno.serve(async (req) => {
     const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey }
     })
-    debug('auth_user_fetch', { status: userRes.status, ok: userRes.ok })
     if (!userRes.ok) {
-      const debugSb = createClient(supabaseUrl, serviceKey)
-      await flushDebug(debugSb)
       return json({ error: 'Invalid token' }, 401, cors)
     }
 
     const user = await userRes.json()
-    debug('user_check', {
-      hasEmail: !!user?.email,
-      emailDomain: user?.email ? String(user.email).split('@')[1] : null,
-      isAdmin: !!(user?.email && ADMIN_EMAILS.includes(user.email)),
-    })
     if (!user?.email || !ADMIN_EMAILS.includes(user.email)) {
-      const debugSb = createClient(supabaseUrl, serviceKey)
-      await flushDebug(debugSb)
       return json({ error: 'Not an admin' }, 403, cors)
     }
 
@@ -148,7 +111,6 @@ Deno.serve(async (req) => {
 
     // 3. Execute with service role
     const sb = createClient(supabaseUrl, serviceKey)
-    debug('parsed_body', { action, table: body.table, method: body.method, hasParams: !!body.params })
 
     // ── DB Operations ──
     if (action === 'db') {
@@ -181,14 +143,6 @@ Deno.serve(async (req) => {
         query = query.select(params.columns || '*', selectOpts)
         query = applyFilters(query, params)
         const result = await query
-        debug('select_result', {
-          table,
-          dataLen: Array.isArray(result.data) ? result.data.length : null,
-          hasError: !!result.error,
-          errorMsg: result.error ? String((result.error as { message?: unknown }).message || result.error) : null,
-          status: result.status,
-        })
-        await flushDebug(sb)
         return json(result, result.error ? 400 : 200, cors)
       }
 
@@ -259,8 +213,9 @@ Deno.serve(async (req) => {
 
     // ── Auth: list users ──
     if (action === 'auth_users') {
-      const perPage = body.per_page || 500
-      const res = await fetch(`${supabaseUrl}/auth/v1/admin/users?per_page=${perPage}`, {
+      const perPage = Math.min(1000, Math.max(1, Number(body.per_page) || 500))
+      const page = Math.max(1, Number(body.page) || 1)
+      const res = await fetch(`${supabaseUrl}/auth/v1/admin/users?per_page=${perPage}&page=${page}`, {
         headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
       })
       const data = await res.json()
@@ -288,9 +243,14 @@ Deno.serve(async (req) => {
       return json({ ...data, publicUrl: `${supabaseUrl}/storage/v1/object/public/${bucket}/${filePath}` }, res.ok ? 200 : 400, cors)
     }
 
-    // ── REST passthrough (for complex queries) ──
+    // ── REST passthrough (read-only, for complex GET queries) ──
+    // Writes go through the 'db' action above, which requires filters on
+    // update/delete. Any non-GET method here is refused.
     if (action === 'rest') {
-      const { path: restPath, method: restMethod, restBody } = body
+      const { path: restPath, method: restMethod } = body
+      if (restMethod && String(restMethod).toUpperCase() !== 'GET') {
+        return json({ error: 'REST passthrough is read-only (GET)' }, 400, cors)
+      }
       if (!restPath || !restPath.startsWith('/rest/v1/')) {
         return json({ error: 'Invalid REST path' }, 400, cors)
       }
@@ -306,14 +266,11 @@ Deno.serve(async (req) => {
         return json({ error: 'Table not allowed' }, 400, cors)
       }
       const res = await fetch(`${supabaseUrl}${restPath}`, {
-        method: restMethod || 'GET',
+        method: 'GET',
         headers: {
           'apikey': serviceKey,
           'Authorization': `Bearer ${serviceKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
         },
-        ...(restBody ? { body: JSON.stringify(restBody) } : {})
       })
       const data = await res.json()
       return json(data, res.ok ? 200 : 400, cors)
