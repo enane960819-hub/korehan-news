@@ -81,6 +81,7 @@ print("frequency list tokens:", len(freq))
 
 PARTICLES = ["", "은", "는", "이", "가", "을", "를", "에", "에서", "에게", "도", "만", "으로", "로",
              "와", "과", "의", "이야", "야", "이에요", "예요", "이다", "이고", "랑", "이랑", "까지", "부터", "처럼"]
+PARTICLE_SET = set(p for p in PARTICLES if p)
 by_prefix = {}
 for tok, n in freq.items():
     by_prefix.setdefault(tok[:2], []).append((tok, n))
@@ -101,19 +102,21 @@ def score(w):
         total = 0
         for st in stems(head):
             for tok, n in by_prefix.get(st[:2], []):
-                if tok.startswith(st) and 0 < len(tok) - len(st) <= 3: total += n
+                rest = tok[len(st):]
+                # 우리다 must not count 우리는/우리가 (the noun 우리 + particle).
+                if tok.startswith(st) and 0 < len(rest) <= 3 and rest not in PARTICLE_SET: total += n
         return total
     return sum(freq.get(head + p, 0) for p in PARTICLES)
 
 for w in words.values(): w["freq"] = score(w)
-ranked = sorted((w for w in words.values() if w["freq"] >= 20), key=lambda w: -w["freq"])
-TOP = 7000
+ranked = sorted((w for w in words.values() if w["freq"] >= 3), key=lambda w: -w["freq"])
+TOP = 9000
 cands = ranked[:TOP]
 for i, w in enumerate(cands, 1): w["rank"] = i
-print("with freq >= 20:", len(ranked), "| staged:", len(cands))
+print("with freq >= 3:", len(ranked), "| staged:", len(cands))
 print("by pos:", Counter(w["pos"] for w in cands).most_common())
 print("with example:", sum(1 for w in cands if w["example_ko"]))
-for lo, hi in ((1, 40), (1000, 1030), (3000, 3030), (5000, 5030), (6970, 7000)):
+for lo, hi in ((1, 40), (1000, 1030), (3000, 3030), (5000, 5030), (7000, 7030), (8970, 9000)):
     print(f"--- rank {lo}-{hi}")
     for w in cands[lo - 1:hi]:
         print(f'  {w["rank"]} {w["ko"]} [{w["pos"]}] f={w["freq"]} = {" | ".join(w["senses"])[:90]}')
