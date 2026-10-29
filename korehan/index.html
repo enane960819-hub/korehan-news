@@ -1155,7 +1155,7 @@ window._khLoaderClearAuto = function() {};
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029x"></script>
+<script src="korehan-shared.js?v=20261029y"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 var HOME_CONVS = [
@@ -1709,7 +1709,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     var _fake = function(a){ return typeof khIsFakeNews === 'function' && khIsFakeNews(a); };
     _renderArtRail(document.getElementById('dyn-news-grid'),
       _khPersonalize(pub.filter(function(a){ return !_khIsBuzz(a) && !_fake(a); }).slice(0, 40)).slice(0, 12));
-    var fakes = pub.filter(_fake).slice(0, 12);
+    var fakes = (typeof KH_FAKE_NEWS_ON !== 'undefined' && KH_FAKE_NEWS_ON) ? pub.filter(_fake).slice(0, 12) : [];
     var fakeSec = document.getElementById('home-fake-sec');
     if (fakeSec) fakeSec.style.display = fakes.length ? '' : 'none';
     if (fakes.length) _renderArtRail(document.getElementById('dyn-fake-grid'), fakes);

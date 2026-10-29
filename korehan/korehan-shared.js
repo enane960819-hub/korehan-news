@@ -3739,6 +3739,9 @@ var SECTION_ALIASES = {
 // Fake News (2026-10-29): openly made-up joke articles. They never mix into
 // real-news lists (All News, home News grid/hero, related, next article) —
 // only their own home rail and section page show them, always labelled.
+// Owner put Fake News on hold (2026-10-29): no nav link, no home rail, and the
+// articles are drafts. Flip this (and re-publish the articles) to bring it back.
+var KH_FAKE_NEWS_ON = false;
 var KH_FAKE_SECTION = { key: 'fake', label: 'Fake News', topics: 'Totally made up, just for laughs. Real Korean, fake facts.' };
 function khIsFakeNews(a) { return !!a && getSectionKey(a.section) === 'fake'; }
 function khFakeTag(a) {
@@ -8169,7 +8172,7 @@ function renderHeader() {
     + '<div class="tn-drop-col">'
     + '<div class="tn-drop-label">More to read</div>'
     + '<a href="korehan-section.html?s=buzz" class="tn-drop-item' + (isBuzz ? ' on' : '') + '">Korea Buzz</a>'
-    + '<a href="korehan-section.html?s=fake" class="tn-drop-item' + (isOn('korehan-section') && /[?&]s=fake/.test(location.search) ? ' on' : '') + '">Fake News</a>'
+    + (KH_FAKE_NEWS_ON ? '<a href="korehan-section.html?s=fake" class="tn-drop-item' + (isOn('korehan-section') && /[?&]s=fake/.test(location.search) ? ' on' : '') + '">Fake News</a>' : '')
     + '<a href="korehan-life.html" class="tn-drop-item' + (isOn('korehan-life') ? ' on' : '') + '">Life in Korea</a>'
     + '<a href="korehan-conversations.html" class="tn-drop-item">Conversations</a>'
     + '<a href="korehan-conversations.html?cat=everyday" class="tn-drop-item tn-drop-sub">Everyday</a>'
