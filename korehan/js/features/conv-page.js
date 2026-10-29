@@ -235,7 +235,7 @@
             + (line ? '<small><i>' + esc(line.who) + ':</i> ' + markKx(c, line.txt) + '</small>' : '') + '</div></div>';
         }).join('')
       + (c.grammar.length ? '<h2 style="margin-top:18px">Grammar in this conversation</h2>' + c.grammar.slice(0, 4).map(function (g) {
-          return '<div class="cv-gr"><b>' + esc(g.point || g.pattern || '') + '</b><span>' + esc(g.ex || g.explanation || '') + '</span></div>';
+          return '<div class="cv-gr"><b>' + esc(g.point || g.pattern || '') + '</b><span>' + esc(g.ex || g.example || g.explanation || '') + (g.meaning ? ' — ' + esc(g.meaning) : '') + '</span></div>';
         }).join('') : '')
       + '</div>'
       + '<div class="cv-dock">' + stepDots(2) + '<div class="cv-dock-row"><button type="button" class="cv-sec-btn" onclick="khConv.step(1)">' + icon('arrow-left') + 'Back</button>'
