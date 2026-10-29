@@ -46,7 +46,7 @@ html body{margin:0;background:#050b15!important;background-color:#050b15!importa
 .mm-card-front::after{content:'';position:absolute;inset:6px;border-radius:10px;border:1px dashed rgba(125,211,252,.15);pointer-events:none}
 
 /* face-up back */
-.mm-card-back{transform:rotateY(180deg);font-size:15px;line-height:1.3;word-break:keep-all}
+.mm-card-back{transform:rotateY(180deg);font-size:15px;line-height:1.3;word-break:keep-all;overflow-wrap:anywhere;-webkit-hyphens:auto;hyphens:auto}
 .mm-card-back.ko{background:linear-gradient(145deg,#0c2461,#1a3a7a);border-color:rgba(59,130,246,.55);color:#dbeafe;font-family:'Noto Sans KR','DM Sans',sans-serif;font-size:18px;font-weight:800}
 .mm-card-back.en{background:linear-gradient(145deg,#2d1066,#4c1d95);border-color:rgba(139,92,246,.55);color:#ede9fe}
 
@@ -204,6 +204,29 @@ html body{margin:0;background:#050b15!important;background-color:#050b15!importa
   .mm-card-back.ko{font-size:13px}
   .mm-card-back.en{font-size:11px}
 }
+/* Fit the whole board on screen during the 5-second memorize phase:
+   cap the grid width by the viewport height (cards are 3:4, ~240px of
+   header/bars above the grid). Hard on phones = 5 columns x 6 rows. */
+.mm-grid.normal{max-width:min(600px,max(300px,calc((100vh - 240px) * .9375 + 40px)))}
+.mm-grid.hard{max-width:min(720px,max(300px,calc((100vh - 240px) * .9 + 50px)))}
+@supports(height:100dvh){
+  .mm-grid.normal{max-width:min(600px,max(300px,calc((100dvh - 240px) * .9375 + 40px)))}
+  .mm-grid.hard{max-width:min(720px,max(300px,calc((100dvh - 240px) * .9 + 50px)))}
+}
+@media(max-width:600px){
+  .mm-grid.easy{max-width:min(100%,max(260px,calc((100vh - 250px) * .5625 + 16px)))}
+  .mm-grid.normal{max-width:min(100%,max(280px,calc((100vh - 250px) * .6 + 24px)))}
+  .mm-grid.hard{grid-template-columns:repeat(5,1fr);gap:6px;max-width:min(100%,max(260px,calc((100vh - 250px) * .625 + 24px)))}
+  .mm-grid.hard .mm-card-front,.mm-grid.hard .mm-card-back{border-radius:10px;padding:3px}
+  .mm-grid.hard .mm-card-back.ko{font-size:13px}
+  .mm-grid.hard .mm-card-back.en{font-size:11px;line-height:1.2}
+  .mm-grid.hard .mm-card-front{font-size:16px}
+  @supports(height:100dvh){
+    .mm-grid.easy{max-width:min(100%,max(260px,calc((100dvh - 250px) * .5625 + 16px)))}
+    .mm-grid.normal{max-width:min(100%,max(280px,calc((100dvh - 250px) * .6 + 24px)))}
+    .mm-grid.hard{max-width:min(100%,max(260px,calc((100dvh - 250px) * .625 + 24px)))}
+  }
+}
 #kh-daily-mission,#vocab-admin-bar,.mobile-bottom-nav,.mobile-sticky-study,#kh-header,#kh-footer{display:none!important}
 </style>
 </head>
@@ -295,7 +318,8 @@ html body{margin:0;background:#050b15!important;background-color:#050b15!importa
   <div class="mm-icon" id="mm-end-icon" style="display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;color:#fbbf24"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a2 2 0 0 0 3 3.5"/><path d="M17 6h3a2 2 0 0 1-3 3.5"/><path d="M9 14h6l-1 4h-4z"/><path d="M8 21h8"/></svg></span></div>
   <div class="mm-screen-title">Well Done!</div>
   <div class="mm-end-stars" id="mm-end-stars"></div>
-  <div class="mm-end-stat" style="font-size:18px;color:#fbbf24;margin:8px 0">Score: <strong id="mm-end-score" style="color:#fbbf24;font-size:22px">0</strong></div>
+  <div class="mm-end-stat" style="font-size:18px;color:#fbbf24;margin:8px 0 2px">Score: <strong id="mm-end-score" style="color:#fbbf24;font-size:22px">0</strong></div>
+  <div class="mm-end-stat" id="mm-end-score-detail" style="font-size:12px;color:#94a3b8;margin:0 0 8px"></div>
   <div class="mm-end-stat">Flips: <strong id="mm-end-flips">0</strong></div>
   <div class="mm-end-stat">Time: <strong id="mm-end-time">0:00</strong></div>
   <div class="mm-end-stat">Pairs: <strong id="mm-end-pairs">0</strong></div>
@@ -361,32 +385,59 @@ var MEM = (function(){
     {ko:'꿈',en:'dream'},{ko:'미래',en:'future'},{ko:'노래',en:'song'},
     {ko:'춤',en:'dance'},{ko:'맛',en:'taste'},{ko:'마음',en:'heart'}
   ];
-  var WORDS = _FALLBACK_WORDS.slice();
+  // Per-difficulty word pools from vocabulary_bank, filtered by level so
+  // Easy ("Great for beginners") never deals words like 평야 / 거리낌.
+  // Each pool keeps the built-in list until enough DB rows arrive.
+  var LEVELS_BY_DIFF = {
+    easy:   ['Starter', 'Beginner'],
+    normal: ['Beginner', 'Intermediate'],
+    hard:   ['Intermediate', 'Advanced']
+  };
+  var WORDS_BY_DIFF = {
+    easy:   _FALLBACK_WORDS.slice(),
+    normal: _FALLBACK_WORDS.slice(),
+    hard:   _FALLBACK_WORDS.slice()
+  };
+  function wordsFor(diff) {
+    return WORDS_BY_DIFF[diff] || _FALLBACK_WORDS;
+  }
 
   (async function loadVocabFromDB() {
     try {
       var sb = typeof getSupa === 'function' ? getSupa() : null;
       if (!sb) return;
-      var result = await sb.from('vocabulary_bank')
-        .select('word_ko,word_en')
-        .eq('is_active', true)
-        .limit(400);
-      if (result.error || !result.data || !result.data.length) return;
-      var seenKo = {};
-      var seenEn = {};
-      var mapped = [];
-      result.data.forEach(function(r) {
-        if (!r.word_ko || !r.word_en) return;
-        var ko = String(r.word_ko).trim();
-        var en = String(r.word_en).trim().toLowerCase();
-        if (!ko || !en) return;
-        if (seenKo[ko] || seenEn[en]) return;
-        seenKo[ko] = 1; seenEn[en] = 1;
-        mapped.push({ ko: ko, en: r.word_en.trim() });
-      });
-      if (mapped.length >= 15) WORDS = mapped;
+      await Promise.all(Object.keys(LEVELS_BY_DIFF).map(async function(diff) {
+        var levels = LEVELS_BY_DIFF[diff];
+        var result = await sb.from('vocabulary_bank')
+          .select('word_ko,word_en,level')
+          .eq('is_active', true)
+          .in('level', levels)
+          .limit(400);
+        if (result.error || !result.data || !result.data.length) return;
+        var seenKo = {};
+        var seenEn = {};
+        var mapped = [];
+        result.data.forEach(function(r) {
+          if (!r.word_ko || !r.word_en) return;
+          if (levels.indexOf(r.level) < 0) return;
+          var ko = String(r.word_ko).trim();
+          var en = String(r.word_en).trim().toLowerCase();
+          if (!ko || !en) return;
+          if (seenKo[ko] || seenEn[en]) return;
+          seenKo[ko] = 1; seenEn[en] = 1;
+          mapped.push({ ko: ko, en: r.word_en.trim() });
+        });
+        if (mapped.length >= 15) WORDS_BY_DIFF[diff] = mapped;
+      }));
     } catch(e) {}
   })();
+
+  // Cards show the first sense only ("section; part" -> "section") so
+  // long dictionary glosses fit; the end-of-round list shows the full one.
+  function cardMeaning(en) {
+    var first = String(en || '').split(';')[0].trim();
+    return first || String(en || '');
+  }
 
   var DIFFICULTY = {
     easy:   { pairs: 6,  cols: 'easy' },
@@ -588,7 +639,7 @@ var MEM = (function(){
   // ── Build Cards ──
   function buildCards(diff) {
     var cfg = DIFFICULTY[diff];
-    var shuffled = shuffle(WORDS.slice());
+    var shuffled = shuffle(wordsFor(diff).slice());
     // The round's words were already picked (and shown on "Study first")
     // when the difficulty was chosen — play with exactly those.
     var pool = (currentWords && currentWords.length === cfg.pairs) ? currentWords.slice() : [];
@@ -606,7 +657,7 @@ var MEM = (function(){
     var deck = [];
     pool.forEach(function(w, i) {
       deck.push({ id: i, type: 'ko', text: w.ko, pairId: i });
-      deck.push({ id: i, type: 'en', text: w.en, pairId: i });
+      deck.push({ id: i, type: 'en', text: cardMeaning(w.en), pairId: i });
     });
     return shuffle(deck);
   }
@@ -711,22 +762,25 @@ var MEM = (function(){
     updateStats();
     updateStreakUI();
     if (streak >= 3) showCombo(khSvg('flame', {size:36, color:'#f97316', marginRight:8}) + streak + ' streak!');
+    // resetTurn() below nulls firstCard/secondCard — capture the refs.
+    var a = firstCard, b = secondCard;
     setTimeout(function() {
-      firstCard.classList.remove('match-flash');
-      secondCard.classList.remove('match-flash');
+      a.classList.remove('match-flash');
+      b.classList.remove('match-flash');
     }, 500);
     resetTurn();
     if (matchedPairs === totalPairs) setTimeout(endGame, 400);
   }
 
   function handleNoMatch() {
-    firstCard.classList.add('no-match');
-    secondCard.classList.add('no-match');
+    var a = firstCard, b = secondCard;
+    a.classList.add('no-match');
+    b.classList.add('no-match');
     streak = 0;
     updateStreakUI();
     setTimeout(function() {
-      firstCard.classList.remove('flipped', 'no-match');
-      secondCard.classList.remove('flipped', 'no-match');
+      a.classList.remove('flipped', 'no-match');
+      b.classList.remove('flipped', 'no-match');
       resetTurn();
     }, 800);
   }
@@ -782,12 +836,15 @@ var MEM = (function(){
     var stars = getStars(difficulty, flips);
     var isNew = saveBest(difficulty, flips);
     var best = getBest(difficulty);
-    // Server leaderboard expects higher = better. Memory is fewer-flips =
-    // better, so map the result into a positive score: more pairs * stars
-    // bonus, minus flips. Floor at 0.
+    // One score for the end screen AND the leaderboard: the live score
+    // (100 per pair + streak bonus) + 200 per star - 5 per flip, floor 0.
+    // Never lower than the old leaderboard formula, so existing bests
+    // stay comparable.
+    var starBonus = stars * 200;
+    var flipPenalty = flips * 5;
+    var finalScore = Math.max(0, liveScore + starBonus - flipPenalty);
     if (window.playgroundScores) {
-      var score = Math.max(0, (totalPairs * 100) + (stars * 200) - (flips * 5));
-      playgroundScores.submit('memory', score, { difficulty: difficulty, flips: flips, stars: stars, elapsed: elapsed });
+      playgroundScores.submit('memory', finalScore, { difficulty: difficulty, flips: flips, stars: stars, elapsed: elapsed });
     }
 
     document.getElementById('mm-end-icon').innerHTML = stars === 3
@@ -797,7 +854,9 @@ var MEM = (function(){
         : khSvg('star', {size:64, color:'#fbbf24'});
     document.getElementById('mm-end-stars').innerHTML = renderStars(stars);
     var endScoreEl = document.getElementById('mm-end-score');
-    if (endScoreEl) endScoreEl.textContent = liveScore;
+    if (endScoreEl) endScoreEl.textContent = finalScore;
+    var breakdownEl = document.getElementById('mm-end-score-detail');
+    if (breakdownEl) breakdownEl.textContent = 'Matches ' + liveScore + ' + stars ' + starBonus + ' − flips ' + flipPenalty;
     document.getElementById('mm-end-flips').textContent = flips;
     document.getElementById('mm-end-time').textContent = fmtTime(elapsed);
     document.getElementById('mm-end-pairs').textContent = totalPairs;
@@ -972,7 +1031,7 @@ var MEM = (function(){
       pendingDiff = diff;
       // Pre-build cards so practice screen can show them
       var cfg = DIFFICULTY[diff];
-      var shuffled = shuffle(WORDS.slice());
+      var shuffled = shuffle(wordsFor(diff).slice());
       var pool = [];
       var seenKo = {}, seenEn = {};
       for (var i = 0; i < shuffled.length && pool.length < cfg.pairs; i++) {
