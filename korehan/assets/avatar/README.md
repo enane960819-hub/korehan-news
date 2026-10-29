@@ -32,4 +32,8 @@ Accessory anchors tested on base-long (352x736): centre x, y, drawn width, y mod
 | headband | 180 | 190 | 300 | bottom |
 | bucket-hat | 180 | 142 | 320 | bottom |
 
-Next: outfits for bob/short/curly, green-hair mask sheet.
+Outfits done: long-*, short-* (hanbok, uniform, knit, barista).
+Room: korehan/assets/room/theme-default.png is the new default room (square, baseboard
+60-64% down, floor below); every room theme copies its layout. Not wired yet.
+
+Next: outfits for bob/curly, green-hair mask sheet.
