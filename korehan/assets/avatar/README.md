@@ -11,26 +11,28 @@ heart-glasses, headband, bucket-hat (all kept; the crown's inner background hole
 Not used by the site yet — the editor is being built.
 
 Accessory anchors tested on base-long (176x368): centre x, y, drawn width, y mode
-(bottom = sprite bottom sits at y, centre = sprite centre at y).
+(bottom = sprite bottom sits at y, centre = sprite centre at y). Sprites are drawn
+feet-aligned, so measure y from the feet (368 - y) for other bases. Hats sit low enough
+to cover the top of the head (2026-10-29 fix: they floated above it before).
 
 | item | x | y | width | mode |
 |------|---|---|-------|------|
-| cap | 90 | 69 | 150 | bottom |
-| beanie | 90 | 66 | 145 | bottom |
-| crown | 90 | 36 | 85 | bottom |
-| catears | 90 | 49 | 140 | bottom |
+| cap | 90 | 80 | 140 | bottom |
+| beanie | 90 | 78 | 136 | bottom |
+| crown | 90 | 30 | 80 | bottom |
+| catears | 90 | 46 | 136 | bottom |
 | bow | 135 | 35 | 55 | centre |
 | sunglasses | 89 | 105 | 108 | centre |
-| beret | 92 | 61 | 145 | bottom |
+| beret | 92 | 76 | 134 | bottom |
 | sakura-pin | 136 | 50 | 60 | centre |
 | earmuffs | 90 | 121 | 172 | bottom |
 | black-bow | 90 | 20 | 75 | centre |
 | bear-clip | 49 | 51 | 44 | centre |
 | bunny-clip | 131 | 51 | 44 | centre |
-| flower-crown | 90 | 39 | 145 | centre |
+| flower-crown | 90 | 32 | 140 | centre |
 | heart-glasses | 89 | 106 | 110 | centre |
-| headband | 90 | 95 | 150 | bottom |
-| bucket-hat | 90 | 71 | 160 | bottom |
+| headband | 90 | 92 | 146 | bottom |
+| bucket-hat | 90 | 84 | 150 | bottom |
 
 Outfits (all four hair bases): hanbok, uniform, knit, barista, street, cute, summer,
 pajamas, halloween = 9 per base, 36 total. long/short hanbok-barista come from the large
