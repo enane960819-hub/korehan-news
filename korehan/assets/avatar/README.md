@@ -39,7 +39,6 @@ from ~280 px, so slightly softer). Some looks have headwear drawn in (street cap
 cute cat ears/beret, hanbok flower pin, summer hat/heart glasses, pajama headbands,
 witch hat, red hood): the editor should hide head accessories on those.
 All body sprites are stored at half the original scale (base-long 176x368).
-Room: korehan/assets/room/theme-default.png is the new default room (square, baseboard
-60-64% down, floor below); every room theme copies its layout. Not wired yet.
+Room backgrounds: see korehan/assets/room/themes/README.md.
 
 Next: green-hair mask sheet (optional), editor.
