@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029s">
 <style>
 /* Force the dark backdrop with !important + a full-viewport overlay because
    shared.css applies its own light body background which was bleeding
@@ -151,23 +151,23 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-<script src="js/core/plans.js?v=20261028d"></script>
+<script src="js/core/plans.js?v=20261029s"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/phrases.js?v=20261029a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20261025a"></script>
+<script src="js/core/reporters.js?v=20261029s"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
-<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
-<script src="js/features/bookmarks.js?v=20260525r"></script>
+<script src="js/features/bookmarks.js?v=20261029s"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
-<script src="js/features/sidebar.js?v=20261028c"></script>
-<script src="js/features/analyze-mode.js?v=20260525r"></script>
+<script src="js/features/sidebar.js?v=20261029s"></script>
+<script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
-<script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028j"></script>
+<script src="js/features/fill-blank.js?v=20261029s"></script>
+<script src="korehan-shared.js?v=20261029s"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>
@@ -219,6 +219,9 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
   var currentWord = null;
   var timer = null, timerStart = 0, timeLimit = 10000;
   var gameActive = false;
+  // Per-question guard: a double tap / double Enter (Korean IME commit)
+  // or a timeout racing a submit must score and advance only once.
+  var answered = false;
   var roundWords = [];
   var bestScore = parseInt(localStorage.getItem('kh_chosung_best') || '0');
 
@@ -247,6 +250,7 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
     reveal.style.display = 'none';
 
     currentWord = roundWords[qIdx];
+    answered = false;
     var chosung = getChosung(currentWord.ko);
     var spaced = chosung.split('').join(' ');
 
@@ -297,17 +301,19 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
   }
 
   function handleTimeout() {
-    if (!gameActive) return;
+    if (!gameActive || answered) return;
+    answered = true;
     streak = 0;
     showFeedback(false);
     showAnswer();
   }
 
   window.submitAnswer = function() {
-    if (!gameActive || !currentWord) return;
+    if (!gameActive || !currentWord || answered) return;
     var inp = document.getElementById('g-input');
     var ans = (inp.value || '').trim();
     if (!ans) return;
+    answered = true;
     inp.disabled = true;
     clearInterval(timer);
     // Clear urgency state immediately on submit so a quick correct answer

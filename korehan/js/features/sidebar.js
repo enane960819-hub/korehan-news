@@ -14,6 +14,26 @@
 
 // ══ MOBILE SIDEBAR ══════════════════════════════════════════════════════════
 
+// The hamburger is dark text by default; on pages whose header is dark
+// (Study Room, Life, TOPIK…) it disappeared. Pick a colour from the
+// header's actual background.
+function khFixHamContrast() {
+  var ham = document.querySelector('.kh-ham');
+  if (!ham) return;
+  var el = ham.parentElement, bg = '';
+  while (el && el !== document.documentElement) {
+    var c = getComputedStyle(el).backgroundColor;
+    if (c && c !== 'transparent' && !/rgba\([^)]*,\s*0\)$/.test(c)) { bg = c; break; }
+    el = el.parentElement;
+  }
+  if (!bg) bg = getComputedStyle(document.body).backgroundColor;
+  var m = bg.match(/\d+(\.\d+)?/g);
+  if (!m || m.length < 3) return;
+  var lum = (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255;
+  ham.style.color = lum < 0.45 ? '#fff' : '';
+}
+window.addEventListener('load', function () { try { khFixHamContrast(); setTimeout(khFixHamContrast, 800); } catch (_) {} });
+
 function khInjectSidebar() {
   if (document.getElementById('kh-mobile-sidebar')) return;
 

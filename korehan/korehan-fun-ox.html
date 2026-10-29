@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Korea OX Quiz — KoreHani Playground</title>
-<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029s">
 <style>
 html body{margin:0;background:#050b15!important;background-color:#050b15!important;color:#e0f2fe;font-family:'Happy Monkey','Jua','DM Sans','Noto Sans KR',Inter,sans-serif;overflow-x:hidden}
 .wrap{max-width:560px;margin:0 auto;padding:12px 16px 40px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
@@ -96,46 +96,46 @@ html body{margin:0;background:#050b15!important;background-color:#050b15!importa
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-<script src="js/core/plans.js?v=20261028d"></script>
+<script src="js/core/plans.js?v=20261029s"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/phrases.js?v=20261029a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20261025a"></script>
+<script src="js/core/reporters.js?v=20261029s"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
-<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
-<script src="js/features/bookmarks.js?v=20260525r"></script>
+<script src="js/features/bookmarks.js?v=20261029s"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
-<script src="js/features/sidebar.js?v=20261028c"></script>
-<script src="js/features/analyze-mode.js?v=20260525r"></script>
+<script src="js/features/sidebar.js?v=20261029s"></script>
+<script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
-<script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028j"></script>
+<script src="js/features/fill-blank.js?v=20261029s"></script>
+<script src="korehan-shared.js?v=20261029s"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>
 (function(){
 var Q = [
 {q:'김치는 발효 음식이다',a:true,cat:'food',exp:'Kimchi is fermented with lactic acid bacteria.'},
-{q:'비빔밥에는 보통 날달걀을 넣는다',a:false,cat:'food',exp:'Bibimbap uses a fried egg (계란 프라이), not raw.'},
-{q:'떡볶이의 주재료는 쌀떡이다',a:true,cat:'food',exp:'Tteokbokki is made with rice cakes (떡).'},
-{q:'소주는 일본에서 유래한 술이다',a:false,cat:'food',exp:'Soju originated in Korea during the Goryeo dynasty.'},
+{q:'비빔밥에는 보통 날달걀을 넣는다',a:false,cat:'food',exp:'Bibimbap is usually topped with a fried egg (계란 프라이). A raw yolk appears only in some regional styles, such as Jeonju bibimbap.'},
+{q:'떡볶이의 주재료는 떡이다',a:true,cat:'food',exp:'Tteokbokki is made with rice cakes (떡), either rice (쌀떡) or wheat (밀떡) ones.'},
+{q:'소주는 일본에서 유래한 술이다',a:false,cat:'food',exp:'Distilled soju came to Korea from the Mongol Yuan dynasty during the Goryeo period (13th century), not from Japan.'},
 {q:'삼겹살은 돼지고기 부위이다',a:true,cat:'food',exp:'Samgyeopsal is pork belly.'},
-{q:'냉면은 원래 여름 음식이었다',a:false,cat:'food',exp:'Naengmyeon was originally a winter dish from North Korea.'},
+{q:'냉면은 원래 여름 음식이었다',a:false,cat:'food',exp:'Naengmyeon was originally a winter dish from the northern regions, such as Pyongyang.'},
 {q:'한국에서 밥을 먹을 때 그릇을 들고 먹는 것이 예의이다',a:false,cat:'etiquette',exp:'In Korea, bowls stay on the table. Lifting is Japanese custom.'},
 {q:'어른에게 두 손으로 물건을 드리는 것이 예의이다',a:true,cat:'etiquette',exp:'Using two hands shows respect.'},
 {q:'한국에서 이름을 빨간색으로 쓰면 안 된다',a:true,cat:'etiquette',exp:'Red ink for names is associated with death.'},
 {q:'한국 나이는 만 나이보다 1~2살 많다',a:true,cat:'culture',exp:'Korean age adds 1 at birth (changed to international age in 2023 legally).'},
 {q:'한글은 15세기에 세종대왕이 만들었다',a:true,cat:'history',exp:'Hangul was created by King Sejong in 1443.'},
 {q:'한국의 수도는 부산이다',a:false,cat:'geography',exp:'The capital of South Korea is Seoul (서울).'},
-{q:'한글 자음은 총 14개이다',a:true,cat:'language',exp:'Korean has 14 basic consonants (ㄱ~ㅎ).'},
-{q:'한글 모음은 총 12개이다',a:false,cat:'language',exp:'Korean has 10 basic vowels (+ 11 compound vowels = 21 total).'},
-{q:'한국에서 4는 불길한 숫자이다',a:true,cat:'culture',exp:'4 (사) sounds like 死 (death). Many buildings skip 4th floor.'},
+{q:'한글의 기본 자음은 14개이다',a:true,cat:'language',exp:'Hangul has 14 basic consonants (ㄱ~ㅎ), plus 5 double consonants (ㄲ ㄸ ㅃ ㅆ ㅉ).'},
+{q:'한글의 기본 모음은 12개이다',a:false,cat:'language',exp:'Hangul has 10 basic vowels (+ 11 compound vowels = 21 total).'},
+{q:'한국에서 4는 불길한 숫자이다',a:true,cat:'culture',exp:'4 (사) sounds like 死 (death). Many elevators show the 4th floor as F instead of 4.'},
 {q:'BTS는 YG 엔터테인먼트 소속이다',a:false,cat:'kpop',exp:'BTS belongs to HYBE (formerly Big Hit Entertainment).'},
 {q:'K-pop 아이돌 그룹에는 보통 리더가 있다',a:true,cat:'kpop',exp:'Most K-pop groups have a designated leader.'},
-{q:'한국의 법정 음주 나이는 만 19세이다',a:true,cat:'daily',exp:'Legal drinking age in Korea is 19 (international age).'},
+{q:'한국에서는 만 19세가 되는 해의 1월 1일부터 술을 살 수 있다',a:true,cat:'daily',exp:'The Youth Protection Act uses year age (연 나이): you may buy alcohol from January 1 of the year you turn 19, even before your birthday.'},
 {q:'한국 학교는 3월에 새 학년이 시작된다',a:true,cat:'daily',exp:'Korean school year starts in March.'},
 {q:'제주도는 한국에서 가장 큰 섬이다',a:true,cat:'geography',exp:'Jeju Island is the largest island in South Korea.'},
 {q:'태권도는 중국에서 유래했다',a:false,cat:'culture',exp:'Taekwondo originated in Korea.'},
@@ -144,20 +144,20 @@ var Q = [
 {q:'독도는 한국 영토이다',a:true,cat:'geography',exp:'Dokdo is Korean territory in the East Sea.'},
 {q:'한국에서 택시는 기본요금이 없다',a:false,cat:'daily',exp:'Korean taxis have a base fare (약 4,800원 in Seoul).'},
 {q:'BLACKPINK는 4인조 걸그룹이다',a:true,cat:'kpop',exp:'BLACKPINK has 4 members: Jisoo, Jennie, Rosé, Lisa.'},
-{q:'한국어에서 존댓말은 나이가 같으면 안 써도 된다',a:true,cat:'language',exp:'Same-age peers typically use 반말 after agreeing to.'},
+{q:'한국에서는 나이가 같아도 처음 만난 사이라면 보통 존댓말을 쓴다',a:true,cat:'language',exp:'Even with same-age people, strangers and colleagues usually start with 존댓말. Friends switch to 반말 once they are close and agree to it.'},
 {q:'한국의 국기 이름은 태극기이다',a:true,cat:'culture',exp:'The Korean flag is called Taegeukgi (태극기).'},
-{q:'서울의 인구는 약 1000만 명이다',a:true,cat:'geography',exp:'Seoul has approximately 9.7 million people.'},
+{q:'서울의 인구는 1억 명이 넘는다',a:false,cat:'geography',exp:'Seoul has about 9.4 million people. All of South Korea has about 51 million.'},
 {q:'한국에서 설날에는 떡국을 먹는다',a:true,cat:'food',exp:'Tteokguk (rice cake soup) is eaten on Lunar New Year.'},
 {q:'추석에는 송편을 만들어 먹는다',a:true,cat:'food',exp:'Songpyeon (rice cakes) are made during Chuseok.'},
 {q:'김밥에는 보통 식초밥을 사용한다',a:false,cat:'food',exp:'Kimbap uses sesame oil rice, not vinegared rice like sushi.'},
-{q:'한국에서 술을 따를 때 한 손으로 따라도 된다',a:false,cat:'etiquette',exp:'Pour with two hands or support your pouring arm for elders.'},
+{q:'한국에서 어른에게 술을 따를 때는 두 손으로 따르는 것이 예의이다',a:true,cat:'etiquette',exp:'When pouring for an elder, hold the bottle with both hands, or support your pouring arm with your other hand.'},
 {q:'한국에서 어른 앞에서 고개를 돌려 술을 마시는 것이 예의이다',a:true,cat:'etiquette',exp:'Turn away from elders when drinking as a sign of respect.'},
 {q:'한국어의 어순은 주어-동사-목적어(SVO)이다',a:false,cat:'language',exp:'Korean word order is SOV (Subject-Object-Verb).'},
-{q:'한국어에는 높임말 단계가 7개 있다',a:true,cat:'language',exp:'Korean has 7 speech levels (격식/비격식 합쳐서).'},
+{q:'"해요체"는 일상생활에서 많이 쓰는 높임말이다',a:true,cat:'language',exp:'해요체 (-아요/어요) is the everyday polite style. 하십시오체 (-습니다) is more formal.'},
 {q:'경복궁은 서울에 있다',a:true,cat:'geography',exp:'Gyeongbokgung Palace is located in Seoul.'},
 {q:'한라산은 한국에서 가장 높은 산이다',a:true,cat:'geography',exp:'Hallasan on Jeju Island is the tallest mountain in South Korea (1,947m).'},
 {q:'한국의 화폐 단위는 엔이다',a:false,cat:'daily',exp:'Korean currency is Won (원). Yen is Japanese.'},
-{q:'한국 지하철에서는 음식을 먹을 수 있다',a:false,cat:'daily',exp:'Eating on the subway is generally prohibited and frowned upon.'},
+{q:'한국 지하철에서 음식을 먹는 것은 보통 실례로 여겨진다',a:true,cat:'daily',exp:'Eating on the subway is generally frowned upon, especially food with a strong smell. Most people wait until they get off.'},
 {q:'K-pop 연습생 기간은 보통 1개월 정도이다',a:false,cat:'kpop',exp:'K-pop trainees typically train for 2-7 years before debut.'},
 {q:'한국 드라마는 보통 16부작이다',a:true,cat:'kpop',exp:'Most K-dramas are 16 episodes (some 12 or 20).'},
 {q:'조선 시대는 약 500년간 지속되었다',a:true,cat:'history',exp:'Joseon dynasty lasted from 1392-1897 (505 years).'},
@@ -168,14 +168,14 @@ var Q = [
 {q:'한국의 인터넷 속도는 세계 최하위이다',a:false,cat:'daily',exp:'South Korea consistently ranks among the fastest internet speeds globally.'},
 {q:'한국에서 혈액형으로 성격을 판단하는 문화가 있다',a:true,cat:'culture',exp:'Blood type personality theory is popular in Korea.'},
 {q:'세종대왕은 조선의 3대 왕이다',a:false,cat:'history',exp:'Sejong the Great was the 4th king of Joseon.'},
-{q:'한국에서 찜질방은 대중목욕탕이다',a:true,cat:'culture',exp:'Jjimjilbang is a Korean bathhouse/spa.'},
+{q:'찜질방에서는 찜질복을 입고 쉬거나 잘 수 있다',a:true,cat:'culture',exp:'A jjimjilbang is a Korean sauna complex: you wear the clothes provided, relax in heated rooms, and can even stay overnight.'},
 {q:'한국어에서 "감사합니다"는 반말이다',a:false,cat:'language',exp:'"감사합니다" is formal/polite speech (존댓말).'},
 {q:'한국에서 생일에 미역국을 먹는다',a:true,cat:'food',exp:'Koreans eat seaweed soup (미역국) on birthdays.'},
 {q:'한국은 OECD 회원국이다',a:true,cat:'daily',exp:'South Korea joined the OECD in 1996.'},
 {q:'한국의 전통 난방 시스템은 온돌이다',a:true,cat:'culture',exp:'Ondol is the traditional underfloor heating system.'},
 {q:'한국에서 가위바위보를 할 때 "가위바위보"라고 외친다',a:true,cat:'culture',exp:'The Korean version is called 가위바위보.'},
 {q:'BTS의 팬덤 이름은 BLINK이다',a:false,cat:'kpop',exp:'BTS fans are called ARMY. BLINK is BLACKPINK\'s fandom.'},
-{q:'한국에서 번호 없는 소주잔으로 건배할 때 어른보다 낮게 잔을 부딪혀야 한다',a:true,cat:'etiquette',exp:'Clink your glass lower than an elder\'s as a sign of respect.'},
+{q:'한국에서 어른과 건배할 때는 내 잔을 어른의 잔보다 조금 낮게 든다',a:true,cat:'etiquette',exp:'Clink your glass lower than an elder\'s as a sign of respect.'},
 {q:'대한민국의 공식 영어 이름은 Republic of Korea이다',a:true,cat:'daily',exp:'The official name is Republic of Korea (ROK).'},
 {q:'한국에서 빼빼로 데이는 12월 11일이다',a:false,cat:'culture',exp:'Pepero Day is November 11 (11/11 — sticks look like Pepero).'},
 ];

@@ -213,8 +213,8 @@
     _mk({ id:'reporter_mandu',       name:'Mandu Plate',          description:'Hand-folded dumplings for the editor.',                    item_type:'reporter_item', coin_price:70,  is_repeatable:true, sort_order:262 }),
     _mk({ id:'reporter_chimaek',     name:'Chimaek Combo',        description:'Chicken + beer — the after-work classic.',                 item_type:'reporter_item', coin_price:130, is_repeatable:true, sort_order:263 }),
     _mk({ id:'reporter_kimchi_jeon', name:'Kimchi Pancake',       description:'Crispy kimchi pancake for rainy days.',                    item_type:'reporter_item', coin_price:75,  is_repeatable:true, sort_order:264 }),
-    _mk({ id:'reporter_korean_tea',  name:'Korean Tea Set',       description:'Yuja, omija, citron — pick a tea, send warmth.',           item_type:'reporter_item', coin_price:90,  is_repeatable:true, sort_order:265 }),
-    _mk({ id:'reporter_postcard',    name:'Handwritten Postcard', description:'Send a real handwritten thanks note.',                     item_type:'reporter_item', coin_price:120, is_repeatable:true, sort_order:266 }),
+    _mk({ id:'reporter_korean_tea',  name:'Korean Tea Set',       description:'Yuja, omija, barley — pick a tea, send warmth.',           item_type:'reporter_item', coin_price:90,  is_repeatable:true, sort_order:265 }),
+    _mk({ id:'reporter_postcard',    name:'Thank-You Postcard', description:'A digital thank-you postcard for the reporter — an in-app gift, nothing is mailed.',                     item_type:'reporter_item', coin_price:120, is_repeatable:true, sort_order:266 }),
     _mk({ id:'reporter_polaroid',    name:'Polaroid Photo Pack',  description:'Send a polaroid photo collage to your favorite reporter.', item_type:'reporter_item', coin_price:160, is_repeatable:true, sort_order:267 }),
 
     // ── Coin pets / room items (low-tier, accessible) ─────────

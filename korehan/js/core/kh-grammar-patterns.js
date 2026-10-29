@@ -1458,6 +1458,7 @@
     formatFullCatalog: formatFullCatalog,
     formatLabelCatalog: formatLabelCatalog,
     romanize: romanize,
+    intermediateSkipLabels: INTERMEDIATE_SKIP_LABELS,
     _PATTERNS: PATTERNS,  // exposed for testing only
   };
 })();

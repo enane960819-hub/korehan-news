@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029s">
 <style>
 /* ── Layout ── */
 body {
@@ -454,7 +454,7 @@ body {
 <div class="rp-content-layer">
 <div id="kh-header"></div>
 <div id="rp-root"><div class="rp-loading">⏳ Loading…</div></div>
-<div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" src="" alt=""></div>
+<div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" alt=""></div>
 <div id="kh-footer"></div>
 </div>
 
@@ -466,23 +466,23 @@ body {
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-<script src="js/core/plans.js?v=20261028d"></script>
+<script src="js/core/plans.js?v=20261029s"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/phrases.js?v=20261029a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20261025a"></script>
+<script src="js/core/reporters.js?v=20261029s"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
-<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
-<script src="js/features/bookmarks.js?v=20260525r"></script>
+<script src="js/features/bookmarks.js?v=20261029s"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
-<script src="js/features/sidebar.js?v=20261028c"></script>
-<script src="js/features/analyze-mode.js?v=20260525r"></script>
+<script src="js/features/sidebar.js?v=20261029s"></script>
+<script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
-<script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028j"></script>
+<script src="js/features/fill-blank.js?v=20261029s"></script>
+<script src="korehan-shared.js?v=20261029s"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script>
 var FAV_HIRE_THRESHOLD = 3000;
@@ -527,7 +527,7 @@ function isMissingGiftHistoryTableError(err) {
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
   var root = document.getElementById('rp-root');
-  if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2></div>'; return; }
+  if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p>This reporter page doesn\'t exist or the link is incomplete.</p><p style="margin-top:14px"><a href="korehan-reporters.html" style="color:var(--bright);font-weight:700">See all reporters →</a></p></div>'; return; }
   _postMode = getPostModePref();
   var sb = getSupa();
 
@@ -571,11 +571,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (b) reporter = { id:rid, name:b.name, role:b.role, image:b.img, color:b.color, intro:'', tags:[] };
   }
   if (!reporter || !reporter.name) {
-    root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p><a href="index.html" style="color:var(--bright)">← Home</a></p></div>';
+    root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p>This reporter page doesn\'t exist or the link is incomplete.</p><p style="margin-top:14px"><a href="korehan-reporters.html" style="color:var(--bright);font-weight:700">See all reporters →</a></p></div>';
     return;
   }
 
   var color = reporter.color || '#2563eb';
+  // Random stock photos (picsum.photos) and the 1x1 seed placeholder are not
+  // the reporter — show the initials tile.
+  if (reporter.image && (/picsum\.photos/i.test(String(reporter.image)) || /^data:image\/gif;base64,R0lGODlhAQABA/.test(String(reporter.image)))) reporter.image = '';
   document.title = reporter.name + ' · Reporter — KoreHani';
 
   _currentReporterId = rid;

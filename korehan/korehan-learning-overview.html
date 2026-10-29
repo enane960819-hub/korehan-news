@@ -8,7 +8,7 @@
   <title>Growth Lab — KoreHani</title>
   <meta name="description" content="Weekly + monthly Korean-learning analytics: reading streak, vocabulary growth, grammar quiz accuracy, and reviews due — your full progress dashboard.">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+  <link rel="stylesheet" href="korehan-shared.css?v=20261029s">
   <style>
     :root{
       --navy:#0b1626; --blue:#1a3a6b; --bright:#2563eb; --sky:#7ab8f5;
@@ -446,7 +446,7 @@
           var totalStations = stations.length;
           var passed = 0;
           stations.forEach(function(s) { if (progress[s.id] && progress[s.id].status === 'passed') passed++; });
-          if (overallEl) overallEl.textContent = passed + ' / ' + totalStations + ' stations passed';
+          if (overallEl) overallEl.textContent = passed + ' / ' + totalStations + ' station' + (totalStations === 1 ? '' : 's') + ' passed';
           if (lineCountEl) lineCountEl.textContent = lines.length;
 
           // Stash so the line modal can render without re-querying
@@ -813,7 +813,7 @@
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 18px;flex-wrap:wrap">'
         +   '<div>'
         +     '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">K-Express</div>'
-        +     '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:26px;font-weight:900">Korean Route Map (' + all.length + ' stations total)</div>'
+        +     '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:26px;font-weight:900">Korean Route Map (' + all.length + ' station' + (all.length === 1 ? '' : 's') + ' total)</div>'
         +   '</div>'
         +   '<button aria-label="Close" onclick="this.parentElement.parentElement.parentElement.style.display=\'none\';" style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,24,48,.8);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
         + '</div>'
@@ -1266,24 +1266,24 @@
   <script src="js/core/ui-states.js?v=20260525r"></script>
   <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-  <script src="js/core/plans.js?v=20261028d"></script>
+  <script src="js/core/plans.js?v=20261029s"></script>
   <script src="js/core/article-cache.js?v=20261028b"></script>
   <script src="js/core/phrases.js?v=20261029a"></script>
   <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/core/hangul-jamo-input.js?v=20261028a"></script>
   <script src="js/features/video-player.js?v=20260525r"></script>
   <script src="js/core/articles.js?v=20261025a"></script>
-  <script src="js/core/reporters.js?v=20261025a"></script>
+  <script src="js/core/reporters.js?v=20261029s"></script>
   <script src="js/features/streak.js?v=20260525r"></script>
-  <script src="js/features/daily-mission.js?v=20261025a"></script>
+  <script src="js/features/daily-mission.js?v=20261029s"></script>
   <script src="js/features/reading-tracker.js?v=20260525r"></script>
-  <script src="js/features/bookmarks.js?v=20260525r"></script>
+  <script src="js/features/bookmarks.js?v=20261029s"></script>
   <script src="js/features/comments.js?v=20261016a"></script>
-  <script src="js/features/sidebar.js?v=20261028c"></script>
-  <script src="js/features/analyze-mode.js?v=20260525r"></script>
+  <script src="js/features/sidebar.js?v=20261029s"></script>
+  <script src="js/features/analyze-mode.js?v=20261029s"></script>
   <script src="js/features/translation.js?v=20261027a"></script>
-  <script src="js/features/fill-blank.js?v=20261013c"></script>
-  <script src="korehan-shared.js?v=20261028j"></script>
+  <script src="js/features/fill-blank.js?v=20261029s"></script>
+  <script src="korehan-shared.js?v=20261029s"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
   <!-- kh-universe.js (~117KB) lazy-loaded by _glEnsureUniverse() above on first click. -->
   <script src="js/kh-curriculum.js?v=20261016a"></script>
@@ -2828,7 +2828,7 @@
       else labelEl.textContent = 'Start your first lesson today!';
     }
     var longestEl = document.getElementById('cal-longest-label');
-    if (longestEl && longest > 0) longestEl.innerHTML = '🏆 Longest <b>' + longest + ' days</b>';
+    if (longestEl && longest > 0) longestEl.innerHTML = '🏆 Longest <b>' + longest + ' day' + (longest === 1 ? '' : 's') + '</b>';
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3496,7 +3496,7 @@
       var date = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
       var bits = [];
       if (date) bits.push(date);
-      if (item.score != null) bits.push(item.score + ' pts');
+      if (item.score != null) bits.push(item.score + (Number(item.score) === 1 ? ' pt' : ' pts'));
       if (item.topic_ko) bits.push(item.topic_ko);
       subEl.textContent = bits.join(' · ');
     }
@@ -3585,7 +3585,7 @@
           +   '<div style="display:flex;align-items:center;gap:8px">'
           +     '<div style="width:28px;height:28px;border-radius:8px;background:' + t.color + '15;color:' + t.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="' + t.icon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>'
           +     '<span style="font-size:11px;font-weight:800;color:' + t.color + ';letter-spacing:.04em;text-transform:uppercase">' + t.label + '</span>'
-          +     (item.score != null ? '<span style="margin-left:auto;font-size:11px;font-weight:900;color:#2563eb">' + item.score + ' pts</span>' : '')
+          +     (item.score != null ? '<span style="margin-left:auto;font-size:11px;font-weight:900;color:#2563eb">' + item.score + (Number(item.score) === 1 ? ' pt' : ' pts') + '</span>' : '')
           +   '</div>'
           + (item.topic_ko ? '<div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + item.topic_ko.replace(/[<>]/g,'') + '</div>' : '')
           + (preview ? '<div style="font-size:11px;color:#64748b;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + preview.replace(/[<>]/g,'') + '</div>' : '')
@@ -3618,7 +3618,7 @@
     }
     overlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-    document.getElementById('gl-fb-list-count').textContent = '· ' + _glFbAllItems.length + ' items';
+    document.getElementById('gl-fb-list-count').textContent = '· ' + _glFbAllItems.length + ' item' + (_glFbAllItems.length === 1 ? '' : 's');
     // Render the tabs once per open — counts re-compute against the
     // freshest fetch result.
     var tabsEl = document.getElementById('gl-fb-list-tabs');
@@ -3733,7 +3733,7 @@
       if (res.error) throw res.error;
       var items = res.data || [];
       _glFbAllItems = items;
-      if (countEl) countEl.textContent = items.length + ' items';
+      if (countEl) countEl.textContent = items.length + ' item' + (items.length === 1 ? '' : 's');
       if (!items.length) {
         el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">No submissions yet. Start writing in Study Room.</div>';
         return;
@@ -3765,7 +3765,7 @@
         html += '<div style="margin-bottom:16px">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
         html += '<span style="font-size:13px;font-weight:900;color:#0f172a">' + date + '</span>';
-        html += '<span style="font-size:10px;color:#94a3b8">' + dayItems.length + ' items' + (fbReady ? ' · ' + fbReady + ' feedback' : '') + '</span>';
+        html += '<span style="font-size:10px;color:#94a3b8">' + dayItems.length + ' item' + (dayItems.length === 1 ? '' : 's') + (fbReady ? ' · ' + (fbReady === dayItems.length && fbReady > 1 ? 'all' : fbReady) + ' with feedback' : '') + '</span>';
         html += '</div>';
 
         dayItems.forEach(function(item) {
@@ -3785,7 +3785,7 @@
           html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
           html += '<span style="font-size:11px;font-weight:800;color:' + t.color + '">' + t.label + '</span>';
           html += '<span style="font-size:10px;color:' + statusColor + ';font-weight:700;display:inline-flex;align-items:center;gap:3px"><i data-lucide="' + statusIcon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>' + statusText + '</span></span>';
-          if (item.score != null) html += '<span style="font-size:10px;font-weight:800;color:#2563eb">' + item.score + ' pts</span>';
+          if (item.score != null) html += '<span style="font-size:10px;font-weight:800;color:#2563eb">' + item.score + (Number(item.score) === 1 ? ' pt' : ' pts') + '</span>';
           html += '</div>';
           if (item.topic_ko) html += '<div style="font-size:10px;color:#64748b;margin-top:1px">' + item.topic_ko + '</div>';
           if (preview) html += '<div style="font-size:10px;color:#94a3b8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>';
@@ -4329,7 +4329,8 @@
         var todayKey = kst.toISOString().slice(0, 10);
         var res = await Promise.all([
           sb.from('daily_missions').select('date, articles, words, quizzes, fill').eq('user_id', u.id).gte('date', days[0]).lte('date', days[6]),
-          sb.from('user_saved_words').select('word_ko', { count: 'exact', head: true }).eq('user_id', u.id).lte('srs_next_review', new Date().toISOString().slice(0, 10)),
+          // Same rule as My Words: not mastered, review day (KST) has come.
+          sb.from('user_saved_words').select('word_ko', { count: 'exact', head: true }).eq('user_id', u.id).lte('srs_next_review', todayKey).not('mastered', 'is', true),
           (typeof getUnifiedWeakGrammarItems === 'function') ? getUnifiedWeakGrammarItems(1) : Promise.resolve([]),
           // Same row the Goals tab edits (keyed by that tab's getMonday()).
           (typeof getMonday === 'function')
@@ -4357,14 +4358,21 @@
           var pct = tot ? Math.round((weak.correct_count || 0) / tot * 100) : 0;
           chips.push('<a class="gl-week-chip" href="korehan-study-room.html?focus=' + encodeURIComponent(weakName) + '&source=growth-lab">' + esc(weakName) + (tot ? ' · ' + pct + '%' : '') + '</a>');
         }
-        if (due > 0) chips.push('<a class="gl-week-chip" href="korehan-study-room.html?review=daily">' + due + ' word' + (due === 1 ? '' : 's') + ' due</a>');
+        // Today's session is the shared review queue (js/features/review-queue.js):
+        // at most 20 questions, so 50 due words still means a 20-question session.
+        var session = 0;
+        if (due > 0) {
+          try { var rq = window.khReviewQueue ? await khReviewQueue.summary() : null; session = rq && rq.items ? rq.items.length : 0; } catch (_) {}
+          if (!session) session = Math.min(due, 20);
+        }
+        if (due > 0) chips.push('<a class="gl-week-chip" href="korehan-study-room.html?review=daily">' + due + ' word' + (due === 1 ? '' : 's') + ' due' + (session < due ? ' · today’s session: ' + session : '') + '</a>');
         if (!chips.length) chips.push('<span class="gl-week-chip ok">Nothing overdue</span>');
-        var go = due > 0 ? ['korehan-study-room.html?review=daily', 'Next: Review ' + Math.min(due, 20) + ' words →']
+        var go = due > 0 ? ['korehan-study-room.html?review=daily', 'Next: Today’s review (' + session + ' question' + (session === 1 ? '' : 's') + ') →']
           : weakName ? ['korehan-study-room.html?focus=' + encodeURIComponent(weakName) + '&source=growth-lab', 'Next: Practice ' + weakName + ' →']
           : ['korehan-all.html', 'Next: Read today’s article →'];
         var D = ['M','T','W','T','F','S','S'];
         box.innerHTML =
-            '<div class="gl-week-top"><div><div class="gl-week-lbl">This week · goal ' + GOAL + ' days</div>'
+            '<div class="gl-week-top"><div><div class="gl-week-lbl">This week · goal ' + GOAL + ' day' + (GOAL === 1 ? '' : 's') + '</div>'
           + '<div class="gl-week-big">' + activeN + '/' + GOAL + '<small style="color:' + status[1] + '">' + status[0] + '</small></div></div></div>'
           + '<div class="gl-week-days">' + days.map(function(d, k){
               return '<div class="gl-week-day' + (active[d] ? ' on' : '') + (d === todayKey ? ' today' : '') + '"><i></i><span>' + D[k] + '</span></div>';
@@ -4459,6 +4467,7 @@
   #pg-root .pg-reuse [style*="border:1px solid #"] { border-color:rgba(255,255,255,.1) !important; }
   #pg-root .pg-reuse [style*="color:#64748b"], #pg-root .pg-reuse [style*="color:#94a3b8"], #pg-root .pg-reuse [style*="color:#8b8b8b"] { color:rgba(255,255,255,.55) !important; }
   </style>
+<script src="js/features/review-queue.js?v=20261028c"></script>
 <script src="js/features/progress-home.js?v=20261027c"></script>
 </body>
 </html>

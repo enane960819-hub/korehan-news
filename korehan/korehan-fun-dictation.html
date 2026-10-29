@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
-<title>Dictation — KoreHan Playground</title>
+<title>Dictation — KoreHani Playground</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Inter:wght@600;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029s">
 <style>
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html body { margin:0!important; padding:0; background:#0a0e1a!important; background-color:#0a0e1a!important; color:#fff; font-family:'Inter','Noto Sans KR',sans-serif; min-height:100vh; min-height:100dvh; overflow-x:hidden; }
@@ -158,23 +158,23 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-<script src="js/core/plans.js?v=20261028d"></script>
+<script src="js/core/plans.js?v=20261029s"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/phrases.js?v=20261029a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20261025a"></script>
+<script src="js/core/reporters.js?v=20261029s"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
-<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
-<script src="js/features/bookmarks.js?v=20260525r"></script>
+<script src="js/features/bookmarks.js?v=20261029s"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
-<script src="js/features/sidebar.js?v=20261028c"></script>
-<script src="js/features/analyze-mode.js?v=20260525r"></script>
+<script src="js/features/sidebar.js?v=20261029s"></script>
+<script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
-<script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028j"></script>
+<script src="js/features/fill-blank.js?v=20261029s"></script>
+<script src="korehan-shared.js?v=20261029s"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>
@@ -184,7 +184,7 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 var POOLS = {
   easy: [
     '오늘 날씨가 좋아요',
-    '저는 학생 입니다',
+    '저는 학생입니다',
     '커피 한 잔 주세요',
     '내일 학교에 가요',
     '저는 한국어를 배워요',
@@ -196,25 +196,25 @@ var POOLS = {
   ],
   medium: [
     '저는 매일 아침 운동을 해요',
-    '한국 드라마를 보면서 공부 해요',
+    '한국 드라마를 보면서 공부해요',
     '주말에는 친구들이랑 카페에 가요',
-    '비가 와서 우산을 가져 갔어요',
+    '비가 와서 우산을 가져갔어요',
     '오늘 저녁에 무엇을 먹을지 모르겠어요',
-    '한국에 처음 왔을 때는 정말 신기 했어요',
+    '한국에 처음 왔을 때는 정말 신기했어요',
     '내일 시험이 있어서 일찍 자야 해요',
     '이번 주말에 부모님을 뵈러 가요',
     '오랜만에 만난 친구가 정말 반가웠어요',
     '새로 산 신발이 너무 작아요'
   ],
   hard: [
-    '아무리 노력해도 결과가 좋지 않아서 속상 합니다',
-    '한국어를 잘하면 잘할수록 더 재미있어 지더라고요',
-    '회의가 길어지는 바람에 약속에 늦을 뻔 했어요',
+    '아무리 노력해도 결과가 좋지 않아서 속상합니다',
+    '한국어를 잘하면 잘할수록 더 재미있어지더라고요',
+    '회의가 길어지는 바람에 약속에 늦을 뻔했어요',
     '오랫동안 연락을 못 했는데 이번에 꼭 만나고 싶습니다',
-    '시간이 없어서 인사도 못 드리고 떠나서 죄송 합니다',
-    '그렇게 어려운 문제를 혼자서 해결 하다니 정말 대단 하네요',
+    '시간이 없어서 인사도 못 드리고 떠나서 죄송합니다',
+    '그렇게 어려운 문제를 혼자서 해결하다니 정말 대단하네요',
     '친구가 추천해 준 책을 읽다가 어느새 새벽이 되었어요',
-    '새로운 기술이 도입 되면서 업무 방식이 완전히 바뀌었어요'
+    '새로운 기술이 도입되면서 업무 방식이 완전히 바뀌었어요'
   ]
 };
 
@@ -264,6 +264,9 @@ function renderQ() {
   if (s.idx >= s.items.length) { endRound(); return; }
   s.qStarted = Date.now();
   s.plays = 0;
+  // One check OR one skip per phrase; a double tap / Check-then-Skip
+  // must not advance twice.
+  s.answered = false;
   document.getElementById('gs-score').textContent = s.score;
   document.getElementById('gs-prog').textContent = (s.idx + 1) + ' / ' + s.items.length;
   document.getElementById('gs-fb-host').innerHTML = '';
@@ -298,7 +301,9 @@ function _ttsFallback(text) {
 }
 
 window.checkAnswer = function() {
-  var s = _state; if (!s) return;
+  var s = _state; if (!s || s.answered) return;
+  if (s.idx >= s.items.length) return;
+  s.answered = true;
   var phrase = s.items[s.idx];
   var typed  = (document.getElementById('gs-input').value || '').trim();
   var normGot = _norm(typed);
@@ -356,7 +361,8 @@ window.checkAnswer = function() {
   void scoreEl.offsetWidth;
   scoreEl.classList.add('gs-bump');
   _gsUpdateStreakUI();
-  setTimeout(function() { s.idx++; renderQ(); if (s.idx < s.items.length) setTimeout(playPhrase, 250); }, grade === 'right' ? 1000 : 2200);
+  var qIdx = s.idx;
+  setTimeout(function() { if (_state !== s || s.idx !== qIdx) return; s.idx++; renderQ(); if (s.idx < s.items.length) setTimeout(playPhrase, 250); }, grade === 'right' ? 1000 : 2200);
 };
 
 // Streak chip: hide when streak < 2; show + pulse otherwise.
@@ -400,7 +406,9 @@ function _gsShakeInput() {
 }
 
 window.skipQ = function() {
-  var s = _state; if (!s) return;
+  var s = _state; if (!s || s.answered) return;
+  if (s.idx >= s.items.length) return;
+  s.answered = true;
   var phrase = s.items[s.idx];
   s.streak = 0;
   _gsUpdateStreakUI();
@@ -409,7 +417,8 @@ window.skipQ = function() {
   document.getElementById('gs-input').disabled = true;
   document.getElementById('gs-check').disabled = true;
   document.getElementById('gs-play').disabled = true;
-  setTimeout(function() { s.idx++; renderQ(); if (s.idx < s.items.length) setTimeout(playPhrase, 250); }, 1500);
+  var qIdx = s.idx;
+  setTimeout(function() { if (_state !== s || s.idx !== qIdx) return; s.idx++; renderQ(); if (s.idx < s.items.length) setTimeout(playPhrase, 250); }, 1500);
 };
 
 async function endRound() {

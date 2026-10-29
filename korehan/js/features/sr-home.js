@@ -20,15 +20,26 @@ function _srhIcon(name) { return '<i data-lucide="' + name + '" class="kh-ui-ico
 
 // ── Practice tiles ──────────────────────────────────────────────
 function _srhDue() { return (typeof _srPlanDue === 'number' && _srPlanDue > 0) ? _srPlanDue : (_mw.dueCount || 0); }
+// Two different numbers, labelled honestly: saved words whose review day has
+// come (My Words) vs. today's session from the shared queue (max 20 items).
+function _srhCounts() {
+  return { due: _mw.dueCount || 0, session: (typeof _srPlanDue === 'number' && _srPlanDue > 0) ? _srPlanDue : 0 };
+}
+function _srhDueLabel(c) {
+  if (c.due && c.session && c.session < c.due) return c.due + ' words due · today’s session: ' + c.session;
+  if (c.due) return c.due + ' word' + (c.due === 1 ? '' : 's') + ' due today';
+  if (c.session) return c.session + ' to review today';
+  return '';
+}
 
 function srRenderPractice() {
   var box = document.getElementById('sr-practice');
   if (!box) return;
-  var due = _srhDue();
+  var due = _srhDue(), cnt = _srhCounts(), dueLabel = _srhDueLabel(cnt);
   var next = null;
   try { next = (typeof getNextCurriculumPattern === 'function') ? getNextCurriculumPattern() : null; } catch (_) {}
   var tiles = [
-    { k: 'review', icon: 'rotate-ccw', tone: 'red', title: 'Review', sub: 'Daily · Flashcards · Listening', badge: due ? Math.min(due, 99) + ' due' : '' },
+    { k: 'review', icon: 'rotate-ccw', tone: 'red', title: 'Review', sub: 'Daily · Flashcards · Listening', badge: cnt.due ? Math.min(cnt.due, 99) + ' due' : (cnt.session ? cnt.session + ' today' : '') },
     { k: 'grammar', icon: 'route', tone: 'amber', title: 'Grammar', sub: next ? 'Next: ' + next.pattern : 'Path · Skill Tree · Builder' },
     { k: 'read', icon: 'book-open-text', tone: 'blue', title: 'Read & Talk', sub: 'Article Study · Conversations · Buzz' },
     { k: 'real', icon: 'phone', tone: 'green', title: 'Real-life', sub: 'Fast Track · Phone Call · Slang' }
@@ -50,17 +61,18 @@ function srRenderPractice() {
   html += '<div class="srh-words">'
     + '<div class="srh-h">My Words <span id="srh-saved">' + (_mw.loaded ? _mw.rows.length + ' saved' : '') + '</span></div>'
     + '<button type="button" class="srh-words-row" onclick="srGoWords()">'
-    + '<span class="srh-num">' + (due ? Math.min(due, 99) : '✓') + '</span>'
-    + '<span><b>' + (due ? due + ' words due today' : 'Nothing due right now') + '</b><small>Flashcards, quiz or listening</small></span>'
+    + '<span class="srh-num">' + (due ? Math.min(cnt.due || due, 99) : '✓') + '</span>'
+    + '<span><b>' + _srhE(dueLabel || 'Nothing due right now') + '</b><small>Flashcards, quiz or listening</small></span>'
     + '<span class="srh-cta">' + (due ? 'Review' : 'Open') + '</span></button></div>';
   box.innerHTML = html;
   _srhSyncBadge();
+  if (_mw.loaded) mwRenderSummary();   // the session count can arrive after My Words loaded
 }
 
 function _srhSyncBadge() {
   var b = document.getElementById('sr-words-due-badge');
   if (!b) return;
-  var due = _srhDue();
+  var due = _srhCounts().due || _srhDue();
   b.hidden = !due;
   b.textContent = due ? String(Math.min(due, 99)) : '';
 }
@@ -219,10 +231,14 @@ async function mwLoad() {
 }
 
 function mwRenderSummary() {
-  var due = Math.max(_mw.dueCount, (typeof _srPlanDue === 'number' ? _srPlanDue : 0));
+  var c = _srhCounts();
+  var due = c.due || c.session;
   var n = document.getElementById('mw-due-n'); if (n) n.textContent = String(due);
   var sub = document.getElementById('mw-due-sub');
-  if (sub) sub.textContent = due ? 'words due · ~' + Math.max(1, Math.ceil(Math.min(due, 20) / 4)) + ' min' : 'nothing due — nice';
+  var sess = c.session || Math.min(c.due, 20);
+  if (sub) sub.textContent = !due ? 'nothing due — nice'
+    : (c.due ? (c.due === 1 ? 'word due' : 'words due') + (c.session && c.session < c.due ? ' · today’s session: ' + c.session : '') : 'to review today')
+      + ' · ~' + Math.max(1, Math.ceil(sess / 4)) + ' min';
   var go = document.getElementById('mw-due-go'); if (go) go.textContent = due ? 'Start review' : 'Practice anyway';
   var all = _mw.rows.length, mastered = _mw.rows.filter(function (w) { return w.stage === 3; }).length;
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = String(v); };

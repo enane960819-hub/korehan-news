@@ -669,7 +669,16 @@ async function loadPicturePromptsFromDB() {
       .order('sort_order', { ascending: true })
       .limit(50);
     if (r2.error && r2.error.message && r2.error.message.includes('column')) throw new Error('missing_column');
-    if (!r2.error && r2.data && r2.data.length) { _picturePrompts = r2.data.map(_mapPicturePrompt); }
+    if (!r2.error && r2.data && r2.data.length) { _picturePrompts = r2.data.map(_mapPicturePrompt); return true; }
+
+    // 3. Nothing scheduled for this week and no unscheduled pool — reuse
+    //    past weeks' prompts (newest first) instead of an empty screen.
+    var r3 = await sb.from('study_picture_prompts')
+      .select(fields)
+      .eq('is_active', true)
+      .order('scheduled_date', { ascending: false, nullsFirst: false })
+      .limit(50);
+    if (!r3.error && r3.data && r3.data.length) { _picturePrompts = r3.data.map(_mapPicturePrompt); }
     return true;
   }
 
@@ -1169,7 +1178,7 @@ function renderStudyRoomWordTracks() {
   function row(w) {
     var ko = w.word_ko || w.ko || '';
     var en = w.word_en || w.en || '';
-    var rom = w.word_rom || w.rom || '';
+    var rom = (window.khRomanize && khRomanize(w.word_ko || w.ko || '')) || w.word_rom || w.rom || '';
     return '<div class="vrow"><div><div class="vko">' + ko + '</div><div class="ven">' + en + '</div></div>'
       + '<button class="sr-pill" onclick="saveMustKnowWord(\'' + ko.replace(/'/g,"\\'") + '\',\'' + en.replace(/'/g,"\\'") + '\',\'' + rom.replace(/'/g,"\\'") + '\')">Save</button></div>';
   }
@@ -7607,7 +7616,7 @@ async function loadWordBook() {
         else if (en.indexOf('[교정]') === 0) { cat = 'correction'; en = en.replace('[교정] ',''); }
         var total = (w.correct_count||0) + (w.wrong_count||0);
         var accuracy = total > 0 ? Math.round((w.correct_count||0) / total * 100) : -1;
-        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat,
+        results.push({ ko:w.word_ko, rom:(window.khRomanize && khRomanize(w.word_ko))||w.word_rom||'', en:en, date:w.created_at, cat:cat,
           reviewCount:w.review_count||0, correctCount:w.correct_count||0, wrongCount:w.wrong_count||0, accuracy:accuracy });
       });
     } catch(e){}
@@ -7858,7 +7867,7 @@ function renderWordBankList(words) {
         + '</div>'
       : '';
     return '<div style="padding:10px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
-      + '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:15px;font-weight:800">' + (w.word_ko||'') + '</span><span style="font-size:11px;color:rgba(255,255,255,.35)">' + (w.word_rom||'') + '</span></div>'
+      + '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:15px;font-weight:800">' + (w.word_ko||'') + '</span><span style="font-size:11px;color:rgba(255,255,255,.35)">' + ((window.khRomanize && khRomanize(w.word_ko||'')) || w.word_rom || '') + '</span></div>'
       + '<div style="font-size:12px;color:#7dd3fc;margin-top:2px">' + meaning + '</div>'
       + exampleBlock
       + '</div>';
@@ -11320,7 +11329,7 @@ async function _loadSRSReviewCards() {
     _srsReviewQueue = (data || []).map(function(w) {
       var total = (w.correct_count || 0) + (w.wrong_count || 0);
       return {
-        ko: w.word_ko, rom: w.word_rom || '', en: (typeof khCleanMeaning==='function'?khCleanMeaning:String)(w.word_en || ''),
+        ko: w.word_ko, rom: (window.khRomanize && khRomanize(w.word_ko)) || w.word_rom || '', en: (typeof khCleanMeaning==='function'?khCleanMeaning:String)(w.word_en || ''),
         interval: w.srs_interval || 1, ease: w.srs_ease_factor || 2.5,
         accuracy: total > 0 ? Math.round((w.correct_count || 0) / total * 100) : -1,
         reviewCount: w.review_count || 0
@@ -16421,22 +16430,35 @@ function _gfWithArticleCtx(patterns) {
 // study_room_grammar example + the article sentence. Better than an error.
 async function _gfFallbackLesson(item) {
   var examples = [];
+  var core = String(item.pattern || '').split(/\s+[—-]\s+/)[0].trim();
   try {
     var sb = getSupa();
-    var core = String(item.pattern || '').split(/\s+[—-]\s+/)[0].trim();
     if (sb && core) {
-      var r = await sb.from('study_room_grammar').select('pattern,explanation,example_ko,example_en')
-        .ilike('pattern', '%' + core.replace(/[%_]/g, '') + '%').limit(4);
-      ((r && r.data) || []).forEach(function(g) {
-        if (g.example_ko && g.example_en) examples.push({ ko: g.example_ko, en: g.example_en });
-      });
+      var like = '%' + core.replace(/[%_]/g, '') + '%';
+      // A full lesson another screen already saved for this pattern
+      // (grammar_examples_cache is reviewed by content-qa) — use it as is.
+      var gc = await sb.from('grammar_examples_cache').select('patterns_json').ilike('pattern_name', like).limit(1);
+      var gRow = gc && gc.data && gc.data[0];
+      if (gRow && gRow.patterns_json) {
+        var pj = typeof gRow.patterns_json === 'string' ? JSON.parse(gRow.patterns_json) : gRow.patterns_json;
+        var p0 = Array.isArray(pj) ? pj[0] : (pj && pj.patterns && pj.patterns[0]);
+        if (p0 && Array.isArray(p0.examples) && p0.examples.some(function(e){ return e && e.ko; })) {
+          return [Object.assign({}, p0, { name: item.pattern, level: item.level })];
+        }
+      }
+      var cr = await sb.from('grammar_curriculum').select('examples_json').eq('pattern', item.pattern).limit(1);
+      var cRow = cr && cr.data && cr.data[0];
+      if (cRow && cRow.examples_json) {
+        var ce = typeof cRow.examples_json === 'string' ? JSON.parse(cRow.examples_json) : cRow.examples_json;
+        (Array.isArray(ce) ? ce : []).forEach(function(e) { if (e && e.ko && e.en) examples.push({ ko: e.ko, en: e.en }); });
+      }
     }
   } catch (_) {}
   return [{
     name: item.pattern, level: item.level,
-    structure: String(item.pattern || '').split(/\s+[—-]\s+/)[0].trim(),
-    exp: (item.desc || 'Practice this grammar pattern.') + ' A full lesson with more examples is on its way.',
-    examples: examples, incorrect_examples: [], _fallback: true
+    structure: core,
+    exp: item.desc || 'Practice this grammar pattern.',
+    examples: examples.slice(0, 4), incorrect_examples: [], _fallback: true
   }];
 }
 
@@ -16867,8 +16889,8 @@ function renderGFLearn(p) {
   }
 
   // Examples with grammar highlighted + (collapsible) sentence-structure tree
-  var examples = p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }];
-  var exHtml = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Examples</div>'
+  var examples = (p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }]).filter(function(ex){ return ex && ex.ko; });
+  var exHtml = !examples.length ? '' : '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Examples</div>'
     + examples.map(function(ex, i) {
         var koText = ex.ko || '';
         // Highlight any token from the pattern name inside the sentence
@@ -17416,7 +17438,13 @@ function loadGFSpotIt(p) {
   if (!el || !p) return;
   var examples = (p.examples || []).filter(function(e){ return e.ko; });
   if (!examples.length) {
-    el.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.45)">No examples available.</div>';
+    // Lesson built without AI (no saved lesson yet) has no practice
+    // sentences — say so and give a way out instead of a dead end.
+    el.innerHTML = '<div style="text-align:center;padding:30px 16px;color:rgba(255,255,255,.6);line-height:1.6">'
+      + '<div style="font-weight:800;color:#fff;margin-bottom:6px">Practice for this pattern isn\'t ready yet</div>'
+      + '<div style="font-size:13px;margin-bottom:16px">Read the explanation in Learn, then pick another pattern from your Grammar Path.</div>'
+      + '<button onclick="closeGrammarFocusModal();openGrammarPathModal()" style="padding:10px 20px;border-radius:10px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Back to Grammar Path</button>'
+      + '</div>';
     return;
   }
   _gfSpotState = { idx:0, total:examples.length, correct:0, p:p, examples:examples };

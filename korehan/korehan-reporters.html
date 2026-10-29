@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029s">
 <style>
 .rpl-hero { background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%); padding:40px 24px 48px; text-align:center; }
 .rpl-hero h1 { font-family:'Playfair Display',serif; font-size:32px; font-weight:900; color:#fff; margin-bottom:8px; }
@@ -56,23 +56,23 @@
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-<script src="js/core/plans.js?v=20261028d"></script>
+<script src="js/core/plans.js?v=20261029s"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/phrases.js?v=20261029a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20261025a"></script>
+<script src="js/core/reporters.js?v=20261029s"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
-<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
-<script src="js/features/bookmarks.js?v=20260525r"></script>
+<script src="js/features/bookmarks.js?v=20261029s"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
-<script src="js/features/sidebar.js?v=20261028c"></script>
-<script src="js/features/analyze-mode.js?v=20260525r"></script>
+<script src="js/features/sidebar.js?v=20261029s"></script>
+<script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
-<script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028j"></script>
+<script src="js/features/fill-blank.js?v=20261029s"></script>
+<script src="korehan-shared.js?v=20261029s"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
@@ -118,8 +118,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (!list.length) { grid.innerHTML = '<div class="rpl-loading">No reporter info.</div>'; return; }
 
+  // Random stock photos (picsum.photos) and the 1x1 seed placeholder are not
+  // the reporter — use the initials tile instead.
+  function realImg(u) { u = String(u || ''); return (/picsum\.photos/i.test(u) || /^data:image\/gif;base64,R0lGODlhAQABA/.test(u)) ? '' : u; }
   grid.innerHTML = list.map(function(r) {
     var color = r.color || '#2563eb';
+    r.image = realImg(r.image);
     var imgHtml = r.image
       ? '<img class="rpl-img" src="' + r.image + '" alt="' + r.name + '" onerror="this.parentNode.innerHTML=\'<div class=rpl-ph style=background:' + color + '>' + r.name.charAt(0) + '</div>\'">'
       : '<div class="rpl-ph" style="background:' + color + '">' + r.name.charAt(0) + '</div>';

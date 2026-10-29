@@ -245,7 +245,7 @@ function showUpgradeModal(feature, minPlan) {
         + '</div>' : '')
     + KH_PREMIUM_PERKS.map(function(p){ return '<div class="li">' + check + '<span>' + esc(p) + '</span></div>'; }).join('')
     + '<button type="button" class="cta" id="kh-up-cta" onclick="khStartCheckout(\'month\')">Get Premium · ' + esc(price) + '</button>'
-    + '<div class="fine">Month to month · cancel anytime · <a href="korehan-courses.html">See all features</a></div>'
+    + '<div class="fine">Monthly or yearly · cancel anytime · <a href="korehan-courses.html">See all features</a></div>'
     + '<button type="button" class="later" onclick="this.closest(\'#kh-upgrade-modal\').remove()">Maybe later</button>'
     + '</div>';
   document.body.appendChild(ov);

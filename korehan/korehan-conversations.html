@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029s">
 <style>
 /* Conversations (mockup F, 2026-10-28) — light reading page; the role-play
    and done screens use the dark study surface. */
@@ -86,6 +86,8 @@ html body.cv-dark{background:#0a1631 !important}
 .cv-chat[data-english="off"] .cv-bb small,.cv-chat[data-english="tap"] .cv-bb:not(.show-en) small{display:none}
 .cv-bb u{text-decoration:none;background:#fef3c7;color:#92400e;border-radius:4px;padding:0 2px}
 .cv-ln.r .cv-bb u{background:rgba(250,204,21,.32);color:#fff}
+/* hover-word spans inside the blue bubble inherited the dark word colour */
+.cv-ln.r .cv-bb u *,.cv-ln.r .cv-bb .kh-word,.cv-ln.r .cv-bb .kh-hover-word{color:#fff !important}
 .cv-bb.play{box-shadow:0 0 0 3px rgba(37,99,235,.28)}
 .cv-dock{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;border-top:1px solid #e5e9f0;padding:10px 16px calc(12px + env(safe-area-inset-bottom))}
 .cv-dock > *{max-width:728px;margin-left:auto;margin-right:auto}
@@ -163,16 +165,16 @@ html body.cv-dark{background:#0a1631 !important}
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-<script src="js/core/plans.js?v=20261028d"></script>
+<script src="js/core/plans.js?v=20261029s"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
-<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
-<script src="js/features/sidebar.js?v=20261028c"></script>
-<script src="korehan-shared.js?v=20261028j"></script>
+<script src="js/features/sidebar.js?v=20261029s"></script>
+<script src="korehan-shared.js?v=20261029s"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
-<script src="js/features/conv-page.js?v=20261028b"></script>
-<script src="korehan-hover-tooltips.js?v=20261028a"></script>
+<script src="js/features/conv-page.js?v=20261029s"></script>
+<script src="korehan-hover-tooltips.js?v=20261029s"></script>
 </body>
 </html>

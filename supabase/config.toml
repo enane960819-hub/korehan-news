@@ -58,3 +58,8 @@ verify_jwt = false
 # TOPIK page; it does its own auth (service role / CRON_SECRET / admin email).
 [functions.topik-gen]
 verify_jwt = false
+
+# preview-login: owner's temporary preview link; the token is checked in the
+# function (gateway check off so CORS preflight passes).
+[functions.preview-login]
+verify_jwt = false
