@@ -1,66 +1,186 @@
 # My Room item art: prompts
 
-Two sets: (A) the 29 catalogue items that still have no picture (one image each), and
-(B) 63 new items in 7 sheets of 9: one picture per sheet, a 3x3 grid.
+104 items still need a picture. One picture per message works best (cleanest cut-outs).
+Name each file exactly as shown and send them over; they are cleaned with
+`scripts/room-art/process.py <folder>` (background removal, trim, 400x400) and go to
+`korehan/assets/room/`. An item shows up in the shop as soon as its picture exists.
 
-Cut sheets and clean single images with `scripts/room-art/process.py` (background removal,
-trim, 400x400). Pictures go to `korehan/assets/room/`; items appear in the shop automatically
-once their file exists.
-
-## Style (paste once per chat)
+## Style (paste once at the start of a chat)
 
 ```
 I'm making item sprites for a cozy pixel-art room game. Style for EVERY image: soft pixel-art (chunky visible pixels, smooth shading), front-facing view, warm cozy colours, no text, no floor shadow, plain pure white background. Match the style of a small yellow pixel-art two-seat sofa.
 ```
 
-## (B) New items — one message per sheet
+## Message for each item
 
-Paste: *"Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in
-its own cell with empty white space around it, no grid lines, no labels. Row 1: …, Row 2: …, Row 3: …"*
+Paste `Draw ONE item, centred, nothing else in the picture: <description>` with one
+description from the lists below. If it comes back angled or with a floor or shadow, reply:
+`Same item, straight front view, plain white background, no shadow.`
 
-Then run: `python3 scripts/room-art/process.py --grid <sheet.png> <sheet number>`
+## A. New props (36)
 
-### Sheet 1: Study corner
-- Row 1: a small adjustable study desk lamp, warm light; a vintage desk globe on a wooden stand; a neat stack of five colourful books with a bookmark
-- Row 2: a ceramic cup full of pencils and pens; a wall calendar with a few days circled in red; a framed poster of the Korean alphabet chart (consonants and vowels as simple shapes, no readable text)
-- Row 3: a cute round twin-bell alarm clock; a pastel school backpack with keychains; a comfy rolling study chair
-- Files (row by row): `desk-lamp.png`, `globe.png`, `book-stack.png`, `pencil-cup.png`, `wall-calendar.png`, `hangul-poster.png`, `alarm-clock.png`, `school-bag.png`, `study-chair.png`
+### Study desk props
 
-### Sheet 2: Korean tradition
-- Row 1: a traditional Korean gayageum zither lying on a stand; a traditional Korean janggu hourglass drum with sticks; a smiling Korean hahoe wooden mask hanging on the wall
-- Row 2: an open traditional Korean folding fan with plum blossoms; a hanging calligraphy scroll with brush strokes (abstract, no readable text); a glowing Korean hanji paper lamp with wooden frame
-- Row 3: a yunnori game set: four wooden sticks and a cloth board; a low Korean wooden tea table with a celadon tea set; a traditional hanok lattice paper window with soft light
-- Files (row by row): `gayageum.png`, `janggu.png`, `hahoe-mask.png`, `buchae-fan.png`, `calligraphy-scroll.png`, `hanji-lamp.png`, `yut-set.png`, `tea-table.png`, `hanok-window.png`
+| file | description |
+|------|-------------|
+| `hangul-notebook.png` | an open notebook with neat handwritten Korean letters ㄱ ㄴ ㄷ and a pencil on it |
+| `flashcard-box.png` | a small wooden box full of colourful flashcards with a few sticking out |
+| `sand-timer.png` | a wooden hourglass sand timer with pink sand |
+| `sticky-notes.png` | a cluster of pastel sticky notes stuck in a grid, with doodles but no readable text |
+| `study-laptop.png` | an open laptop covered in cute stickers, screen glowing softly |
+| `headphone-stand.png` | over-ear headphones resting on a small wooden stand |
+| `tablet-pen.png` | a tablet on a little stand with a stylus pen next to it |
+| `trophy.png` | a small shiny gold trophy cup on a wooden base |
+| `medal-rack.png` | a wall hanger with three ribbons and gold, silver and bronze medals |
 
-### Sheet 3: Cafe & kitchen
-- Row 1: a cup of brown sugar bubble tea with a wide straw; a Korean electric rice cooker with steam; a yellow aluminium pot of ramyeon with an egg and green onions
-- Row 2: a modern Korean kimchi refrigerator; a bowl of patbingsu shaved ice with red beans and rice cakes; a cute retro mini fridge with stickers
-- Row 3: a woven bowl of tangerines with leaves; a small wooden coffee bar cart with mugs and a pour-over kettle; a Korean lunch box with rice, egg roll and side dishes
-- Files (row by row): `bubble-tea.png`, `rice-cooker.png`, `ramyeon-pot.png`, `kimchi-fridge.png`, `bingsu.png`, `mini-fridge.png`, `tangerine-bowl.png`, `coffee-cart.png`, `dosirak.png`
+### Korean daily life
 
-### Sheet 4: K-culture & hobbies
-- Row 1: a colourful concert poster with stage lights (no people, no text); a glowing fan light stick; an acoustic guitar leaning on a stand
-- Row 2: a digital piano keyboard on a stand; a noraebang karaoke microphone on a stand with sparkles; a handheld game console and controller on a small cushion
-- Row 3: a retro film camera; a skateboard with colourful stickers; a string of instant photos with clips and fairy lights on a wall
-- Files (row by row): `kpop-poster.png`, `light-stick.png`, `guitar.png`, `keyboard-piano.png`, `karaoke-mic.png`, `game-console.png`, `film-camera.png`, `skateboard.png`, `photo-wall.png`
+| file | description |
+|------|-------------|
+| `banana-milk.png` | a small round Korean banana milk bottle, plain yellow with no logo |
+| `snack-basket.png` | a woven basket full of colourful Korean snack bags with no logos or text |
+| `dalgona-set.png` | a dalgona honeycomb candy with a star shape on a metal tray with a small ladle |
+| `bungeoppang.png` | three golden fish-shaped bungeoppang pastries in a paper bag |
+| `najeon-box.png` | a black lacquer Korean najeon jewellery box inlaid with shimmering mother-of-pearl flowers |
+| `bojagi-gift.png` | a gift wrapped in colourful Korean patchwork bojagi cloth, tied in a knot on top |
+| `namsan-mini.png` | a small figurine of N Seoul Tower on a round base |
+| `haetae-statue.png` | a small cute stone statue of a haetae, the Korean lion guardian, sitting |
+| `mini-hanok.png` | a small model of a Korean hanok house with a curved tiled roof and warm lit windows |
 
-### Sheet 5: Cozy furniture
-- Row 1: a cozy single bed with a quilted blanket and pillows; a wooden wardrobe with two doors; a round fluffy rug with a pattern, seen from a slight angle
-- Row 2: two stacked Korean floor cushions (bangseok); a small round wooden coffee table with a mug; a TV on a low wooden stand
-- Row 3: a window showing the Seoul night skyline with N Seoul Tower; a window with raindrops and a cloudy sky; a round minimalist wall clock
-- Files (row by row): `single-bed.png`, `wardrobe.png`, `round-rug.png`, `floor-cushions.png`, `coffee-table.png`, `tv-stand.png`, `window-seoul.png`, `window-rain.png`, `wall-clock.png`
+### Cozy decor
 
-### Sheet 6: Pets & plants
-- Row 1: a chubby hamster holding a sunflower seed; a smiling shiba inu sitting; a fluffy white bunny with floppy ears
-- Row 2: a colourful parrot on a perch; a small glass tank with a turtle and a rock; a round goldfish bowl with two goldfish
-- Row 3: a big monstera plant in a woven basket; a small pine bonsai on a wooden stand; three tiny cacti in matching pots
-- Files (row by row): `hamster.png`, `shiba-dog.png`, `bunny.png`, `parrot.png`, `turtle-tank.png`, `goldfish-bowl.png`, `plant-monstera.png`, `bonsai.png`, `cactus-trio.png`
+| file | description |
+|------|-------------|
+| `candle-trio.png` | three lit pillar candles of different heights on a small tray |
+| `snow-globe.png` | a snow globe with a tiny hanok house inside and snowflakes |
+| `music-box.png` | an open wooden music box with a tiny dancer |
+| `dried-flowers.png` | a ceramic vase with dried pampas grass and small dried flowers |
+| `wall-shelf.png` | a floating wooden wall shelf with small potted plants and a few books |
+| `macrame.png` | a cream macrame wall hanging on a wooden stick |
+| `teddy-bear.png` | a soft brown teddy bear sitting with a red bow |
+| `framed-photo.png` | two small framed photos standing side by side, showing a beach and mountains |
+| `neon-moon.png` | a glowing pink and blue crescent moon neon sign |
 
-### Sheet 7: Seasons & holidays
-- Row 1: a cheerful snowman with a red scarf; a Korean new-year lucky pouch (bokjumeoni) in red silk; a bowl of tteokguk rice cake soup
-- Row 2: a plate of colourful songpyeon rice cakes on pine needles; a pot of red carnations with a ribbon; a vase with blooming cherry blossom branches
-- Row 3: a retro electric fan; a glass jar with red and orange maple leaves; a heart-shaped box of chocolates with a bow
-- Files (row by row): `snowman.png`, `bokjumeoni.png`, `tteokguk.png`, `songpyeon.png`, `carnation-pot.png`, `cherry-branch.png`, `summer-fan.png`, `maple-jar.png`, `choco-box.png`
+### Cute plushies
 
-## (A) Existing items without a picture — one message each
+| file | description |
+|------|-------------|
+| `tiger-plush.png` | a cute round plush toy of a Korean tiger, smiling |
+| `magpie-plush.png` | a cute plush toy of a black and white Korean magpie (kkachi) |
+| `dokkaebi-plush.png` | a cute friendly plush toy of a Korean dokkaebi goblin with one small horn and a club |
+| `moon-rabbit.png` | a white rabbit plush pounding rice cakes with a tiny mallet, sitting on a crescent moon |
+| `gimbap-pillow.png` | a round cushion that looks like a slice of gimbap |
+| `persimmon-plush.png` | a cute orange persimmon plush with a green leaf hat and a smile |
+| `tteok-plush.png` | a squishy white rice cake (tteok) plush with a happy face |
+| `penguin-plush.png` | a chubby penguin plush wearing a little knitted scarf |
+| `cat-cushion.png` | a round cat-shaped floor cushion, sleeping cat face |
 
+## B. Catalogue items still without a picture
+
+### Older items
+
+| file | description |
+|------|-------------|
+| `norigae.png` | a traditional Korean norigae ornament with a red tassel and jade piece |
+| `jangdok.png` | a traditional Korean onggi earthenware jar (jangdok) with a lid |
+| `cat-white.png` | a fluffy white cat sitting and looking forward |
+| `koi-pond.png` | a small round indoor koi pond with two orange koi and a lily pad |
+| `chuseok-lantern.png` | a round traditional Korean silk lantern (cheongsachorong) in red and blue |
+
+### Study corner
+
+| file | description |
+|------|-------------|
+| `desk-lamp.png` | a small adjustable study desk lamp, warm light |
+| `globe.png` | a vintage desk globe on a wooden stand |
+| `book-stack.png` | a neat stack of five colourful books with a bookmark |
+| `pencil-cup.png` | a ceramic cup full of pencils and pens |
+| `wall-calendar.png` | a wall calendar with a few days circled in red |
+| `hangul-poster.png` | a framed poster of the Korean alphabet chart (consonants and vowels as simple shapes, no readable text) |
+| `alarm-clock.png` | a cute round twin-bell alarm clock |
+| `school-bag.png` | a pastel school backpack with keychains |
+| `study-chair.png` | a comfy rolling study chair |
+
+### Korean tradition
+
+| file | description |
+|------|-------------|
+| `gayageum.png` | a traditional Korean gayageum zither lying on a stand |
+| `janggu.png` | a traditional Korean janggu hourglass drum with sticks |
+| `hahoe-mask.png` | a smiling Korean hahoe wooden mask hanging on the wall |
+| `buchae-fan.png` | an open traditional Korean folding fan with plum blossoms |
+| `calligraphy-scroll.png` | a hanging calligraphy scroll with brush strokes (abstract, no readable text) |
+| `hanji-lamp.png` | a glowing Korean hanji paper lamp with wooden frame |
+| `yut-set.png` | a yunnori game set: four wooden sticks and a cloth board |
+| `tea-table.png` | a low Korean wooden tea table with a celadon tea set |
+| `hanok-window.png` | a traditional hanok lattice paper window with soft light |
+
+### Cafe & kitchen
+
+| file | description |
+|------|-------------|
+| `bubble-tea.png` | a cup of brown sugar bubble tea with a wide straw |
+| `rice-cooker.png` | a Korean electric rice cooker with steam |
+| `ramyeon-pot.png` | a yellow aluminium pot of ramyeon with an egg and green onions |
+| `kimchi-fridge.png` | a modern Korean kimchi refrigerator |
+| `bingsu.png` | a bowl of patbingsu shaved ice with red beans and rice cakes |
+| `mini-fridge.png` | a cute retro mini fridge with stickers |
+| `tangerine-bowl.png` | a woven bowl of tangerines with leaves |
+| `coffee-cart.png` | a small wooden coffee bar cart with mugs and a pour-over kettle |
+| `dosirak.png` | a Korean lunch box with rice, egg roll and side dishes |
+
+### K-culture & hobbies
+
+| file | description |
+|------|-------------|
+| `kpop-poster.png` | a colourful concert poster with stage lights (no people, no text) |
+| `light-stick.png` | a glowing fan light stick |
+| `guitar.png` | an acoustic guitar leaning on a stand |
+| `keyboard-piano.png` | a digital piano keyboard on a stand |
+| `karaoke-mic.png` | a noraebang karaoke microphone on a stand with sparkles |
+| `game-console.png` | a handheld game console and controller on a small cushion |
+| `film-camera.png` | a retro film camera |
+| `skateboard.png` | a skateboard with colourful stickers |
+| `photo-wall.png` | a string of instant photos with clips and fairy lights on a wall |
+
+### Cozy furniture
+
+| file | description |
+|------|-------------|
+| `single-bed.png` | a cozy single bed with a quilted blanket and pillows |
+| `wardrobe.png` | a wooden wardrobe with two doors |
+| `round-rug.png` | a round fluffy rug with a pattern, seen from a slight angle |
+| `floor-cushions.png` | two stacked Korean floor cushions (bangseok) |
+| `coffee-table.png` | a small round wooden coffee table with a mug |
+| `tv-stand.png` | a TV on a low wooden stand |
+| `window-seoul.png` | a window showing the Seoul night skyline with N Seoul Tower |
+| `window-rain.png` | a window with raindrops and a cloudy sky |
+| `wall-clock.png` | a round minimalist wall clock |
+
+### Pets & plants
+
+| file | description |
+|------|-------------|
+| `hamster.png` | a chubby hamster holding a sunflower seed |
+| `shiba-dog.png` | a smiling shiba inu sitting |
+| `bunny.png` | a fluffy white bunny with floppy ears |
+| `parrot.png` | a colourful parrot on a perch |
+| `turtle-tank.png` | a small glass tank with a turtle and a rock |
+| `goldfish-bowl.png` | a round goldfish bowl with two goldfish |
+| `plant-monstera.png` | a big monstera plant in a woven basket |
+| `bonsai.png` | a small pine bonsai on a wooden stand |
+| `cactus-trio.png` | three tiny cacti in matching pots |
+
+### Seasons & holidays
+
+| file | description |
+|------|-------------|
+| `snowman.png` | a cheerful snowman with a red scarf |
+| `bokjumeoni.png` | a Korean new-year lucky pouch (bokjumeoni) in red silk |
+| `tteokguk.png` | a bowl of tteokguk rice cake soup |
+| `songpyeon.png` | a plate of colourful songpyeon rice cakes on pine needles |
+| `carnation-pot.png` | a pot of red carnations with a ribbon |
+| `cherry-branch.png` | a vase with blooming cherry blossom branches |
+| `summer-fan.png` | a retro electric fan |
+| `maple-jar.png` | a glass jar with red and orange maple leaves |
+| `choco-box.png` | a heart-shaped box of chocolates with a bow |
