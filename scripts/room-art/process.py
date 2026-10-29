@@ -54,18 +54,43 @@ def fit(im):
     canvas.paste(im, ((SIZE - im.width) // 2, (SIZE - im.height) // 2), im)
     return canvas
 
+def drop_specks(im, keep=0.03):
+    """Keep only pieces at least `keep` of the biggest one (bits of a neighbouring cell go)."""
+    w, h = im.size
+    px = im.load()
+    seen = bytearray(w * h)
+    parts = []
+    for y in range(h):
+        for x in range(w):
+            if seen[y * w + x] or px[x, y][3] <= 20: continue
+            comp, q = [], deque([(x, y)])
+            seen[y * w + x] = 1
+            while q:
+                cx, cy = q.popleft(); comp.append((cx, cy))
+                for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and px[nx, ny][3] > 20:
+                        seen[ny * w + nx] = 1; q.append((nx, ny))
+            parts.append(comp)
+    if not parts: return im
+    big = max(len(c) for c in parts)
+    for comp in parts:
+        if len(comp) < keep * big:
+            for x, y in comp: px[x, y] = px[x, y][:3] + (0,)
+    return im
+
 def grid(sheet_path, sheet_no):
+    """Sheet numbers follow docs/reference/room-art-prompts.md: catalog SHEETS first, then PROPS."""
     sys.path.insert(0, os.path.dirname(__file__))
-    from catalog import SHEETS
-    items = SHEETS[int(sheet_no) - 1][1]
+    from catalog import SHEETS, PROPS
+    items = (SHEETS + PROPS)[int(sheet_no) - 1][1]
     im = Image.open(sheet_path).convert('RGBA')
     cw, ch = im.width / 3, im.height / 3
     os.makedirs(OUT, exist_ok=True)
     for k, item in enumerate(items):
         r, c = divmod(k, 3)
-        cell = im.crop((round(c * cw), round(r * ch), round((c + 1) * cw), round((r + 1) * ch)))
+        cell = im.crop((round(c * cw) + 4, round(r * ch) + 4, round((c + 1) * cw) - 4, round((r + 1) * ch) - 4))
         name = item[0].replace('_', '-') + '.png'
-        fit(clear_background(cell)).save(os.path.join(OUT, name))
+        fit(drop_specks(clear_background(cell))).save(os.path.join(OUT, name))
         print('ok', name)
 
 if __name__ == '__main__':

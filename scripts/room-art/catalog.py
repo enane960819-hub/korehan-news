@@ -238,28 +238,34 @@ def migration(groups, path, header, sort0):
 def main():
     root = os.path.join(os.path.dirname(__file__), '..', '..')
     total = sum(len(i) for _, i in PROPS) + sum(len(i) for _, i in SHEETS) + len(OLD_MISSING)
+    groups = SHEETS + PROPS
     lines = ["# My Room item art: prompts", "",
-      f"{total} items still need a picture. One picture per message works best (cleanest cut-outs).",
-      "Name each file exactly as shown and send them over; they are cleaned with",
-      "`scripts/room-art/process.py <folder>` (background removal, trim, 400x400) and go to",
-      "`korehan/assets/room/`. An item shows up in the shop as soon as its picture exists.", "",
-      "## Style (paste once at the start of a chat)", "", "```", STYLE, "```", "",
-      "## Message for each item", "",
-      "Paste `Draw ONE item, centred, nothing else in the picture: <description>` with one",
-      "description from the lists below. If it comes back angled or with a floor or shadow, reply:",
-      "`Same item, straight front view, plain white background, no shadow.`", ""]
-    def block(title, rows):
-        lines.append(f"### {title}"); lines.append("")
-        lines.append("| file | description |"); lines.append("|------|-------------|")
-        for f, d in rows: lines.append(f"| `{f}` | {d} |")
-        lines.append("")
-    lines.append(f"## A. New props ({sum(len(i) for _, i in PROPS)})"); lines.append("")
-    for title, items in PROPS:
-        block(title, [(fname(i[0]), i[6]) for i in items])
-    lines.append("## B. Catalogue items still without a picture"); lines.append("")
-    block("Older items", [(fname(i), d) for i, d in OLD_MISSING])
-    for title, items in SHEETS:
-        block(title, [(fname(i[0]), i[6]) for i in items])
+      f"{total} items still need a picture. Nine at a time: each sheet below is ONE message that",
+      "makes a 3x3 picture of nine items. Send the sheet pictures back with their sheet number;",
+      "they are cut with `python3 scripts/room-art/process.py --grid <picture> <sheet number>`",
+      "(background removal, trim, 400x400) into `korehan/assets/room/`. An item shows up in the shop",
+      "as soon as its picture exists.", "",
+      "## 1. Style (paste once at the start of a chat)", "", "```", STYLE, "```", "",
+      "## 2. One message per sheet", "",
+      "If items touch each other or a cell is empty, reply:",
+      "`Same sheet, but leave clear white space between all nine items and keep each one inside its own cell.`",
+      "If one item comes out wrong, redraw only that one: `Draw ONE item, centred, nothing else: <description>`.", ""]
+    def sheet(n, title, items):
+        lines.append(f"### Sheet {n}: {title}"); lines.append(""); lines.append("```")
+        lines.append("Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell "
+                     "with plenty of empty white space around it, nothing touching, no grid lines, no labels.")
+        for r in range(3):
+            lines.append(f"Row {r + 1}: " + "; ".join(i[6] for i in items[r * 3:r * 3 + 3]) + ".")
+        lines.append("```")
+        lines.append("Files, row by row: " + ", ".join(f"`{fname(i[0])}`" for i in items)); lines.append("")
+    lines.append(f"## A. New props: sheets {len(SHEETS) + 1}-{len(groups)} ({sum(len(i) for _, i in PROPS)} items)"); lines.append("")
+    for n, (title, items) in enumerate(PROPS, len(SHEETS) + 1): sheet(n, title, items)
+    lines.append(f"## B. Catalogue items still without a picture: sheets 1-{len(SHEETS)}"); lines.append("")
+    for n, (title, items) in enumerate(SHEETS, 1): sheet(n, title, items)
+    lines.append("### Older items (one picture each)"); lines.append("")
+    lines.append("| file | description |"); lines.append("|------|-------------|")
+    for i, d in OLD_MISSING: lines.append(f"| `{fname(i)}` | {d} |")
+    lines.append("")
     open(os.path.join(root, 'docs', 'reference', 'room-art-prompts.md'), 'w').write("\n".join(lines))
 
     migration(SHEETS, os.path.join(root, 'supabase', 'migrations', '20261029_room_items_more.sql'),
