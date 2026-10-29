@@ -18,7 +18,7 @@ The build refuses to write the seed while any **error** is left:
 
 **Warnings** go to the human reviewer: double spaces, unbalanced brackets, an answer
 copied word-for-word from the text, the answer being the longest choice too often,
-the same passage used twice in the bank.
+the same passage used twice in the bank, every sentence-order answer opening with the same label.
 
 Every new test sets `balance: true`. Older tests keep their order because saved
 attempts store the chosen position.
