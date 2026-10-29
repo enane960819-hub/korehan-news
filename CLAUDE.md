@@ -350,6 +350,11 @@ supabase functions deploy claude-proxy
   show props, never faces. Never in real-news lists (`published()` with no section, home News grid/hero,
   next-article feed) — only the home Fake News rail and `korehan-section.html?s=fake`; every card carries
   the yellow FAKE NEWS tag, every article the banner, shares get a "[Fake News]" prefix.
+- **Room / avatar art URLs carry a version** (`khRoomImg()` + `KH_ROOM_ART_V` in korehan-shared.js). `/assets/*`
+  is cached for a year and a missing file returns the HTML fallback with 200, so a picture requested before it
+  was uploaded stays broken on that device. Bump `KH_ROOM_ART_V` (and shared.js `?v=`) whenever art is added.
+  The props catalogue migration (`20261029_room_props.sql`, written by `scripts/room-art/catalog.py`) ships
+  together with its art.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 

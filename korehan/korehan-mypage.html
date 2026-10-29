@@ -1309,10 +1309,10 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029ng"></script>
+<script src="korehan-shared.js?v=20261029ra"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261029ng"></script>
-<script src="js/features/room-view.js?v=20261029rl"></script>
+<script src="js/features/room-view.js?v=20261029ra"></script>
 <script src="js/features/room-learn.js?v=20261029rl"></script>
 <script>
 
@@ -2920,6 +2920,7 @@ var ROOM_ITEMS_FALLBACK = [
   {id:'jack_pumpkin',     name:'Jack O\'Lantern',     price:170,  img:'assets/room/jack-pumpkin.png',     size:90,  category:'deco', effect:'glow_warm'},
   {id:'chuseok_lantern',  name:'Chuseok Lantern',     price:290,  img:'assets/room/chuseok-lantern.png',  size:100, category:'deco', effect:'glow_warm'}
 ];
+if (typeof khRoomImg === 'function') ROOM_ITEMS_FALLBACK.forEach(function (it) { it.img = khRoomImg(it.img); });
 var ROOM_ITEMS = ROOM_ITEMS_FALLBACK.slice(); // will be replaced by DB data
 var _roomItemsLoaded = false;
 
@@ -2961,7 +2962,7 @@ async function loadRoomItemsFromDB() {
       ROOM_ITEMS = res.data.map(function(r) {
         var sz = r.base_size || 60;
         if (sz < 100) sz = sz * 2; // Auto-double if DB hasn't been migrated yet
-        return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: sz, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco' };
+        return { id: r.id, name: r.name, price: r.price_nyang, img: (typeof khRoomImg === 'function' ? khRoomImg(r.image_url) : r.image_url), size: sz, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco' };
       });
       _roomItemsLoaded = true;
     }

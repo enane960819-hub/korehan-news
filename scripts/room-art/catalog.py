@@ -91,51 +91,194 @@ SHEETS = [
   ]),
 ]
 
+# Second batch (owner 2026-10-29: "more kinds of props"). Same tuple format; their rows go in
+# 20261029_room_props.sql and stay hidden until the picture exists.
+PROPS = [
+  ("Study desk props", [
+    ("hangul_notebook", "Hangul Notebook", "deco", 100, 90, "none", "an open notebook with neat handwritten Korean letters ㄱ ㄴ ㄷ and a pencil on it"),
+    ("flashcard_box", "Flashcard Box", "deco", 120, 80, "none", "a small wooden box full of colourful flashcards with a few sticking out"),
+    ("sand_timer", "Study Timer", "deco", 100, 80, "none", "a wooden hourglass sand timer with pink sand"),
+    ("sticky_notes", "Sticky Note Wall", "deco", 120, 110, "none", "a cluster of pastel sticky notes stuck in a grid, with doodles but no readable text"),
+    ("study_laptop", "Sticker Laptop", "deco", 310, 110, "none", "an open laptop covered in cute stickers, screen glowing softly"),
+    ("headphone_stand", "Headphone Stand", "deco", 220, 100, "none", "over-ear headphones resting on a small wooden stand"),
+    ("tablet_pen", "Drawing Tablet", "deco", 260, 100, "none", "a tablet on a little stand with a stylus pen next to it"),
+    ("trophy", "Study Trophy", "deco", 290, 90, "none", "a small shiny gold trophy cup on a wooden base"),
+    ("medal_rack", "Medal Hanger", "deco", 240, 110, "none", "a wall hanger with three ribbons and gold, silver and bronze medals"),
+  ]),
+  ("Korean daily life", [
+    ("banana_milk", "Banana Milk", "deco", 60, 60, "none", "a small round Korean banana milk bottle, plain yellow with no logo"),
+    ("snack_basket", "Snack Basket", "deco", 140, 100, "none", "a woven basket full of colourful Korean snack bags with no logos or text"),
+    ("dalgona_set", "Dalgona Set", "deco", 120, 80, "none", "a dalgona honeycomb candy with a star shape on a metal tray with a small ladle"),
+    ("bungeoppang", "Fish Bread", "deco", 100, 70, "none", "three golden fish-shaped bungeoppang pastries in a paper bag"),
+    ("najeon_box", "Mother-of-pearl Box", "deco", 340, 90, "none", "a black lacquer Korean najeon jewellery box inlaid with shimmering mother-of-pearl flowers"),
+    ("bojagi_gift", "Bojagi Gift", "deco", 140, 80, "none", "a gift wrapped in colourful Korean patchwork bojagi cloth, tied in a knot on top"),
+    ("namsan_mini", "Mini N Seoul Tower", "deco", 260, 120, "none", "a small figurine of N Seoul Tower on a round base"),
+    ("haetae_statue", "Haetae Statue", "deco", 380, 110, "none", "a small cute stone statue of a haetae, the Korean lion guardian, sitting"),
+    ("mini_hanok", "Mini Hanok", "deco", 420, 120, "glow_warm", "a small model of a Korean hanok house with a curved tiled roof and warm lit windows"),
+  ]),
+  ("Cozy decor", [
+    ("candle_trio", "Candle Trio", "deco", 140, 80, "glow_warm", "three lit pillar candles of different heights on a small tray"),
+    ("snow_globe", "Snow Globe", "deco", 220, 90, "none", "a snow globe with a tiny hanok house inside and snowflakes"),
+    ("music_box", "Music Box", "deco", 260, 80, "none", "an open wooden music box with a tiny dancer"),
+    ("dried_flowers", "Dried Flower Vase", "deco", 170, 110, "none", "a ceramic vase with dried pampas grass and small dried flowers"),
+    ("wall_shelf", "Plant Shelf", "deco", 290, 140, "none", "a floating wooden wall shelf with small potted plants and a few books"),
+    ("macrame", "Macrame Hanging", "deco", 170, 130, "none", "a cream macrame wall hanging on a wooden stick"),
+    ("teddy_bear", "Teddy Bear", "deco", 190, 100, "none", "a soft brown teddy bear sitting with a red bow"),
+    ("framed_photo", "Photo Frames", "deco", 120, 90, "none", "two small framed photos standing side by side, showing a beach and mountains"),
+    ("neon_moon", "Neon Moon", "deco", 310, 110, "glow_neon", "a glowing pink and blue crescent moon neon sign"),
+  ]),
+  ("Cute plushies", [
+    ("tiger_plush", "Tiger Plush", "deco", 240, 100, "none", "a cute round plush toy of a Korean tiger, smiling"),
+    ("magpie_plush", "Magpie Plush", "deco", 190, 90, "none", "a cute plush toy of a black and white Korean magpie (kkachi)"),
+    ("dokkaebi_plush", "Dokkaebi Plush", "deco", 240, 100, "none", "a cute friendly plush toy of a Korean dokkaebi goblin with one small horn and a club"),
+    ("moon_rabbit", "Moon Rabbit", "deco", 220, 100, "none", "a white rabbit plush pounding rice cakes with a tiny mallet, sitting on a crescent moon"),
+    ("gimbap_pillow", "Gimbap Pillow", "deco", 190, 110, "none", "a round cushion that looks like a slice of gimbap"),
+    ("persimmon_plush", "Persimmon Plush", "deco", 140, 80, "none", "a cute orange persimmon plush with a green leaf hat and a smile"),
+    ("tteok_plush", "Rice Cake Plush", "deco", 140, 80, "none", "a squishy white rice cake (tteok) plush with a happy face"),
+    ("penguin_plush", "Penguin Plush", "deco", 190, 90, "none", "a chubby penguin plush wearing a little knitted scarf"),
+    ("cat_cushion", "Cat Cushion", "deco", 170, 100, "none", "a round cat-shaped floor cushion, sleeping cat face"),
+  ]),
+  ("Food & treats", [
+    ("tteokbokki_pan", "Tteokbokki Pan", "deco", 140, 90, "none", "a shallow pan of spicy red tteokbokki rice cakes with a fish cake skewer"),
+    ("bibimbap_bowl", "Bibimbap Bowl", "deco", 120, 80, "none", "a hot stone bowl of bibimbap with colourful vegetables and a fried egg on top"),
+    ("hotteok_plate", "Hotteok Plate", "deco", 100, 70, "none", "a small plate with a stack of golden hotteok sweet pancakes"),
+    ("yuja_tea", "Citron Tea Jar", "deco", 100, 80, "none", "a glass jar of yuja citron tea marmalade with a wooden spoon and a steaming cup"),
+    ("gotgam_string", "Dried Persimmons", "deco", 170, 120, "none", "a string of orange dried persimmons (gotgam) hanging from a wooden peg"),
+    ("strawberry_cake", "Strawberry Cake", "deco", 140, 80, "none", "a round strawberry cream cake on a cake stand"),
+    ("cup_noodle", "Cup Noodles", "deco", 60, 60, "none", "a steaming cup of instant noodles with chopsticks resting on the lid, no logo or text"),
+    ("bread_basket", "Bakery Basket", "deco", 120, 90, "none", "a woven basket of fresh bakery bread: a baguette, a croissant and a soft milk bun"),
+    ("watermelon", "Watermelon", "deco", 100, 90, "none", "a whole striped watermelon with one juicy slice cut out next to it"),
+  ]),
+  ("Hobbies", [
+    ("ukulele", "Ukulele", "deco", 240, 110, "none", "a small wooden ukulele leaning upright"),
+    ("cassette_player", "Cassette Player", "deco", 220, 80, "none", "a retro portable cassette player with orange-cushion headphones and a cassette"),
+    ("easel_painting", "Painting Easel", "deco", 340, 150, "none", "a wooden easel holding a small painting of mountains, with a palette and brushes"),
+    ("knitting_basket", "Knitting Basket", "deco", 140, 90, "none", "a basket of colourful yarn balls with knitting needles and a half-knitted scarf"),
+    ("jigsaw_puzzle", "Jigsaw Puzzle", "deco", 120, 90, "none", "a half-finished jigsaw puzzle of a flower field on a board with loose pieces"),
+    ("baduk_board", "Baduk Board", "deco", 290, 110, "none", "a wooden baduk (Go) board with black and white stones and two stone bowls"),
+    ("telescope", "Telescope", "deco", 380, 140, "none", "a brass telescope on a wooden tripod pointing up"),
+    ("yoga_mat", "Yoga Corner", "deco", 170, 100, "none", "a rolled lavender yoga mat with two small dumbbells and a water bottle"),
+    ("badminton_set", "Badminton Set", "deco", 140, 100, "none", "two crossed badminton rackets with a white shuttlecock"),
+  ]),
+  ("Wall decor", [
+    ("minhwa_tiger", "Minhwa Tiger", "deco", 420, 130, "none", "a framed Korean folk painting (minhwa) of a funny tiger and a magpie in a pine tree"),
+    ("sunflower_painting", "Sunflower Painting", "deco", 260, 120, "none", "a framed oil painting of yellow sunflowers in a vase"),
+    ("bunting_flags", "Bunting Flags", "deco", 120, 130, "none", "a string of colourful triangle bunting flags hanging in a gentle curve"),
+    ("dreamcatcher", "Dreamcatcher", "deco", 170, 110, "none", "a dreamcatcher with soft feathers and beads"),
+    ("pressed_flowers", "Pressed Flowers", "deco", 190, 100, "none", "a wooden frame with pressed wildflowers behind glass"),
+    ("moon_phases", "Moon Phases", "deco", 170, 130, "none", "a wall hanging of golden moon phases on a string, from crescent to full"),
+    ("ivy_garland", "Ivy Garland", "deco", 140, 140, "none", "a long green ivy garland draped in a loose curve with a few tiny white flowers"),
+    ("dancheong_panel", "Dancheong Panel", "deco", 340, 130, "none", "a wooden panel painted with colourful Korean dancheong temple patterns"),
+    ("framed_certificate", "Certificate Frame", "deco", 240, 100, "none", "a framed certificate with a gold seal and a ribbon, lines instead of readable text"),
+  ]),
+  ("Small furniture", [
+    ("side_table", "Side Table", "furniture", 260, 110, "none", "a small round wooden side table with a little lamp and a book"),
+    ("plant_stand", "Plant Stand", "furniture", 340, 140, "none", "a three-tier wooden plant stand with small potted plants"),
+    ("storage_baskets", "Storage Baskets", "furniture", 190, 100, "none", "three stacked woven storage baskets with fabric liners"),
+    ("umbrella_stand", "Umbrella Stand", "deco", 140, 120, "none", "a ceramic umbrella stand with a clear umbrella and a yellow umbrella"),
+    ("sneaker_rack", "Sneaker Rack", "furniture", 290, 120, "none", "a small wooden shoe rack with three pairs of colourful sneakers"),
+    ("folded_ibul", "Folded Bedding", "furniture", 260, 120, "none", "a neat stack of folded Korean floor bedding (yo and ibul) with a pillow on top"),
+    ("mini_heater", "Mini Heater", "deco", 190, 90, "glow_warm", "a small retro electric heater glowing warm orange"),
+    ("ladder_shelf", "Ladder Shelf", "furniture", 380, 170, "none", "a leaning wooden ladder shelf with books, a plant and a candle"),
+    ("rocking_chair", "Rocking Chair", "furniture", 460, 150, "none", "a wooden rocking chair with a knitted blanket over the back"),
+  ]),
+  ("Seasons & events 2", [
+    ("xmas_stocking", "Christmas Stocking", "deco", 120, 90, "none", "a red and white Christmas stocking with a small gift peeking out"),
+    ("gift_pile", "Gift Pile", "deco", 190, 100, "none", "a pile of three wrapped gift boxes with bows in different colours"),
+    ("choco_sticks", "Choco Stick Box", "deco", 100, 80, "none", "an open box of chocolate-dipped biscuit sticks with a red ribbon, no logo or text"),
+    ("ghost_lantern", "Ghost Lantern", "deco", 140, 90, "glow_warm", "a cute smiling ghost-shaped paper lantern glowing softly"),
+    ("pinwheel", "Pinwheel", "deco", 80, 90, "none", "a colourful paper pinwheel on a stick in a small pot"),
+    ("lotus_lantern", "Lotus Lantern", "deco", 220, 100, "glow_warm", "a pink Korean lotus lantern (yeondeung) glowing from inside"),
+    ("birthday_cake", "Birthday Cake", "deco", 170, 90, "glow_warm", "a two-layer birthday cake with lit candles and sprinkles"),
+    ("beach_ball", "Beach Ball", "deco", 80, 80, "none", "a striped colourful beach ball"),
+    ("graduation_bouquet", "Graduation Bouquet", "deco", 220, 110, "none", "a big wrapped bouquet of roses and baby's breath with a satin ribbon"),
+  ]),
+  ("Animal friends", [
+    ("jindo_dog", "Jindo Dog", "pet", 460, 120, "none", "a cute white Korean Jindo dog sitting with curled tail"),
+    ("capybara", "Capybara", "pet", 420, 110, "none", "a calm capybara sitting with a small orange on its head"),
+    ("hedgehog_pet", "Hedgehog", "pet", 290, 80, "none", "a tiny round hedgehog curled on a small cushion"),
+    ("red_panda", "Red Panda", "pet", 420, 100, "none", "a fluffy red panda sitting and holding its striped tail"),
+    ("duckling", "Duckling", "pet", 190, 70, "none", "a fluffy yellow duckling standing"),
+    ("otter", "Otter", "pet", 380, 100, "none", "a cute otter floating on its back holding a pebble"),
+    ("sparrow_perch", "Sparrow", "pet", 170, 80, "none", "a round little sparrow sitting on a wooden perch"),
+    ("axolotl_tank", "Axolotl Tank", "pet", 380, 110, "none", "a small glass tank with a pink smiling axolotl and green plants"),
+    ("alpaca", "Alpaca", "pet", 420, 130, "none", "a fluffy cream alpaca with a small scarf"),
+  ]),
+]
+
+# The 5 older catalogue items that still have no picture (one image each).
+OLD_MISSING = [
+    ("norigae", "a traditional Korean norigae ornament with a red tassel and jade piece"),
+    ("jangdok", "a traditional Korean onggi earthenware jar (jangdok) with a lid"),
+    ("cat_white", "a fluffy white cat sitting and looking forward"),
+    ("koi_pond", "a small round indoor koi pond with two orange koi and a lily pad"),
+    ("chuseok_lantern", "a round traditional Korean silk lantern (cheongsachorong) in red and blue"),
+]
+
 STYLE = ("I'm making item sprites for a cozy pixel-art room game. Style for EVERY image: soft pixel-art "
          "(chunky visible pixels, smooth shading), front-facing view, warm cozy colours, no text, no floor "
          "shadow, plain pure white background. Match the style of a small yellow pixel-art two-seat sofa.")
 
-def main():
-    root = os.path.join(os.path.dirname(__file__), '..', '..')
-    lines = ["# My Room item art: prompts", "",
-      "Two sets: (A) the 29 catalogue items that still have no picture (one image each), and",
-      "(B) 63 new items in 7 sheets of 9: one picture per sheet, a 3x3 grid.", "",
-      "Cut sheets and clean single images with `scripts/room-art/process.py` (background removal,",
-      "trim, 400x400). Pictures go to `korehan/assets/room/`; items appear in the shop automatically",
-      "once their file exists.", "",
-      "## Style (paste once per chat)", "", "```", STYLE, "```", "",
-      "## (B) New items — one message per sheet", "",
-      "Paste: *\"Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in",
-      "its own cell with empty white space around it, no grid lines, no labels. Row 1: …, Row 2: …, Row 3: …\"*",
-      "", "Then run: `python3 scripts/room-art/process.py --grid <sheet.png> <sheet number>`", ""]
-    for n, (title, items) in enumerate(SHEETS, 1):
-        lines.append(f"### Sheet {n}: {title}")
-        rows = [items[i:i + 3] for i in range(0, 9, 3)]
-        for r, row in enumerate(rows, 1):
-            lines.append(f"- Row {r}: " + "; ".join(f"{p}" for (_, _, _, _, _, _, p) in row))
-        lines.append("- Files (row by row): " + ", ".join(f"`{i[0].replace('_', '-')}.png`" for i in items))
-        lines.append("")
-    old = open(os.path.join(root, 'docs', 'reference', 'room-art-prompts.md')).read()
-    a = old.find('## Items')
-    lines += ["## (A) Existing items without a picture — one message each", "", old[old.find('\n', a) + 1:] if a >= 0 else ""]
-    open(os.path.join(root, 'docs', 'reference', 'room-art-prompts.md'), 'w').write("\n".join(lines))
+def fname(i):
+    return i.replace('_', '-') + '.png'
 
+def migration(groups, path, header, sort0):
     q = lambda s: "'" + str(s).replace("'", "''") + "'"
-    vals, sort = [], 2000
-    for _, items in SHEETS:
+    vals, sort = [], sort0
+    for _, items in groups:
         for (i, name, cat, price, size, eff, _) in items:
             sort += 1
-            vals.append(f"  ({q(i)}, {q(name)}, {price}, {q('assets/room/' + i.replace('_', '-') + '.png')}, {size}, {sort}, true, {q(cat)}, {q(eff)})")
-    sql = ("-- auto-apply\n-- 63 new My Room items (owner, 2026-10-29: about 100 items in total). Pictures are made\n"
-           "-- from the prompt sheets in docs/reference/room-art-prompts.md (scripts/room-art/catalog.py) and\n"
-           "-- dropped into korehan/assets/room/; until a picture exists the item hides itself in every shop.\n"
-           "-- Prices follow the tiers in 20261029_my_room_ownership_prices.sql. Insert-only: an item that\n"
-           "-- already exists (e.g. edited in the admin) is left alone.\n"
+            vals.append(f"  ({q(i)}, {q(name)}, {price}, {q('assets/room/' + fname(i))}, {size}, {sort}, true, {q(cat)}, {q(eff)})")
+    sql = (header +
            "insert into public.room_items (id, name, price_nyang, image_url, base_size, sort_order, active, category, effect)\n"
            "select v.* from (values\n" + ",\n".join(vals) + "\n) as v(id, name, price_nyang, image_url, base_size, sort_order, active, category, effect)\n"
            "where not exists (select 1 from public.room_items r where r.id = v.id);\n")
-    open(os.path.join(root, 'supabase', 'migrations', '20261029_room_items_more.sql'), 'w').write(sql)
-    print(sum(len(i) for _, i in SHEETS), 'items')
+    open(path, 'w').write(sql)
+
+def main():
+    root = os.path.join(os.path.dirname(__file__), '..', '..')
+    total = sum(len(i) for _, i in PROPS) + sum(len(i) for _, i in SHEETS) + len(OLD_MISSING)
+    groups = SHEETS + PROPS
+    lines = ["# My Room item art: prompts", "",
+      f"{total} items still need a picture. Nine at a time: each sheet below is ONE message that",
+      "makes a 3x3 picture of nine items. Send the sheet pictures back with their sheet number;",
+      "they are cut with `python3 scripts/room-art/process.py --grid <picture> <sheet number>`",
+      "(background removal, trim, 400x400) into `korehan/assets/room/`. An item shows up in the shop",
+      "as soon as its picture exists.", "",
+      "## 1. Style (paste once at the start of a chat)", "", "```", STYLE, "```", "",
+      "## 2. One message per sheet", "",
+      "If items touch each other or a cell is empty, reply:",
+      "`Same sheet, but leave clear white space between all nine items and keep each one inside its own cell.`",
+      "If one item comes out wrong, redraw only that one: `Draw ONE item, centred, nothing else: <description>`.", ""]
+    def sheet(n, title, items):
+        lines.append(f"### Sheet {n}: {title}"); lines.append(""); lines.append("```")
+        lines.append("Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell "
+                     "with plenty of empty white space around it, nothing touching, no grid lines, no labels.")
+        for r in range(3):
+            lines.append(f"Row {r + 1}: " + "; ".join(i[6] for i in items[r * 3:r * 3 + 3]) + ".")
+        lines.append("```")
+        lines.append("Files, row by row: " + ", ".join(f"`{fname(i[0])}`" for i in items)); lines.append("")
+    lines.append(f"## A. New props: sheets {len(SHEETS) + 1}-{len(groups)} ({sum(len(i) for _, i in PROPS)} items)"); lines.append("")
+    for n, (title, items) in enumerate(PROPS, len(SHEETS) + 1): sheet(n, title, items)
+    lines.append(f"## B. Catalogue items still without a picture: sheets 1-{len(SHEETS)}"); lines.append("")
+    for n, (title, items) in enumerate(SHEETS, 1): sheet(n, title, items)
+    lines.append("### Older items (one picture each)"); lines.append("")
+    lines.append("| file | description |"); lines.append("|------|-------------|")
+    for i, d in OLD_MISSING: lines.append(f"| `{fname(i)}` | {d} |")
+    lines.append("")
+    open(os.path.join(root, 'docs', 'reference', 'room-art-prompts.md'), 'w').write("\n".join(lines))
+
+    migration(SHEETS, os.path.join(root, 'supabase', 'migrations', '20261029_room_items_more.sql'),
+      "-- auto-apply\n-- 63 new My Room items (owner, 2026-10-29: about 100 items in total). Pictures are made\n"
+      "-- from the prompt sheets in docs/reference/room-art-prompts.md (scripts/room-art/catalog.py) and\n"
+      "-- dropped into korehan/assets/room/; until a picture exists the item hides itself in every shop.\n"
+      "-- Prices follow the tiers in 20261029_my_room_ownership_prices.sql. Insert-only: an item that\n"
+      "-- already exists (e.g. edited in the admin) is left alone.\n", 2000)
+    migration(PROPS, os.path.join(root, 'supabase', 'migrations', '20261029_room_props.sql'),
+      "-- auto-apply\n-- " + str(sum(len(i) for _, i in PROPS)) + " more My Room props (owner, 2026-10-29: \"more kinds of props\"), generated by\n"
+      "-- scripts/room-art/catalog.py (PROPS). Hidden in every shop until korehan/assets/room/<file> exists.\n"
+      "-- Prices follow the tiers in 20261029_my_room_ownership_prices.sql. Insert-only.\n", 3000)
+    print(total, 'items without art')
 
 if __name__ == '__main__':
     main()

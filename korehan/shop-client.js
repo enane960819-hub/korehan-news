@@ -579,7 +579,7 @@
       var res = await sb.from('room_items').select('*').eq('active', true).order('sort_order');
       if (!res.error && res.data && res.data.length) {
         ROOM_ITEMS_SHOP = res.data.map(function(r) {
-          return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: r.base_size };
+          return { id: r.id, name: r.name, price: r.price_nyang, img: (typeof khRoomImg === 'function' ? khRoomImg(r.image_url) : r.image_url), size: r.base_size };
         });
         _shopRoomItemsLoaded = true;
       }
