@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { aiGate } from '../_shared/ai-gate.ts'
 
 const ALLOWED_ORIGINS = [
   'https://korehani.com',
@@ -309,6 +310,10 @@ Deno.serve(async (req) => {
     const featureStr = (typeof feature === 'string' && feature.length)
       ? feature.slice(0, 64)
       : null
+
+    // ── 5b. Owner switches (admin → AI costs) ─────────────────────
+    const off = await aiGate(sb, 'site', featureStr, { admin: isAdmin })
+    if (off) return jsonResponse({ error: off, code: 'ai_off' }, 503, cors)
 
     // ── 6. Anthropic call with timeout ───────────────────────────
     const ctrl = new AbortController()

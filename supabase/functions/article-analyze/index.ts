@@ -14,6 +14,7 @@
 //     (admin exempt), so a bug or abuse can't drain the API balance.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { aiGate, AiOffError } from '../_shared/ai-gate.ts'
 import {
   analysisPrompt, deriveTabs, extractJsonObject, type Level, SENT_CACHE_VERSION, stitchSentences,
 } from '../_shared/article-analysis.ts'
@@ -50,6 +51,8 @@ function hasSentences(t: any): boolean {
 }
 
 async function callClaude(sb: any, apiKey: string, content: string, maxTokens: number): Promise<string> {
+  const off = await aiGate(sb, 'article-analyze', 'article-analyze')
+  if (off) throw new AiOffError(off)
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 130_000)
   let resp: Response

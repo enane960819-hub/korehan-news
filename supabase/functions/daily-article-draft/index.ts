@@ -32,6 +32,7 @@
 //   { "buzz": true }    queue a Buzz pick now (even before the news drafts)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { aiGate, AiOffError } from '../_shared/ai-gate.ts'
 import { harvestGrammar } from './grammar-harvest.ts'
 import { buzzMentionsSource, buzzPrompt, collectBuzz, pexelsImage } from './buzz.ts'
 import { backfillAnalysis } from './backfill.ts'
@@ -134,6 +135,8 @@ async function callClaude(
   sb: any, apiKey: string, feature: string, model: string, maxTokens: number,
   content: string | Array<Record<string, unknown>>, timeoutMs = 110_000,
 ): Promise<string> {
+  const off = await aiGate(sb, 'daily-article-draft', 'cron:' + feature)
+  if (off) throw new AiOffError(off)
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), timeoutMs)
   let resp: Response

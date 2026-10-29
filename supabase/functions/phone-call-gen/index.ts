@@ -13,6 +13,7 @@
 // 'elevenlabs_voice_male' (voice IDs).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { aiGate, AiOffError } from '../_shared/ai-gate.ts'
 import { extractJsonObject } from '../_shared/article-analysis.ts'
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
@@ -60,6 +61,8 @@ function scriptPrompt(scenario: string, level: string, category: string): string
 }
 
 async function callClaude(sb: any, apiKey: string, prompt: string): Promise<string> {
+  const off = await aiGate(sb, 'phone-call-gen', 'cron:phone-call-gen')
+  if (off) throw new AiOffError(off)
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
