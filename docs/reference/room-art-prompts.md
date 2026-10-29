@@ -1,6 +1,6 @@
 # My Room item art: prompts
 
-158 items still need a picture. Nine at a time: each sheet below is ONE message that
+91 items still need a picture. Nine at a time: each sheet below is ONE message that
 makes a 3x3 picture of nine items. Send the sheet pictures back with their sheet number;
 they are cut with `python3 scripts/room-art/process.py --grid <picture> <sheet number>`
 (background removal, trim, 400x400) into `korehan/assets/room/`. An item shows up in the shop
@@ -18,17 +18,7 @@ If items touch each other or a cell is empty, reply:
 `Same sheet, but leave clear white space between all nine items and keep each one inside its own cell.`
 If one item comes out wrong, redraw only that one: `Draw ONE item, centred, nothing else: <description>`.
 
-## A. New props: sheets 8-17 (90 items)
-
-### Sheet 8: Study desk props
-
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: an open notebook with neat handwritten Korean letters ㄱ ㄴ ㄷ and a pencil on it; a small wooden box full of colourful flashcards with a few sticking out; a wooden hourglass sand timer with pink sand.
-Row 2: a cluster of pastel sticky notes stuck in a grid, with doodles but no readable text; an open laptop covered in cute stickers, screen glowing softly; over-ear headphones resting on a small wooden stand.
-Row 3: a tablet on a little stand with a stylus pen next to it; a small shiny gold trophy cup on a wooden base; a wall hanger with three ribbons and gold, silver and bronze medals.
-```
-Files, row by row: `hangul-notebook.png`, `flashcard-box.png`, `sand-timer.png`, `sticky-notes.png`, `study-laptop.png`, `headphone-stand.png`, `tablet-pen.png`, `trophy.png`, `medal-rack.png`
+## A. New props: sheets 8-17
 
 ### Sheet 9: Korean daily life
 
@@ -70,55 +60,19 @@ Row 3: a steaming cup of instant noodles with chopsticks resting on the lid, no 
 ```
 Files, row by row: `tteokbokki-pan.png`, `bibimbap-bowl.png`, `hotteok-plate.png`, `yuja-tea.png`, `gotgam-string.png`, `strawberry-cake.png`, `cup-noodle.png`, `bread-basket.png`, `watermelon.png`
 
-### Sheet 13: Hobbies
+### Sheet 13: Hobbies (only these are still missing, one picture each)
 
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: a small wooden ukulele leaning upright; a retro portable cassette player with orange-cushion headphones and a cassette; a wooden easel holding a small painting of mountains, with a palette and brushes.
-Row 2: a basket of colourful yarn balls with knitting needles and a half-knitted scarf; a half-finished jigsaw puzzle of a flower field on a board with loose pieces; a wooden baduk (Go) board with black and white stones and two stone bowls.
-Row 3: a brass telescope on a wooden tripod pointing up; a rolled lavender yoga mat with two small dumbbells and a water bottle; two crossed badminton rackets with a white shuttlecock.
-```
-Files, row by row: `ukulele.png`, `cassette-player.png`, `easel-painting.png`, `knitting-basket.png`, `jigsaw-puzzle.png`, `baduk-board.png`, `telescope.png`, `yoga-mat.png`, `badminton-set.png`
+| file | description |
+|------|-------------|
+| `ukulele.png` | a small wooden ukulele leaning upright |
 
-### Sheet 14: Wall decor
+### Sheet 15: Small furniture (only these are still missing, one picture each)
 
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: a framed Korean folk painting (minhwa) of a funny tiger and a magpie in a pine tree; a framed oil painting of yellow sunflowers in a vase; a string of colourful triangle bunting flags hanging in a gentle curve.
-Row 2: a dreamcatcher with soft feathers and beads; a wooden frame with pressed wildflowers behind glass; a wall hanging of golden moon phases on a string, from crescent to full.
-Row 3: a long green ivy garland draped in a loose curve with a few tiny white flowers; a wooden panel painted with colourful Korean dancheong temple patterns; a framed certificate with a gold seal and a ribbon, lines instead of readable text.
-```
-Files, row by row: `minhwa-tiger.png`, `sunflower-painting.png`, `bunting-flags.png`, `dreamcatcher.png`, `pressed-flowers.png`, `moon-phases.png`, `ivy-garland.png`, `dancheong-panel.png`, `framed-certificate.png`
-
-### Sheet 15: Small furniture
-
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: a small round wooden side table with a little lamp and a book; a three-tier wooden plant stand with small potted plants; three stacked woven storage baskets with fabric liners.
-Row 2: a ceramic umbrella stand with a clear umbrella and a yellow umbrella; a small wooden shoe rack with three pairs of colourful sneakers; a neat stack of folded Korean floor bedding (yo and ibul) with a pillow on top.
-Row 3: a small retro electric heater glowing warm orange; a leaning wooden ladder shelf with books, a plant and a candle; a wooden rocking chair with a knitted blanket over the back.
-```
-Files, row by row: `side-table.png`, `plant-stand.png`, `storage-baskets.png`, `umbrella-stand.png`, `sneaker-rack.png`, `folded-ibul.png`, `mini-heater.png`, `ladder-shelf.png`, `rocking-chair.png`
-
-### Sheet 16: Seasons & events 2
-
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: a red and white Christmas stocking with a small gift peeking out; a pile of three wrapped gift boxes with bows in different colours; an open box of chocolate-dipped biscuit sticks with a red ribbon, no logo or text.
-Row 2: a cute smiling ghost-shaped paper lantern glowing softly; a colourful paper pinwheel on a stick in a small pot; a pink Korean lotus lantern (yeondeung) glowing from inside.
-Row 3: a two-layer birthday cake with lit candles and sprinkles; a striped colourful beach ball; a big wrapped bouquet of roses and baby's breath with a satin ribbon.
-```
-Files, row by row: `xmas-stocking.png`, `gift-pile.png`, `choco-sticks.png`, `ghost-lantern.png`, `pinwheel.png`, `lotus-lantern.png`, `birthday-cake.png`, `beach-ball.png`, `graduation-bouquet.png`
-
-### Sheet 17: Animal friends
-
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: a cute white Korean Jindo dog sitting with curled tail; a calm capybara sitting with a small orange on its head; a tiny round hedgehog curled on a small cushion.
-Row 2: a fluffy red panda sitting and holding its striped tail; a fluffy yellow duckling standing; a cute otter floating on its back holding a pebble.
-Row 3: a round little sparrow sitting on a wooden perch; a small glass tank with a pink smiling axolotl and green plants; a fluffy cream alpaca with a small scarf.
-```
-Files, row by row: `jindo-dog.png`, `capybara.png`, `hedgehog-pet.png`, `red-panda.png`, `duckling.png`, `otter.png`, `sparrow-perch.png`, `axolotl-tank.png`, `alpaca.png`
+| file | description |
+|------|-------------|
+| `side-table.png` | a small round wooden side table with a little lamp and a book |
+| `plant-stand.png` | a three-tier wooden plant stand with small potted plants |
+| `storage-baskets.png` | three stacked woven storage baskets with fabric liners |
 
 ## B. Catalogue items still without a picture: sheets 1-7
 
@@ -132,15 +86,11 @@ Row 3: a cute round twin-bell alarm clock; a pastel school backpack with keychai
 ```
 Files, row by row: `desk-lamp.png`, `globe.png`, `book-stack.png`, `pencil-cup.png`, `wall-calendar.png`, `hangul-poster.png`, `alarm-clock.png`, `school-bag.png`, `study-chair.png`
 
-### Sheet 2: Korean tradition
+### Sheet 2: Korean tradition (only these are still missing, one picture each)
 
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: a traditional Korean gayageum zither lying on a stand; a traditional Korean janggu hourglass drum with sticks; a smiling Korean hahoe wooden mask hanging on the wall.
-Row 2: an open traditional Korean folding fan with plum blossoms; a hanging calligraphy scroll with brush strokes (abstract, no readable text); a glowing Korean hanji paper lamp with wooden frame.
-Row 3: a yunnori game set: four wooden sticks and a cloth board; a low Korean wooden tea table with a celadon tea set; a traditional hanok lattice paper window with soft light.
-```
-Files, row by row: `gayageum.png`, `janggu.png`, `hahoe-mask.png`, `buchae-fan.png`, `calligraphy-scroll.png`, `hanji-lamp.png`, `yut-set.png`, `tea-table.png`, `hanok-window.png`
+| file | description |
+|------|-------------|
+| `gayageum.png` | a traditional Korean gayageum zither lying on a stand |
 
 ### Sheet 3: Cafe & kitchen
 
@@ -151,16 +101,6 @@ Row 2: a modern Korean kimchi refrigerator; a bowl of patbingsu shaved ice with 
 Row 3: a woven bowl of tangerines with leaves; a small wooden coffee bar cart with mugs and a pour-over kettle; a Korean lunch box with rice, egg roll and side dishes.
 ```
 Files, row by row: `bubble-tea.png`, `rice-cooker.png`, `ramyeon-pot.png`, `kimchi-fridge.png`, `bingsu.png`, `mini-fridge.png`, `tangerine-bowl.png`, `coffee-cart.png`, `dosirak.png`
-
-### Sheet 4: K-culture & hobbies
-
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: a colourful concert poster with stage lights (no people, no text); a glowing fan light stick; an acoustic guitar leaning on a stand.
-Row 2: a digital piano keyboard on a stand; a noraebang karaoke microphone on a stand with sparkles; a handheld game console and controller on a small cushion.
-Row 3: a retro film camera; a skateboard with colourful stickers; a string of instant photos with clips and fairy lights on a wall.
-```
-Files, row by row: `kpop-poster.png`, `light-stick.png`, `guitar.png`, `keyboard-piano.png`, `karaoke-mic.png`, `game-console.png`, `film-camera.png`, `skateboard.png`, `photo-wall.png`
 
 ### Sheet 5: Cozy furniture
 
