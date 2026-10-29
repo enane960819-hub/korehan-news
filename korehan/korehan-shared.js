@@ -11326,7 +11326,7 @@ function injectMobileBottomNav() {
     ['index.html','home','Home','index'],
     ['korehan-all.html','newspaper','News','korehan-all'],
     ['korehan-study-room.html','notebook-pen','Study','korehan-study-room'],
-    ['korehan-conversations.html','messages-square','CONVO','korehan-conversations'],
+    ['korehan-conversations.html','messages-square','Convo','korehan-conversations'],
   ];
   if (supaUser) items.push(['#','circle-user-round','Account','account']);
   else items.push(['#','log-in','Sign In','signin']);

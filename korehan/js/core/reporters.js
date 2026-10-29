@@ -15,6 +15,13 @@
 
 // ── Character Reporter Profiles ───────────────────────────────
 // reporter_id on article maps to an entry here.
+// Random stock photos (picsum) were saved for some reporters — show the
+// initials fallback instead of an unrelated face.
+function _khReporterImg(url) {
+  url = String(url || '');
+  return /picsum\.photos/.test(url) ? '' : url;
+}
+
 var KH_REPORTERS = {};           // id → { name, img, href, role, color }
 var _KH_REPORTERS_PROMISE = null;
 var _KH_REPORTERS_LS_KEY  = 'kh_reporters_cache';
@@ -79,7 +86,7 @@ function _loadReportersIntoKHMap() {
           if (!rid) return;
           snap[rid] = KH_REPORTERS[rid] = {
             name : d.name  || '',
-            img  : d.image || '',
+            img  : _khReporterImg(d.image),
             href : d.profilePage || 'korehan-reporters.html',
             role : khReporterRole(d.role || ''),
             color: d.color || '#2563eb'
@@ -95,7 +102,7 @@ function _loadReportersIntoKHMap() {
             var snap2 = {};
             adminList.forEach(function(d) {
               if (!d.id) return;
-              snap2[d.id] = KH_REPORTERS[d.id] = { name:d.name||'', img:d.image||'', href:d.profilePage||'korehan-reporters.html', role:d.role||'', color:d.color||'#2563eb' };
+              snap2[d.id] = KH_REPORTERS[d.id] = { name:d.name||'', img:_khReporterImg(d.image), href:d.profilePage||'korehan-reporters.html', role:d.role||'', color:d.color||'#2563eb' };
             });
             try { localStorage.setItem(_KH_REPORTERS_LS_KEY, JSON.stringify(snap2)); } catch(e) {}
             _reRenderReporterSlots();
