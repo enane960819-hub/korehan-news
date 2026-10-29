@@ -47,7 +47,7 @@
         ((r && r.data) || []).forEach(function (it) {
           var sz = it.base_size || 60;
           if (sz < 100) sz = sz * 2;
-          map[it.id] = { id: it.id, name: it.name, img: it.image_url, size: sz, price: Number(it.price_nyang) || 0, effect: it.effect || 'none', category: it.category || 'deco' };
+          map[it.id] = { id: it.id, name: it.name, img: (typeof khRoomImg === 'function' ? khRoomImg(it.image_url) : it.image_url), size: sz, price: Number(it.price_nyang) || 0, effect: it.effect || 'none', category: it.category || 'deco' };
         });
         return map;
       }, function () { _itemsP = null; return {}; });

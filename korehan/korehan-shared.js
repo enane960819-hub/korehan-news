@@ -3738,6 +3738,15 @@ var SECTION_ALIASES = {
   'fake':    ['fake','Fake','Fake News','fake news','fakenews','가짜뉴스'],
 };
 
+// Room art lives under /assets/, which is cached for a year. A picture asked for before it was
+// uploaded comes back as the HTML fallback page and stays cached that way, so local room art is
+// always requested with a version. Bump KH_ROOM_ART_V whenever room/avatar art is added or changed.
+var KH_ROOM_ART_V = '20261029a';
+function khRoomImg(u) {
+  if (!u || typeof u !== 'string' || !/^assets\//.test(u) || u.indexOf('?') !== -1) return u;
+  return u + '?v=' + KH_ROOM_ART_V;
+}
+
 // Fake News (2026-10-29): openly made-up joke articles. They never mix into
 // real-news lists (All News, home News grid/hero, related, next article) —
 // only their own home rail and section page show them, always labelled.
