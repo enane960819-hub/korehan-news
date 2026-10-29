@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261029x">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
 <style>
 /* ── Layout ── */
 body {
@@ -412,6 +412,12 @@ body {
 .rp-post-act {
   border:1px solid #dbe5f2; background:#fff; color:#334155; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:800; cursor:pointer;
 }
+.rp-name-rom { display:block; font-family:'DM Sans','Source Sans 3',sans-serif; font-size:15px; font-weight:700; color:#64748b; letter-spacing:.01em; margin-top:2px; }
+.rp-tab-count:empty { display:none; }
+.rp-empty { background:#fff; border:1px solid #e8eef7; border-radius:18px; padding:32px 20px; text-align:center; box-shadow:0 4px 18px rgba(15,23,42,.04); }
+.rp-empty-ic { width:48px; height:48px; border-radius:50%; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; background:#eff6ff; color:#2563eb; font-size:22px; }
+.rp-empty-t { font-size:15px; font-weight:800; color:#0f172a; margin-bottom:4px; }
+.rp-empty-s { font-size:13px; color:#64748b; line-height:1.55; }
 .rp-post-empty {
   background:#ffffffcc; border:1px dashed #cbd5e1; border-radius:14px; padding:20px; text-align:center; color:#94a3b8; font-size:13px;
 }
@@ -453,7 +459,7 @@ body {
 <div id="rp-page-bg" class="rp-page-bg"></div>
 <div class="rp-content-layer">
 <div id="kh-header"></div>
-<div id="rp-root"><div class="rp-loading">⏳ Loading…</div></div>
+<div id="rp-root"><div class="rp-loading">Loading…</div></div>
 <div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" alt=""></div>
 <div id="kh-footer"></div>
 </div>
@@ -472,7 +478,7 @@ body {
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261029x"></script>
-<script src="js/core/reporters.js?v=20261029s"></script>
+<script src="js/core/reporters.js?v=20261029ng"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
@@ -482,7 +488,7 @@ body {
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029y"></script>
+<script src="korehan-shared.js?v=20261029ng"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 var FAV_HIRE_THRESHOLD = 3000;
@@ -527,7 +533,7 @@ function isMissingGiftHistoryTableError(err) {
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
   var root = document.getElementById('rp-root');
-  if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p>This reporter page doesn\'t exist or the link is incomplete.</p><p style="margin-top:14px"><a href="korehan-reporters.html" style="color:var(--bright);font-weight:700">See all reporters →</a></p></div>'; return; }
+  if (!rid) { window.location.replace('korehan-reporters.html'); return; }
   _postMode = getPostModePref();
   var sb = getSupa();
 
@@ -571,6 +577,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (b) reporter = { id:rid, name:b.name, role:b.role, image:b.img, color:b.color, intro:'', tags:[] };
   }
   if (!reporter || !reporter.name) {
+    if (bgEl) bgEl.style.display = 'none';
     root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p>This reporter page doesn\'t exist or the link is incomplete.</p><p style="margin-top:14px"><a href="korehan-reporters.html" style="color:var(--bright);font-weight:700">See all reporters →</a></p></div>';
     return;
   }
@@ -609,7 +616,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     +     '<div class="rp-color-bar" style="background:' + color + '"></div>'
     +   '</div>'
     +   '<div class="rp-info-col">'
-    +     '<div class="rp-name">' + reporter.name + '</div>'
+    +     '<div class="rp-name">' + escHtml(reporter.name) + (typeof khReporterNameEn === 'function' && khReporterNameEn(reporter) ? ' <span class="rp-name-rom">' + escHtml(khReporterNameEn(reporter)) + '</span>' : '') + '</div>'
     +     '<span class="rp-role-badge" style="background:' + color + '">' + (reporter.role_en || (typeof khReporterRole==='function'?khReporterRole:String)(reporter.role||'')) + '</span>'
     +     '<div class="rp-stats">'
     +       (reporter.age ? '<div class="rp-stat"><span class="rp-stat-label">Age</span><span class="rp-stat-val">' + reporter.age + '</span></div>' : '')
@@ -625,18 +632,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     // ── Compact favorability/nyang strip under the profile ──
     + '<div class="rp-stat-strip">'
     +   '<div class="rp-stat-strip-fav">'
-    +     '<div class="rp-stat-strip-row"><span>❤️ Affinity · <b id="rp-fav-level">' + favLevel + '</b></span><span id="rp-fav-xp"><b>' + favXP + '</b> / ' + FAV_HIRE_THRESHOLD + '</span></div>'
+    +     '<div class="rp-stat-strip-row"><span><i data-lucide="heart" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Affinity · <b id="rp-fav-level">' + favLevel + '</b></span><span id="rp-fav-xp"><b>' + favXP + '</b> / ' + FAV_HIRE_THRESHOLD + '</span></div>'
     +     '<div class="rp-stat-strip-bar"><div class="rp-stat-strip-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
     +   '</div>'
-    +   '<span class="rp-nyang-chip" id="rp-nyang-balance">🐾 - Nyang</span>'
+    +   '<span class="rp-nyang-chip" id="rp-nyang-balance"><i data-lucide="paw-print" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> - Nyang</span>'
     + '</div>'
 
     // ── Idol-style tab bar ──
     + '<div class="rp-tabbar" role="tablist">'
-    +   '<button type="button" class="rp-tab on" data-tab="posts"      role="tab" aria-selected="true" onclick="rpSwitchTab(\'posts\')">📝 Posts <span class="rp-tab-count" id="rp-tab-c-posts"></span></button>'
-    +   '<button type="button" class="rp-tab"    data-tab="album"      role="tab" aria-selected="false" onclick="rpSwitchTab(\'album\')">📷 Album <span class="rp-tab-count" id="rp-tab-c-album"></span></button>'
-    +   '<button type="button" class="rp-tab"    data-tab="photocards" role="tab" aria-selected="false" onclick="rpSwitchTab(\'photocards\')">💳 Photocards <span class="rp-tab-count" id="rp-tab-c-pc"></span></button>'
-    +   '<button type="button" class="rp-tab"    data-tab="articles"   role="tab" aria-selected="false" onclick="rpSwitchTab(\'articles\')">📰 Articles <span class="rp-tab-count" id="rp-tab-c-arts"></span></button>'
+    +   '<button type="button" class="rp-tab on" data-tab="posts"      role="tab" aria-selected="true" onclick="rpSwitchTab(\'posts\')"><i data-lucide="notebook-pen" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Posts <span class="rp-tab-count" id="rp-tab-c-posts"></span></button>'
+    +   '<button type="button" class="rp-tab"    data-tab="album"      role="tab" aria-selected="false" onclick="rpSwitchTab(\'album\')"><i data-lucide="camera" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Album <span class="rp-tab-count" id="rp-tab-c-album"></span></button>'
+    +   '<button type="button" class="rp-tab"    data-tab="photocards" role="tab" aria-selected="false" onclick="rpSwitchTab(\'photocards\')"><i data-lucide="credit-card" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Photocards <span class="rp-tab-count" id="rp-tab-c-pc"></span></button>'
+    +   '<button type="button" class="rp-tab"    data-tab="articles"   role="tab" aria-selected="false" onclick="rpSwitchTab(\'articles\')"><i data-lucide="newspaper" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Articles <span class="rp-tab-count" id="rp-tab-c-arts"></span></button>'
     + '</div>'
 
     // ── Tab panels ──
@@ -660,11 +667,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     // ── Gift panel (kept as a card below the tabs since it spans every tab's idol-stan flow) ──
     + '<div class="rp-fav-card" style="margin-top:24px">'
     +   '<div class="rp-fav-header">'
-    +     '<div class="rp-fav-title">🎁 Send a gift</div>'
+    +     '<div class="rp-fav-title"><i data-lucide="gift" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Send a gift</div>'
     +   '</div>'
     +   '<div class="rp-gifts" id="rp-gifts">Loading gifts…</div>'
     +   '<div id="rp-gift-msg" style="font-size:12px;color:#64748b;margin:2px 0 10px"></div>'
-    +   '<button class="rp-hire-btn" disabled>🎓 Hire as Korean manager</button>'
+    +   '<button class="rp-hire-btn" disabled><i data-lucide="graduation-cap" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Hire as Korean manager</button>'
     +   '<div class="rp-hire-progress" id="rp-fav-progress">Hireable at affinity ' + FAV_HIRE_THRESHOLD + ' · currently ' + favPct + '%</div>'
     + '</div>'
 
@@ -705,7 +712,7 @@ function rpRenderAlbum() {
   });
   if (countEl) countEl.textContent = imgs.length ? imgs.length : '';
   if (!imgs.length) {
-    root.innerHTML = '<div class="rp-album-empty">No photos yet. Upload from the Posts tab.</div>';
+    root.innerHTML = rpEmpty('camera', 'No photos yet', 'Photos from ' + rpFirstName() + '\'s posts will show up here.');
     return;
   }
   root.innerHTML = '<div class="rp-album-grid">'
@@ -742,7 +749,7 @@ function rpRenderPhotocards() {
 
   if (countEl) countEl.textContent = cards.length ? cards.length : '';
   if (!cards.length) {
-    root.innerHTML = '<div class="rp-pc-empty">No photocards yet. They are created when the reporter posts photos.</div>';
+    root.innerHTML = rpEmpty('credit-card', 'No photocards yet', 'Photocards appear when ' + rpFirstName() + ' shares photos.');
     return;
   }
 
@@ -783,6 +790,16 @@ function canManageReporterPosts(reporter) {
   return !!linked && String(linked) === String(supaUser.id);
 }
 
+// Friendly empty state for a tab with nothing in it yet.
+function rpEmpty(icon, title, sub) {
+  return '<div class="rp-empty"><div class="rp-empty-ic"><i data-lucide="' + icon + '" class="kh-ui-icon" aria-hidden="true"></i></div>'
+    + '<div class="rp-empty-t">' + escHtml(title) + '</div><div class="rp-empty-s">' + escHtml(sub) + '</div></div>';
+}
+function rpFirstName() {
+  var n = _currentReporter && _currentReporter.name ? String(_currentReporter.name) : '';
+  var rom = (typeof khReporterNameEn === 'function') ? khReporterNameEn(_currentReporter) : '';
+  return rom || n || 'This reporter';
+}
 function escHtml(t){ return String(t || '').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
 
 // Smart "← 뒤로가기" target. The old javascript:history.back() did the
@@ -833,10 +850,7 @@ async function initReporterPosts(reporterId, reporter) {
 function renderPostComposer(reporterId, reporter) {
   var el = document.getElementById('rp-post-compose');
   if (!el) return;
-  if (!_canManagePosts) {
-    el.innerHTML = '<div class="rp-post-empty">You do not have posting permission. Only reporter/admin accounts can post.</div>';
-    return;
-  }
+  if (!_canManagePosts) { el.innerHTML = ''; return; }
   el.innerHTML =
     '<div class="rp-post-compose">'
     + '<textarea id="rp-post-content" placeholder="' + escHtml('Write a new post for ' + (reporter && reporter.name ? reporter.name : 'this reporter')) + '"></textarea>'
@@ -969,7 +983,7 @@ function renderReporterPosts(posts) {
   if (openPanel && openPanel.id === 'rp-panel-album')      rpRenderAlbum();
   if (openPanel && openPanel.id === 'rp-panel-photocards') rpRenderPhotocards();
   if (!posts.length) {
-    feed.innerHTML = '<div class="rp-post-empty">No posts yet.</div>';
+    feed.innerHTML = rpEmpty('notebook-pen', 'No posts yet', rpFirstName() + ' hasn\'t posted anything yet. Check back soon.');
     return;
   }
   feed.innerHTML = posts.map(function(p){
@@ -981,7 +995,7 @@ function renderReporterPosts(posts) {
     return '<article class="rp-post-card">'
       + '<div class="rp-post-head">'
       +   '<div><div style="font-weight:800;color:#0f172a">Reporter post</div><div class="rp-post-meta">' + escHtml(formatPostTime(p.created_at)) + (p.updated_at && p.updated_at !== p.created_at ? ' · edited' : '') + '</div></div>'
-      +   (p.pinned ? '<div class="rp-post-pin">📌 PINNED</div>' : '')
+      +   (p.pinned ? '<div class="rp-post-pin"><i data-lucide="pin" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> PINNED</div>' : '')
       + '</div>'
       + '<div class="rp-post-content">' + escHtml(p.content || '') + '</div>'
       + (imgs.length ? ('<div class="' + imgsClass + '">' + imgs.map(function(url){ return '<img src="' + escHtml(url) + '" onclick="rpOpenPostImage(&quot;' + escHtml(url) + '&quot;)">'; }).join('') + '</div>') : '')
@@ -1168,7 +1182,7 @@ async function loadReporterGiftPanel(reporterId) {
     (res[1].data || []).forEach(function(o){ _giftOwnedMap[o.item_id] = Number(o.quantity || 0); });
     _giftBalance = Number(res[2].data && res[2].data.coin_balance || 0);
     var bal = document.getElementById('rp-nyang-balance');
-    if (bal) bal.textContent = '🐾 ' + _giftBalance.toLocaleString() + ' Nyang';
+    if (bal) bal.innerHTML = '<i data-lucide="paw-print" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> ' + _giftBalance.toLocaleString() + ' Nyang';
     renderGiftGrid(reporterId);
     if (msg) msg.textContent = 'Uses inventory if owned, otherwise sent instantly with Nyang.';
   } catch(e) {
@@ -1188,11 +1202,11 @@ function renderGiftGrid(reporterId) {
     var price = Number(g.coin_price || 0);
     var canBuy = _giftBalance >= price;
     var disabled = own <= 0 && !canBuy;
-    var icon = g.name.indexOf('Coffee') >= 0 || g.name.indexOf('커피') >= 0 ? '☕' : g.name.indexOf('Bubble') >= 0 || g.name.indexOf('버블') >= 0 ? '🧋' : '🌸';
+    var icon = g.name.indexOf('Coffee') >= 0 || g.name.indexOf('커피') >= 0 ? 'coffee' : g.name.indexOf('Bubble') >= 0 || g.name.indexOf('버블') >= 0 ? 'cup-soda' : 'flower-2';
     return '<button class="rp-gift' + (disabled ? ' disabled' : '') + '" ' + (disabled ? 'disabled' : '') + ' onclick="sendGiftToReporter(\'' + reporterId + '\',\'' + g.id + '\')">'
-      + '<span class="rp-gift-icon">' + icon + '</span>'
+      + '<span class="rp-gift-icon"><i data-lucide="' + icon + '" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i></span>'
       + '<span class="rp-gift-name">' + g.name + '</span>'
-      + '<span class="rp-gift-cost">🐾 ' + price.toLocaleString() + ' Nyang</span>'
+      + '<span class="rp-gift-cost"><i data-lucide="paw-print" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> ' + price.toLocaleString() + ' Nyang</span>'
       + (own > 0 ? '<span class="rp-gift-own">Inventory x' + own + '</span>' : '<span class="rp-gift-lock">Buy now</span>')
       + '</button>';
   }).join('');
@@ -1401,7 +1415,7 @@ async function loadReporterArticles(rid, name) {
   var arts = getCachedArticles().filter(function(a){ return a.reporter_id === rid && (!a.status || a.status === 'published'); });
   if (countEl) countEl.textContent = arts.length ? arts.length : '';
   if (!arts.length) {
-    el.innerHTML = '<div class="rp-post-empty">No articles written yet.</div>';
+    el.innerHTML = rpEmpty('newspaper', 'No articles yet', rpFirstName() + '\'s articles will be listed here once they are published.');
     return;
   }
   arts.sort(function(a,b){ return (b.date||'') > (a.date||'') ? 1 : -1; });

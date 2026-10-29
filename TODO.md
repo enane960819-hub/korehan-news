@@ -37,20 +37,13 @@ Open questions: should a lapsed Live member keep an already-booked seat
 (get_live_zoom_link only checks the seat)? Upgrade proration is billed on the
 next invoice (`create_prorations`), not immediately.
 
-My Room + neglected-pages review (2026-10-29, waiting on owner):
-- My Room bugs: `user_room_state.owned` client-writable (free items) → server-only;
-  emoji in hub labels; falling-leaf particles render as black scribbles over menus;
-  bookshelf hub → missing `#vocab`; only 1 hub item exists; 29 of 51 room_items have
-  no art (404); 0-nyang Buy buttons; dead badge/gacha code; whole catalog ≈1,083 nyang
-  (runs out in days).
-- Ideas (mockups first): learning unlocks (streak/words/TOPIK), working study hubs,
-  friend room visit on profile, daily Korean word from the room character.
-- Neglected: unsubscribe/confirm-subscription (khInjectSidebar error, old style);
-  profile (light theme, "My Room preview coming soon", two level systems); badges
-  read localStorage only (QA learner 0/84); Playground light theme + 7/8 games give
-  no XP/nyang + dead `korehan/fun/` folder; reporters (dev "no posting permission"
-  text, 3 missing portraits, Hangul-only names, old brand bio); mobile Daily Mission
-  pill under the tab bar on every page.
+My Room fixed (#952: server-only owned, prices ×12, no particles/wandering, hubs)
+and neglected-page bugs fixed (#953: newsletter pages, server-backed badges,
+profile tier, reporter page, mobile Daily Mission pill, game rewards, dead
+korehan/fun/ removed, double xp_log write). Mockups sent and waiting on owner:
+My Room learning version (today's word, study unlocks, friend's room) and
+redesigns of profile / reporters / Playground / newsletter pages. Owner to
+supply art: 29 room items, reporters cr6/cr9/cr10, cigar + fennec portraits.
 
 Owner decisions still open:
 - **Anthropic credit is empty** — every AI feature fails until topped up.

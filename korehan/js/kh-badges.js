@@ -315,8 +315,13 @@ function getTotalArticlesRead() {
   var log = lsGet('kh_read_log', {});
   var ids = new Set();
   Object.values(log).forEach(function(arr){ arr.forEach(function(id){ ids.add(id); }); });
-  return ids.size;
+  // Server count (korehan-shared.js khBadgeServerSync) wins on a new device.
+  return Math.max(ids.size, (typeof _khBadgeSrv === 'function' ? _khBadgeSrv().articles : 0) || 0);
 }
+// Server-backed counters live in korehan-shared.js; local-only fallbacks.
+if (typeof khBadgeSavedCount !== 'function') { var khBadgeSavedCount = function(){ return (typeof K_SAVED !== 'undefined') ? lsGet(K_SAVED, []).length : 0; }; }
+if (typeof khBadgeQuizCount !== 'function') { var khBadgeQuizCount = function(){ return lsGet('kh_quiz_done_count', 0) || 0; }; }
+if (typeof khBadgeXP !== 'function') { var khBadgeXP = function(){ return getXP() || 0; }; }
 
 function getStreakFreezes() { return lsGet('kh_streak_freezes', 1); }
 function useStreakFreeze() {
@@ -363,7 +368,12 @@ function getCurrentStreak() {
 
 function getSectionReadCounts() {
   // Supabase 없으면 localStorage 기반으로 섹션별 카운트
-  return lsGet(K_READ_SECTIONS, {});
+  var local = lsGet(K_READ_SECTIONS, {}) || {};
+  // Server per-section counts (read_articles, korehan-shared.js khBadgeServerSync).
+  var srv = (typeof _khBadgeSrv === 'function' ? _khBadgeSrv().sections : null) || {};
+  var out = Object.assign({}, local);
+  Object.keys(srv).forEach(function(k) { out[k] = Math.max(out[k] || 0, srv[k] || 0); });
+  return out;
 }
 
 function getLastQuizPct() { return lsGet('kh_last_quiz_pct', 0); }
@@ -416,21 +426,21 @@ var BADGE_DEFS = [
 
   // 🔖 VOCAB
   { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:pxBadge('sparkle'), name:'Seed Vocab',      desc:'Save 10 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 10; } },
+    check: function(){ return khBadgeSavedCount() >= 10; } },
   { id:'word_50',    cat:'vocab',     tier:'silver',   icon:pxBadge('flower'), name:'Word Sprout',     desc:'Save 50 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 50; } },
+    check: function(){ return khBadgeSavedCount() >= 50; } },
   { id:'word_100',   cat:'vocab',     tier:'silver',   icon:pxBadge('note'), name:'Word Collector',  desc:'Save 100 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 100; } },
+    check: function(){ return khBadgeSavedCount() >= 100; } },
   { id:'word_300',   cat:'vocab',     tier:'gold',     icon:pxBadge('book'), name:'Vocab Tree',      desc:'Save 300 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 300; } },
+    check: function(){ return khBadgeSavedCount() >= 300; } },
   { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:pxBadge('diamond'), name:'TOPIK Vocab',     desc:'Save 1000 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 1000; } },
+    check: function(){ return khBadgeSavedCount() >= 1000; } },
   { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:pxBadge('crown'), name:'Vocab Master',    desc:'Save 2000 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 2000; } },
+    check: function(){ return khBadgeSavedCount() >= 2000; } },
 
   // 📝 QUIZ
   { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:pxBadge('star'), name:'First Quiz',      desc:'Complete your first quiz',
-    check: function(){ return lsGet('kh_quiz_done_count',0) >= 1; } },
+    check: function(){ return khBadgeQuizCount() >= 1; } },
   { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:pxBadge('target'), name:'Daily Perfect',   desc:'Score 100% on a daily test',
     check: function(){ return getQuizPerfectCount() >= 1; } },
   { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:pxBadge('brain'), name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
@@ -462,13 +472,13 @@ var BADGE_DEFS = [
 
   // 🔢 MILESTONE / XP
   { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:pxBadge('star'), name:'XP 7,500',    desc:'Earn 7,500 XP total',
-    check: function(){ return getXP() >= 7500; } },
+    check: function(){ return khBadgeXP() >= 7500; } },
   { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:pxBadge('medal'), name:'XP 30,000',   desc:'Earn 30,000 XP total',
-    check: function(){ return getXP() >= 30000; } },
+    check: function(){ return khBadgeXP() >= 30000; } },
   { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:pxBadge('trophy'), name:'XP 75,000',   desc:'Earn 75,000 XP total',
-    check: function(){ return getXP() >= 75000; } },
+    check: function(){ return khBadgeXP() >= 75000; } },
   { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:pxBadge('diamond'), name:'XP 300,000',  desc:'Earn 300,000 XP total',
-    check: function(){ return getXP() >= 300000; } },
+    check: function(){ return khBadgeXP() >= 300000; } },
   { id:'days_90',    cat:'milestone', tier:'gold',     icon:pxBadge('clock'), name:'3-Month Runner', desc:'Study for 90 days after signup',
     check: function(){
       var log = lsGet('kh_study_log',{});
@@ -549,15 +559,15 @@ var BADGE_DEFS = [
 
   // 🔖 VOCAB expansion
   { id:'word_500', cat:'vocab', tier:'gold',     icon:pxBadge('flower'),  name:'Word Garden', desc:'Save 500 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 500; } },
+    check: function(){ return khBadgeSavedCount() >= 500; } },
   { id:'word_5000',cat:'vocab', tier:'legendary',icon:pxBadge('rainbow'), name:'Vocab Galaxy',desc:'Save 5,000 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 5000; } },
+    check: function(){ return khBadgeSavedCount() >= 5000; } },
 
   // 📝 QUIZ expansion
   { id:'quiz_30',     cat:'quiz', tier:'gold',     icon:pxBadge('shield'), name:'Quiz Veteran',  desc:'Complete 30 quizzes',
-    check: function(){ return lsGet('kh_quiz_done_count',0) >= 30; } },
+    check: function(){ return khBadgeQuizCount() >= 30; } },
   { id:'quiz_100',    cat:'quiz', tier:'legendary',icon:pxBadge('trophy'), name:'Quiz Centurion',desc:'Complete 100 quizzes',
-    check: function(){ return lsGet('kh_quiz_done_count',0) >= 100; } },
+    check: function(){ return khBadgeQuizCount() >= 100; } },
   { id:'quiz_perfect_10',cat:'quiz', tier:'diamond', icon:pxBadge('diamond'), name:'10 Perfects', desc:'Score 100% on 10 daily tests',
     check: function(){ return getQuizPerfectCount() >= 10; } },
   { id:'quiz_30days', cat:'quiz', tier:'diamond',  icon:pxBadge('brain'),   name:'Monthly Devotee',desc:'Complete daily tests 30 days in a row',
@@ -579,11 +589,11 @@ var BADGE_DEFS = [
 
   // 🔢 XP ladder fill-ins
   { id:'xp_15000', cat:'milestone', tier:'silver', icon:pxBadge('star'),   name:'XP 15,000', desc:'Earn 15,000 XP total',
-    check: function(){ return getXP() >= 15000; } },
+    check: function(){ return khBadgeXP() >= 15000; } },
   { id:'xp_50000', cat:'milestone', tier:'gold',   icon:pxBadge('medal'),  name:'XP 50,000', desc:'Earn 50,000 XP total',
-    check: function(){ return getXP() >= 50000; } },
+    check: function(){ return khBadgeXP() >= 50000; } },
   { id:'xp_500000',cat:'milestone', tier:'legendary',icon:pxBadge('crown'),name:'XP 500,000',desc:'Earn 500,000 XP total',
-    check: function(){ return getXP() >= 500000; } },
+    check: function(){ return khBadgeXP() >= 500000; } },
   { id:'days_180', cat:'milestone', tier:'diamond', icon:pxBadge('castle'),name:'6-Month Resident', desc:'Active study log on 180 distinct days',
     check: function(){
       var log = lsGet('kh_study_log',{});
@@ -691,7 +701,7 @@ function checkCulturalDateBadges() {
 // ── 섹션별 읽기 카운트 업데이트 ─────────────────────────────────────────────
 function trackSectionRead(section) {
   if (!section) return;
-  var sc = getSectionReadCounts();
+  var sc = lsGet(K_READ_SECTIONS, {}) || {}; // local log only; server counts merge on read
   sc[section] = (sc[section]||0) + 1;
   lsSet(K_READ_SECTIONS, sc);
 }
@@ -850,13 +860,14 @@ function getBadgeStats() {
     earnedCount: earnedCount,
     total: total,
     pct: Math.round(earnedCount / total * 100),
-    xp: getXP(),
+    xp: khBadgeXP(),
     streak: getCurrentStreak()
   };
 }
 
 // ── 뱃지 페이지 렌더링 (마이페이지 탭) ──────────────────────────────────────
 function renderBadgePage(container) {
+  if (typeof _khBadgeLastContainer !== 'undefined') _khBadgeLastContainer = container;
   var stats = getBadgeStats();
   var earned = stats.earned;
 
@@ -958,18 +969,18 @@ function getBadgeProgress(b) {
       'read_50':     { cur: getTotalArticlesRead,       max: 50 },
       'read_100':    { cur: getTotalArticlesRead,       max: 100 },
       'read_500':    { cur: getTotalArticlesRead,       max: 500 },
-      'word_10':     { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 10 },
-      'word_50':     { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 50 },
-      'word_100':    { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 100 },
-      'word_300':    { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 300 },
-      'word_1000':   { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 1000 },
-      'word_2000':   { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 2000 },
+      'word_10':     { cur: function(){ return khBadgeSavedCount(); }, max: 10 },
+      'word_50':     { cur: function(){ return khBadgeSavedCount(); }, max: 50 },
+      'word_100':    { cur: function(){ return khBadgeSavedCount(); }, max: 100 },
+      'word_300':    { cur: function(){ return khBadgeSavedCount(); }, max: 300 },
+      'word_1000':   { cur: function(){ return khBadgeSavedCount(); }, max: 1000 },
+      'word_2000':   { cur: function(){ return khBadgeSavedCount(); }, max: 2000 },
       'quiz_perfect3':{ cur: function(){ return lsGet('kh_quiz_perfect_streak',0); }, max: 3 },
       'quiz_14days': { cur: getQuizStreakDays, max: 14 },
-      'xp_500':      { cur: getXP, max: 500 },
-      'xp_2000':     { cur: getXP, max: 2000 },
-      'xp_5000':     { cur: getXP, max: 5000 },
-      'xp_20000':    { cur: getXP, max: 20000 },
+      'xp_500':      { cur: khBadgeXP, max: 500 },
+      'xp_2000':     { cur: khBadgeXP, max: 2000 },
+      'xp_5000':     { cur: khBadgeXP, max: 5000 },
+      'xp_20000':    { cur: khBadgeXP, max: 20000 },
       'time_morning7':{ cur: function(){ return lsGet('kh_morning_count',0); }, max: 7 },
       'time_monday':  { cur: function(){ return lsGet('kh_monday_streak',0); }, max: 4 },
       'time_friday':  { cur: function(){ return lsGet('kh_friday_night_count',0); }, max: 4 },
@@ -983,7 +994,14 @@ function getBadgeProgress(b) {
       var max = section_badge_max[b.id];
       return { pct: cur/max*100, label: cur + ' / ' + max };
     }
-    if (!map[b.id]) return null;
+    if (!map[b.id]) {
+      // Derive the rest from the id (read_1, xp_7500, …) — same counters as the checks.
+      var mm = /^(read|word|xp|streak)_(\d+)$/.exec(b.id);
+      if (!mm) return null;
+      var fn = { read: getTotalArticlesRead, word: khBadgeSavedCount, xp: khBadgeXP, streak: getCurrentStreak }[mm[1]];
+      var c = fn(), mx = +mm[2];
+      return { pct: c/mx*100, label: Math.min(c, mx) + ' / ' + mx };
+    }
     var cur = map[b.id].cur();
     var max = map[b.id].max;
     return { pct: cur/max*100, label: cur + ' / ' + max };

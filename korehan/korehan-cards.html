@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261029x">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
 <style>
 /* ── Hero ───────────────────────────────────────────────────── */
 .cc-hero {
@@ -234,6 +234,7 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 .cc-name { color:#fff; }
 /* korehan-shared.css has a light-theme .cc-name (conversation cards) — beat it here. */
 .cc-grid .cc-card .cc-name { color:#fff; }
+.cc-rom { display:block; font-family:'DM Sans','Source Sans 3',sans-serif; font-size:12px; font-weight:700; color:rgba(255,255,255,.65); margin-top:1px; }
 .cc-role, .cc-aff-num { color:rgba(255,255,255,.55); }
 .cc-aff-bar { background:rgba(255,255,255,.1); }
 .cc-tier-label { background:rgba(255,255,255,.1); color:#cbd5e1; }
@@ -282,7 +283,7 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261029x"></script>
-<script src="js/core/reporters.js?v=20261029s"></script>
+<script src="js/core/reporters.js?v=20261029ng"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
@@ -292,7 +293,7 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029y"></script>
+<script src="korehan-shared.js?v=20261029ng"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 // Card collection page — shows every reporter with the current user's
@@ -337,7 +338,7 @@ function ccCardHTML(reporter, points) {
   var lockOverlay = '';
   if (tier.key === 'locked') {
     lockOverlay = '<div class="cc-lock-overlay">'
-      + '<div class="cc-lock-icon">🔒</div>'
+      + '<div class="cc-lock-icon"><i data-lucide="lock" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i></div>'
       + '<div>Affinity 1+ required</div>'
       + '<div class="cc-lock-text">Send a gift to start</div>'
       + '</div>';
@@ -356,8 +357,8 @@ function ccCardHTML(reporter, points) {
   }
 
   var affDisplay = tier.key === 'platinum'
-    ? FAV_HIRE_THRESHOLD + '+ ❤️'
-    : (Number(points || 0) + ' ❤️');
+    ? FAV_HIRE_THRESHOLD + '+ <i data-lucide="heart" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i>'
+    : (Number(points || 0) + ' <i data-lucide="heart" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i>');
 
   return '<a class="cc-card tier-' + tier.key + '" href="korehan-reporter.html?id=' + encodeURIComponent(reporter.id) + '">'
     + '<div class="cc-img-wrap">'
@@ -367,8 +368,9 @@ function ccCardHTML(reporter, points) {
     +   lockOverlay
     + '</div>'
     + '<div class="cc-body">'
-    +   '<div class="cc-name">' + escapeHtml(reporter.name || '') + '</div>'
-    +   '<div class="cc-role">' + escapeHtml(reporter.role || '') + '</div>'
+    +   '<div class="cc-name">' + escapeHtml(reporter.name || '')
+    +     (typeof khReporterNameEn === 'function' && khReporterNameEn(reporter) ? ' <span class="cc-rom">' + escapeHtml(khReporterNameEn(reporter)) + '</span>' : '') + '</div>'
+    +   '<div class="cc-role">' + escapeHtml((typeof khReporterRole === 'function' ? khReporterRole : String)(reporter.role || '')) + '</div>'
     +   '<div class="cc-aff-row">'
     +     '<div class="cc-aff-bar"><div class="cc-aff-fill" style="width:' + pct + '%"></div></div>'
     +     '<span class="cc-aff-num">' + affDisplay + '</span>'
@@ -421,6 +423,7 @@ function ccBuildReporterList() {
       return {
         id: d.id,
         name: k.name || d.name,
+        name_en: k.name_en || '',
         role: k.role || d.role,
         color: k.color || d.color,
         image: k.img || d.image,
@@ -432,7 +435,7 @@ function ccBuildReporterList() {
     Object.keys(KH_REPORTERS).forEach(function(id) {
       var k = KH_REPORTERS[id] || {};
       if (have[id] || !k.name) return;
-      list.push({ id: id, name: k.name, role: k.role || '', color: k.color || '#475569', image: k.img || '' });
+      list.push({ id: id, name: k.name, name_en: k.name_en || '', role: k.role || '', color: k.color || '#475569', image: k.img || '' });
     });
   }
   return list;
@@ -484,7 +487,7 @@ async function ccLoad() {
     var totalEl0 = document.getElementById('cc-total');
     if (totalEl0) mapReady.then(function(){ totalEl0.textContent = ccBuildReporterList().length; });
     grid.innerHTML = '<div class="cc-signin" style="grid-column:1/-1">'
-      + '<h2>🔒 Login required</h2>'
+      + '<h2><i data-lucide="lock" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Login required</h2>'
       + '<p>Log in to view your card collection.</p>'
       + '<button onclick="if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')">Log in</button>'
       + '</div>';

@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Korean Name Generator — KoreHani Playground</title>
-  <link rel="stylesheet" href="korehan-shared.css?v=20261029x">
+  <link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
   <style>
     html body{margin:0!important;background:#050b15!important;background-color:#050b15!important;font-family:'Happy Monkey','Jua','DM Sans',Inter,Pretendard,sans-serif;color:#e0f2fe}
     .wrap{max-width:700px;margin:0 auto;padding:16px 16px 56px}
@@ -79,7 +79,7 @@
   <script src="js/core/saved-words.js?v=20261013a"></script>
   <script src="js/features/video-player.js?v=20260525r"></script>
   <script src="js/core/articles.js?v=20261029x"></script>
-  <script src="js/core/reporters.js?v=20261029s"></script>
+  <script src="js/core/reporters.js?v=20261029ng"></script>
   <script src="js/features/streak.js?v=20260525r"></script>
   <script src="js/features/daily-mission.js?v=20261029s"></script>
   <script src="js/features/reading-tracker.js?v=20260525r"></script>
@@ -89,7 +89,7 @@
   <script src="js/features/analyze-mode.js?v=20261029s"></script>
   <script src="js/features/translation.js?v=20261027a"></script>
   <script src="js/features/fill-blank.js?v=20261029s"></script>
-  <script src="korehan-shared.js?v=20261029y"></script>
+  <script src="korehan-shared.js?v=20261029ng"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
   <script>
   // ── Korean Name Dataset ──
@@ -285,9 +285,11 @@
         hintRow.innerHTML = leadTags.map(function(t){ return '<span class="ng-hint-chip">'+t+'</span>'; }).join('');
       }, 1500);
       setTimeout(function(){
-        stage.textContent = 'Reveal complete \u2728';
+        stage.textContent = 'Reveal complete';
         card.style.display = '';
         card.classList.add('on');
+        // Not a quiz: XP/nyang only, no Daily Mission quiz credit.
+        if (typeof khGameComplete === 'function') khGameComplete('name', { mission: false });
       }, 2300);
 
       root.querySelector('#ng-restart').addEventListener('click', function(){ state = { step:1, profile:{}, answers:[] }; render(); });

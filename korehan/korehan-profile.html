@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profile — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261029x">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
 <style>
 .kh-pf-page { padding: 24px 0 60px; font-family: 'Source Sans 3', system-ui, sans-serif; }
 .kh-pf-hero {
@@ -135,7 +135,7 @@
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261029x"></script>
-<script src="js/core/reporters.js?v=20261029s"></script>
+<script src="js/core/reporters.js?v=20261029ng"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20261029s"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
@@ -145,9 +145,9 @@
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029y"></script>
+<script src="korehan-shared.js?v=20261029ng"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
-<script src="js/kh-badges.js?v=20261029s"></script>
+<script src="js/kh-badges.js?v=20261029ng"></script>
 <script>
 // Public profile page
 //
@@ -293,7 +293,7 @@
           '<div class="kh-pf-avatar">' + escapeHtml(initial) + '</div>' +
           '<div style="flex:1;min-width:0">' +
             '<h1 class="kh-pf-name">' + escapeHtml(name) + '</h1>' +
-            '<div class="kh-pf-handle">Level ' + lvl.level + ' · ' + lvl.title + '</div>' +
+            '<div class="kh-pf-handle">' + lvl.title + ' · ' + (profile.xp || 0).toLocaleString() + ' XP</div>' +
           '</div>' +
         '</div>' +
         '<div class="kh-pf-stats">' +
@@ -305,20 +305,23 @@
         '<div class="kh-pf-actions">' + actionHtml + '</div>' +
       '</div>' +
 
-      '<div class="kh-pf-section"><h2>Badges</h2>' + badgesHtml + '</div>' +
+      '<div class="kh-pf-section"><h2>Badges</h2><div id="kh-pf-badges-box">' + badgesHtml + '</div></div>' +
       '<div class="kh-pf-section"><h2>My Room</h2>' + roomHtml + '</div>' +
       '<div class="kh-pf-section"><h2>Guestbook</h2>' + gbListHtml + gbComposerHtml + '</div>';
 
     if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    if (friendshipState === 'self' && typeof khBadgesReady === 'function') khBadgesReady();
   }
+  // Badges catch up from the server (korehan-shared.js khBadgeServerSync).
+  window.addEventListener('kh-badges-changed', function() {
+    var box = $('kh-pf-badges-box');
+    if (box && profile) box.innerHTML = renderBadges();
+  });
 
   function computeLevel(xp) {
-    // Same staircase the rest of the app uses for the navbar level pill.
-    // Tier name from a small ladder; tweak alongside Growth Lab later.
-    var lvl = Math.floor(Math.sqrt(xp / 200)) + 1;
-    var titles = ['Seedling','Sprout','Sapling','Tree','Forest','Mountain','Ocean','Constellation'];
-    var tier = titles[Math.min(titles.length - 1, Math.floor((lvl - 1) / 5))];
-    return { level: lvl, title: tier };
+    // Same XP tier ladder as My Page (khXPTier in korehan-shared.js).
+    var tier = (typeof khXPTier === 'function') ? khXPTier(xp) : { label: 'Bronze' };
+    return { title: tier.label, tier: tier };
   }
 
   function renderActionBar() {
