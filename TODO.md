@@ -41,9 +41,13 @@ My Room fixed (#952) and neglected-page bugs fixed (#953). Approved mockups
 shipped (#954): My Room learning version (today's word, 9 study unlocks via
 kh_claim_room_unlocks, unlock items not sold), dark public profile with the
 read-only room + room likes, dark Reporters / Playground / newsletter pages.
-Owner to supply art: 29 room items (prompts: docs/reference/room-art-prompts.md,
-process with scripts/room-art/process.py), reporters cr6/cr9/cr10, cigar +
-fennec + hedgehog portraits. Follow-ups: block_user doesn't remove room likes;
+Room item art: 24 of the 29 old items are in (2026-10-29). Still to draw: norigae,
+jangdok, cat-white, koi-pond, chuseok-lantern, plus the 63 sheet items (prompts in git
+a1da780 / docs/reference/room-art-prompts.md, process with scripts/room-art/process.py).
+Also reporters cr6/cr9/cr10, cigar + fennec + hedgehog portraits.
+Character editor: sprites (korehan/assets/avatar/, 4 hair bases x 9 outfits + 16
+accessories) and room themes (korehan/assets/room/themes/, 7 of 10) are in, not wired;
+mockup sent, waiting for the owner's OK on the editor + unlock prices. Follow-ups: block_user doesn't remove room likes;
 user_stats.streak is browser-written (unlock streak uses the server ledger).
 
 Owner decisions still open:
