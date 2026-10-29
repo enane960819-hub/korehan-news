@@ -955,7 +955,7 @@ body.kh-neon-on .hero-dot {
 // Supabase 세션 있으면 (기존 유저) 항상 메인 직행
 (function(){
   // Owner preview link — korehan-shared.js signs in, then reloads.
-  if (/[?&]kh_preview=/.test(location.search)) return;
+  if (/[?&](kh_preview|p)=/.test(location.search)) return;
   // Supabase 세션 토큰이 있으면 기존 유저 → 메인
   for (var i = 0; i < localStorage.length; i++) {
     var k = localStorage.key(i);
@@ -1145,7 +1145,7 @@ window._khLoaderClearAuto = function() {};
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029t"></script>
+<script src="korehan-shared.js?v=20261029u"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 var HOME_CONVS = [

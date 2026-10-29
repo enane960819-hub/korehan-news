@@ -12717,9 +12717,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // the preview-login Edge Function — no credentials typed, not the owner's
 // own account. A bar on every page says so and offers Exit.
 (function khPreviewLogin() {
-  var m = location.search.match(/[?&]kh_preview=([A-Za-z0-9_-]{20,100})/);
+  // ?kh_preview=<token> anywhere, or the short ?p=<token> on the home page
+  // (typed by hand on the owner's work computer).
+  var isHome = /^\/(index(\.html)?)?$/.test(location.pathname);
+  var m = location.search.match(/[?&]kh_preview=([A-Za-z0-9_-]{6,100})/)
+    || (isHome ? location.search.match(/[?&]p=([A-Za-z0-9_-]{6,100})/) : null);
   function cleanUrl() {
-    return location.pathname + location.search.replace(/([?&])kh_preview=[^&]*&?/, '$1').replace(/[?&]$/, '') + location.hash;
+    return location.pathname + location.search.replace(/([?&])(kh_preview|p)=[^&]*&?/, '$1').replace(/[?&]$/, '') + location.hash;
   }
   function bar() {
     var on = false;
