@@ -4989,7 +4989,9 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
   // so drop them. Wrong is worse than missing.
   if (data && Array.isArray(data.analysis) && data.analysis.length) {
     var _hintSet = _khGrammarHintSet();
-    var _lvlNow = (window._currentArticle && window._currentArticle.level) || 'Intermediate';
+    // Only articles carry a level here; conversations (often beginner)
+    // keep their particle cards.
+    var _lvlNow = (window._currentArticle && window._currentArticle.level) || '';
     var _skipBasic = (_lvlNow === 'Intermediate' || _lvlNow === 'Advanced')
       && window.KH_GRAMMAR && window.KH_GRAMMAR.intermediateSkipLabels;
     data.analysis = data.analysis.filter(function(item) {
