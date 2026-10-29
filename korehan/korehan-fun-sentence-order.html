@@ -40,6 +40,7 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 .gs-chip { padding:11px 15px; border-radius:10px; border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#fff; font-family:'Noto Sans KR',sans-serif; font-size:15px; font-weight:700; cursor:pointer; transition:.12s; min-height:44px; }
 .gs-chip:hover { background:rgba(255,255,255,.12); border-color:rgba(251,191,36,.4); }
 .gs-chip-on { background:linear-gradient(135deg,#fbbf24,#f97316); color:#0a0e1a; border-color:transparent; }
+.gs-chip:disabled { cursor:default; opacity:.6; }
 .gs-actions { display:flex; gap:8px; }
 .gs-btn { flex:1; padding:13px; border:0; border-radius:12px; font-size:14px; font-weight:900; cursor:pointer; font-family:inherit; min-height:48px; }
 .gs-check { background:#fbbf24; color:#0a0e1a; }
@@ -274,6 +275,9 @@ function renderQ() {
   shuffle(s.poolWords);
   s.answer = [];
   s.qStarted = Date.now();
+  // Each question is checked/skipped once; chips + Check stay locked
+  // until the player advances.
+  s.locked = false;
   _renderChips();
 }
 
@@ -285,19 +289,19 @@ function _renderChips() {
     tray.innerHTML = '<div class="gs-tray-empty">Tap the chips below to build the sentence.</div>';
   } else {
     tray.innerHTML = s.answer.map(function(o, pos) {
-      return '<button type="button" class="gs-chip gs-chip-on" onclick="window._so_remove(' + pos + ')">' + escapeHtml(o.w) + ' ×</button>';
+      return '<button type="button" class="gs-chip gs-chip-on"' + (s.locked ? ' disabled' : '') + ' onclick="window._so_remove(' + pos + ')">' + escapeHtml(o.w) + ' ×</button>';
     }).join('');
   }
   pool.innerHTML = s.poolWords.map(function(o) {
-    return '<button type="button" class="gs-chip" onclick="window._so_pick(' + o.i + ')">' + escapeHtml(o.w) + '</button>';
+    return '<button type="button" class="gs-chip"' + (s.locked ? ' disabled' : '') + ' onclick="window._so_pick(' + o.i + ')">' + escapeHtml(o.w) + '</button>';
   }).join('');
   // Enable check only when every word has been placed.
   var origCount = s.items[s.idx][0].split(' ').length;
-  document.getElementById('gs-check').disabled = (s.answer.length !== origCount);
+  document.getElementById('gs-check').disabled = s.locked || (s.answer.length !== origCount);
 }
 
 window._so_pick = function(origIdx) {
-  var s = _state; if (!s) return;
+  var s = _state; if (!s || s.locked) return;
   var k = -1;
   for (var i = 0; i < s.poolWords.length; i++) {
     if (s.poolWords[i].i === origIdx) { k = i; break; }
@@ -308,14 +312,16 @@ window._so_pick = function(origIdx) {
 };
 
 window._so_remove = function(pos) {
-  var s = _state; if (!s) return;
+  var s = _state; if (!s || s.locked) return;
   var removed = s.answer.splice(pos, 1)[0];
   if (removed) s.poolWords.push(removed);
   _renderChips();
 };
 
 window.checkAnswer = function() {
-  var s = _state; if (!s) return;
+  var s = _state; if (!s || s.locked) return;
+  if (s.idx >= s.items.length) return;
+  s.locked = true;
   var origWords = s.items[s.idx][0].split(' ');
   var got = s.answer.map(function(o){ return o.w; });
   // Every item is hand-written: the answer is the sentence itself plus its
@@ -353,24 +359,27 @@ window.checkAnswer = function() {
   scoreEl.classList.add('gs-bump');
   _gsUpdateStreakUI();
   // Lock chips until the user advances.
-  document.getElementById('gs-check').disabled = true;
+  _renderChips();
   // A miss waits for "Next" so the correct order can actually be read.
-  if (ok) setTimeout(function() { s.idx++; renderQ(); }, 900);
+  var qIdx = s.idx;
+  if (ok) setTimeout(function() { if (_state === s && s.idx === qIdx) { s.idx++; renderQ(); } }, 900);
 };
 
 function _gsNextBtn() {
   return '<button type="button" class="gs-next" onclick="gsNext()">Next</button>';
 }
-window.gsNext = function() { var s = _state; if (!s) return; s.idx++; renderQ(); };
+window.gsNext = function() { var s = _state; if (!s || !s.locked) return; s.idx++; renderQ(); };
 
 window.skipQ = function() {
-  var s = _state; if (!s) return;
+  var s = _state; if (!s || s.locked) return;
+  if (s.idx >= s.items.length) return;
+  s.locked = true;
   s.streak = 0;
   _gsUpdateStreakUI();
   var origWords = s.items[s.idx][0].split(' ');
   document.getElementById('gs-fb-host').innerHTML =
     '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div>' + _gsNextBtn() + '</div>';
-  document.getElementById('gs-check').disabled = true;
+  _renderChips();
 };
 
 // Game-feel helpers — same pattern as PR #7W in Dictation.
