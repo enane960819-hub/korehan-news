@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Costs — Admin</title>
+<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<style>
+.ai-wrap { max-width: 1100px; margin: 24px auto 80px; padding: 0 16px; font-family: 'Source Sans 3', system-ui, sans-serif; color:#0f172a; }
+.ai-h1 { font-family:'Playfair Display', serif; font-weight:900; font-size:26px; margin:0 0 4px; }
+.ai-sub { font-size:13px; color:#64748b; margin:0 0 18px; line-height:1.55; max-width:720px; }
+.ai-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+@media (min-width:760px) { .ai-cards { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.ai-card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:14px; }
+.ai-card b { display:block; font-size:22px; font-weight:900; }
+.ai-card small { color:#64748b; font-size:12px; }
+.ai-box { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 2px 12px rgba(15,23,42,.04); }
+.ai-box h2 { font-size:15px; margin:0 0 4px; }
+.ai-box p.note { font-size:12.5px; color:#64748b; margin:0 0 12px; line-height:1.5; }
+.ai-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:10px 0; border-top:1px solid #f1f5f9; }
+.ai-row:first-of-type { border-top:0; }
+.ai-row .t { font-weight:800; font-size:14px; }
+.ai-row .d { font-size:12px; color:#64748b; margin-top:2px; line-height:1.45; }
+.ai-row .c { font-size:12px; color:#334155; margin-top:3px; }
+.ai-row.off .t { color:#94a3b8; text-decoration:line-through; }
+.ai-sw { position:relative; width:46px; height:26px; flex-shrink:0; }
+.ai-sw input { opacity:0; width:0; height:0; }
+.ai-sw span { position:absolute; inset:0; background:#cbd5e1; border-radius:999px; cursor:pointer; transition:.15s; }
+.ai-sw span::before { content:''; position:absolute; left:3px; top:3px; width:20px; height:20px; background:#fff; border-radius:50%; transition:.15s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.ai-sw input:checked + span { background:#16a34a; }
+.ai-sw input:checked + span::before { transform:translateX(20px); }
+.ai-sw input:disabled + span { opacity:.45; cursor:not-allowed; }
+.ai-master { border-color:#fecaca; background:#fff7f7; }
+.ai-cap { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.ai-cap input { width:110px; padding:9px 10px; border:1px solid #cbd5e1; border-radius:10px; font:inherit; }
+.ai-btn { padding:9px 14px; border:1px solid #cbd5e1; background:#fff; border-radius:999px; font-size:12.5px; font-weight:800; cursor:pointer; }
+.ai-btn.p { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+.ai-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+.ai-tbl th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#64748b; padding:8px 6px; border-bottom:1px solid #e2e8f0; }
+.ai-tbl td { padding:9px 6px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.ai-tbl td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.ai-tbl tr.off td { color:#94a3b8; }
+.ai-scroll { overflow-x:auto; }
+.ai-bars { display:flex; align-items:flex-end; gap:3px; height:140px; padding-top:8px; }
+.ai-bars div { flex:1; min-width:4px; background:#93c5fd; border-radius:4px 4px 0 0; position:relative; }
+.ai-bars div:hover { background:#1d4ed8; }
+.ai-axis { display:flex; justify-content:space-between; font-size:11px; color:#94a3b8; margin-top:4px; }
+.ai-tip { font-size:12.5px; color:#334155; margin-top:8px; min-height:18px; }
+.ai-tag { display:inline-block; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:999px; background:#eef2ff; color:#3730a3; }
+.ai-loading { padding:60px 20px; text-align:center; color:#64748b; }
+.ai-toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#0f172a; color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; opacity:0; transition:.2s; pointer-events:none; z-index:50; }
+.ai-toast.on { opacity:1; }
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="ai-wrap">
+  <h1 class="ai-h1">AI costs &amp; switches</h1>
+  <p class="ai-sub">Every paid Anthropic call on the site, by day, job and feature. Switches take effect on the server within about 30 seconds. Costs are estimates from token counts (Sonnet $3/$15, Haiku $1/$5 per million tokens).</p>
+  <div id="ai-root" class="ai-loading">Loading…</div>
+</div>
+<div class="ai-toast" id="ai-toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-admin-gate.js?v=20261025a"></script>
+<script src="js/core/security.js?v=20260525r"></script>
+<script src="js/core/storage.js?v=20260525r"></script>
+<script src="js/core/icons.js?v=20260525r"></script>
+<script src="js/core/modals.js?v=20260525r"></script>
+<script src="js/core/ui-states.js?v=20260525r"></script>
+<script src="js/core/analytics.js?v=20261014a"></script>
+<script src="js/core/user-analytics.js?v=20261014a"></script>
+<script src="js/core/plans.js?v=20261028d"></script>
+<script src="js/core/article-cache.js?v=20261028b"></script>
+<script src="js/core/phrases.js?v=20261029a"></script>
+<script src="js/core/saved-words.js?v=20261013a"></script>
+<script src="js/features/video-player.js?v=20260525r"></script>
+<script src="js/core/articles.js?v=20261025a"></script>
+<script src="js/core/reporters.js?v=20261025a"></script>
+<script src="js/features/streak.js?v=20260525r"></script>
+<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/reading-tracker.js?v=20260525r"></script>
+<script src="js/features/bookmarks.js?v=20260525r"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
+<script src="js/features/sidebar.js?v=20261028c"></script>
+<script src="js/features/analyze-mode.js?v=20260525r"></script>
+<script src="js/features/translation.js?v=20261027a"></script>
+<script src="js/features/fill-blank.js?v=20261013c"></script>
+<script src="korehan-shared.js?v=20261028j"></script>
+<script src="js/core/emoji-icons.js?v=20261026a"></script>
+<script>
+// Jobs = the Edge Functions that call Anthropic (the `job` name ai-gate.ts
+// checks). Features are matched to a job by the name they log.
+var AI_JOBS = [
+  { k: 'content-qa', t: 'AI content review', d: 'Reviews new AI-made study content, tags new words, builds writing packs. Calls AI only when there is something new.', cron: ['content-qa'] },
+  { k: 'daily-article-draft', t: 'Morning article drafts', d: '4 drafts every morning (06:00–06:55 KST), bulk article jobs from the CMS, Korea Buzz, grammar harvest, missing sentence analysis.', cron: ['daily-article-draft', 'article-gen-jobs'] },
+  { k: 'daily-content-gen', t: 'Daily study content', d: 'Vocabulary, grammar and key expressions for the Study Room.', cron: ['daily-content-gen'] },
+  { k: 'article-analyze', t: 'Article analysis', d: 'Sentence analysis for an article that has none yet.', cron: [] },
+  { k: 'phone-call-gen', t: 'Phone-call lessons', d: 'Generates phone-call practice scripts.', cron: [] },
+  { k: 'topik-gen', t: 'TOPIK question generator', d: 'Stopped on 2026-10-29 (tests are hand-written now). Keep off.', cron: [] }
+];
+function featureJob(f) {
+  if (/^cron:(content-qa|word-tags|conv-titles)/.test(f)) return 'content-qa';
+  if (/^cron:(daily-draft|buzz|grammar-harvest|analysis-backfill)/.test(f)) return 'daily-article-draft';
+  if (/^cron:daily-content-gen/.test(f)) return 'daily-content-gen';
+  if (/^cron:topik/.test(f)) return 'topik-gen';
+  if (/^cron:phone-call/.test(f)) return 'phone-call-gen';
+  if (f === 'article-analyze') return 'article-analyze';
+  return 'site';
+}
+var S = { sw: null, data: null };
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function usd(n) { n = Number(n) || 0; return '$' + (n >= 10 ? n.toFixed(0) : n >= 1 ? n.toFixed(2) : n.toFixed(3)); }
+function toast(m) { var t = $('ai-toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function kstDay(offset) { var d = new Date(Date.now() + 9 * 3600000 - (offset || 0) * 86400000); return d.toISOString().slice(0, 10); }
+
+async function load() {
+  var sb = getSupa();
+  var r = await sb.rpc('kh_ai_costs', { p_days: 60 });
+  if (r.error) { $('ai-root').textContent = 'Could not load costs: ' + r.error.message; return; }
+  var s = await sb.from('app_settings').select('value').eq('key', 'ai_switches').maybeSingle();
+  var raw = {};
+  try { raw = s.data && s.data.value ? (typeof s.data.value === 'string' ? JSON.parse(s.data.value) : s.data.value) : {}; } catch (_) {}
+  S.sw = { all: raw.all !== false, site: raw.site !== false, jobs: raw.jobs || {}, off_features: raw.off_features || [], daily_cap_usd: raw.daily_cap_usd == null ? null : Number(raw.daily_cap_usd) };
+  S.data = r.data;
+  render();
+}
+
+async function save(msg) {
+  var r = await getSupa().from('app_settings').upsert({ key: 'ai_switches', value: JSON.stringify(S.sw) }, { onConflict: 'key' });
+  if (r.error) { toast('Save failed: ' + r.error.message); return load(); }
+  toast(msg || 'Saved — the server picks it up within 30 seconds');
+  render();
+}
+
+function sum(rows, fn) { return rows.reduce(function (t, x) { return t + (fn(x) ? Number(x.usd) || 0 : 0); }, 0); }
+function sw(id, on, disabled) { return '<label class="ai-sw"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + (disabled ? ' disabled' : '') + '><span></span></label>'; }
+
+function render() {
+  var D = S.data, rows = D.rows || [], W = S.sw;
+  var d7 = kstDay(6), d30 = kstDay(29), today = kstDay(0);
+  var crons = {}; (D.crons || []).forEach(function (c) { crons[c.name] = c; });
+  var allOff = !W.all;
+
+  // Per-feature totals
+  var feats = {};
+  rows.forEach(function (x) {
+    var f = feats[x.feature] || (feats[x.feature] = { f: x.feature, job: featureJob(x.feature), today: 0, d7: 0, d30: 0, calls7: 0, models: {} });
+    var u = Number(x.usd) || 0;
+    if (x.day === today) f.today += u;
+    if (x.day >= d7) { f.d7 += u; f.calls7 += Number(x.calls) || 0; }
+    if (x.day >= d30) f.d30 += u;
+    f.models[x.model.replace(/-\d{8}$/, '')] = 1;
+  });
+  var featList = Object.keys(feats).map(function (k) { return feats[k]; }).sort(function (a, b) { return b.d30 - a.d30; });
+  function jobCost(k, since) { return featList.filter(function (f) { return f.job === k; }).reduce(function (t, f) { return t + (since === 'today' ? f.today : since === 7 ? f.d7 : f.d30); }, 0); }
+
+  // By day (last 30)
+  var byDay = {}; rows.forEach(function (x) { if (x.day >= d30) byDay[x.day] = (byDay[x.day] || 0) + (Number(x.usd) || 0); });
+  var days = []; for (var i = 29; i >= 0; i--) days.push(kstDay(i));
+  var maxDay = Math.max(0.01, Math.max.apply(null, days.map(function (d) { return byDay[d] || 0; })));
+
+  var capLeft = W.daily_cap_usd == null ? '' : (Number(D.today_usd) >= W.daily_cap_usd ? ' · <b style="color:#b91c1c">cap reached — AI stopped until midnight KST</b>' : ' · ' + usd(W.daily_cap_usd - D.today_usd) + ' left today');
+
+  var html = '<div class="ai-cards">'
+    + '<div class="ai-card"><small>Today (KST)</small><b>' + usd(D.today_usd) + '</b><small>' + (W.daily_cap_usd == null ? 'no daily cap' : 'cap ' + usd(W.daily_cap_usd)) + '</small></div>'
+    + '<div class="ai-card"><small>Last 7 days</small><b>' + usd(sum(rows, function (x) { return x.day >= d7; })) + '</b></div>'
+    + '<div class="ai-card"><small>This month</small><b>' + usd(D.month_usd) + '</b></div>'
+    + '<div class="ai-card"><small>Last AI call</small><b style="font-size:16px">' + (D.last_call ? new Date(D.last_call).toLocaleString() : '—') + '</b></div>'
+    + '</div>';
+
+  html += '<div class="ai-box ai-master"><div class="ai-row"><div><div class="t">All AI</div><div class="d">Off = every paid AI call on the site stops, including the admin tools. Use this if spending looks wrong.</div></div>' + sw('sw-all', W.all) + '</div></div>';
+
+  html += '<div class="ai-box"><h2>Daily budget</h2><p class="note">When today\'s spend reaches this amount, every AI call except yours (the admin\'s) stops until midnight KST. Leave empty for no cap.</p>'
+    + '<div class="ai-cap">$ <input id="cap" type="number" min="0" step="0.5" placeholder="no cap" value="' + (W.daily_cap_usd == null ? '' : W.daily_cap_usd) + '"><button class="ai-btn p" id="cap-save">Save</button>'
+    + '<span style="font-size:12.5px;color:#475569">Spent today: ' + usd(D.today_usd) + capLeft + '</span></div></div>';
+
+  html += '<div class="ai-box"><h2>Background jobs</h2><p class="note">Server jobs that call AI on a schedule or from the CMS. Off = the job skips its AI calls (it still runs its free checks).</p>'
+    + AI_JOBS.map(function (j) {
+        var on = W.jobs[j.k] !== false;
+        var sched = j.cron.map(function (c) { return crons[c] ? c + ' ' + crons[c].schedule + (crons[c].active ? '' : ' (inactive)') : ''; }).filter(Boolean).join(' · ');
+        return '<div class="ai-row' + (on && !allOff ? '' : ' off') + '"><div><div class="t">' + esc(j.t) + ' <span class="ai-tag">' + esc(j.k) + '</span></div><div class="d">' + esc(j.d) + (sched ? '<br>Schedule (UTC): ' + esc(sched) : '') + '</div>'
+          + '<div class="c">Today ' + usd(jobCost(j.k, 'today')) + ' · 7 days ' + usd(jobCost(j.k, 7)) + ' · 30 days ' + usd(jobCost(j.k, 30)) + '</div></div>'
+          + sw('sw-job-' + j.k, on, allOff) + '</div>';
+      }).join('') + '</div>';
+
+  html += '<div class="ai-box"><div class="ai-row"><div><div class="t">AI features on the site</div><div class="d">Learners\' and your AI features (translations, sentence analysis, writing feedback, tutor…). Off = they show an "AI is off" message. Your admin calls keep working unless All AI is off.</div>'
+    + '<div class="c">Today ' + usd(jobCost('site', 'today')) + ' · 7 days ' + usd(jobCost('site', 7)) + ' · 30 days ' + usd(jobCost('site', 30)) + '</div></div>' + sw('sw-site', W.site, allOff) + '</div></div>';
+
+  html += '<div class="ai-box"><h2>Cost by day (last 30 days)</h2><div class="ai-bars" id="bars">'
+    + days.map(function (d) { var v = byDay[d] || 0; return '<div data-d="' + d + '" style="height:' + Math.max(2, Math.round(v / maxDay * 100)) + '%" title="' + d + ' ' + usd(v) + '"></div>'; }).join('')
+    + '</div><div class="ai-axis"><span>' + days[0].slice(5) + '</span><span>' + days[29].slice(5) + '</span></div><div class="ai-tip" id="tip">Tap a bar to see that day by job.</div></div>';
+
+  html += '<div class="ai-box"><h2>Every feature</h2><p class="note">Each AI feature that has run in the last 60 days. Turn one off to stop just that feature. Features that have never run do not appear yet.</p><div class="ai-scroll"><table class="ai-tbl"><thead><tr><th>Feature</th><th>Job</th><th class="n">Calls 7d</th><th class="n">Today</th><th class="n">7 days</th><th class="n">30 days</th><th>On</th></tr></thead><tbody>'
+    + featList.map(function (f) {
+        var on = W.off_features.indexOf(f.f) < 0;
+        var jobOn = f.job === 'site' ? W.site : W.jobs[f.job] !== false;
+        return '<tr class="' + (on && jobOn && !allOff ? '' : 'off') + '"><td><b>' + esc(f.f) + '</b><br><small style="color:#94a3b8">' + esc(Object.keys(f.models).join(', ')) + '</small></td><td>' + esc(f.job) + '</td>'
+          + '<td class="n">' + f.calls7 + '</td><td class="n">' + usd(f.today) + '</td><td class="n">' + usd(f.d7) + '</td><td class="n">' + usd(f.d30) + '</td>'
+          + '<td>' + sw('sw-f-' + encodeURIComponent(f.f), on, allOff) + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+
+  $('ai-root').className = '';
+  $('ai-root').innerHTML = html;
+
+  $('sw-all').addEventListener('change', function (e) {
+    if (!e.target.checked && !confirm('Turn off ALL AI on the site, including the admin tools?')) { e.target.checked = true; return; }
+    W.all = e.target.checked; save(W.all ? 'All AI is back on' : 'All AI is now off');
+  });
+  $('sw-site').addEventListener('change', function (e) { W.site = e.target.checked; save(); });
+  AI_JOBS.forEach(function (j) {
+    $('sw-job-' + j.k).addEventListener('change', function (e) { if (e.target.checked) delete W.jobs[j.k]; else W.jobs[j.k] = false; save(); });
+  });
+  featList.forEach(function (f) {
+    $('sw-f-' + encodeURIComponent(f.f)).addEventListener('change', function (e) {
+      W.off_features = W.off_features.filter(function (x) { return x !== f.f; });
+      if (!e.target.checked) W.off_features.push(f.f);
+      save();
+    });
+  });
+  $('cap-save').addEventListener('click', function () {
+    var v = $('cap').value.trim();
+    W.daily_cap_usd = v === '' ? null : Math.max(0, Number(v));
+    save(W.daily_cap_usd == null ? 'Daily cap removed' : 'Daily cap set to ' + usd(W.daily_cap_usd));
+  });
+  $('bars').querySelectorAll('[data-d]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var d = b.dataset.d, per = {};
+      rows.filter(function (x) { return x.day === d; }).forEach(function (x) { var j = featureJob(x.feature); per[j] = (per[j] || 0) + (Number(x.usd) || 0); });
+      var parts = Object.keys(per).sort(function (a, c) { return per[c] - per[a]; }).map(function (j) { return j + ' ' + usd(per[j]); });
+      $('tip').textContent = d + ': ' + usd(byDay[d] || 0) + (parts.length ? ' — ' + parts.join(' · ') : '');
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (window._adminGateBlocked) return;
+  // Wait for the signed-in session (the cost RPC is admin-only).
+  var n = 0;
+  (function wait() {
+    if (typeof getSupa === 'function' && getSupa() && typeof supaUser !== 'undefined' && supaUser) return load();
+    if (++n > 80) { $('ai-root').textContent = 'Sign in as admin to see AI costs.'; return; }
+    setTimeout(wait, 100);
+  })();
+});
+</script>
+</body>
+</html>

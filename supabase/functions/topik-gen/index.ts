@@ -18,6 +18,7 @@
 //                  Skipped when Azure is not configured (the page then reads
 //                  the script with the device voice).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { aiGate, AiOffError } from '../_shared/ai-gate.ts'
 import { SPEC, LEVEL_GUIDE, sectionKey, questionCount, type Block } from '../_shared/topik-spec.ts'
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
@@ -35,6 +36,8 @@ function setCors(req: Request) {
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json', ...cors } })
 
 async function claude(sb: any, apiKey: string, feature: string, prompt: string, maxTokens: number): Promise<string> {
+  const off = await aiGate(sb, 'topik-gen', 'cron:' + feature)
+  if (off) throw new AiOffError(off)
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), 125_000)
   let r: Response

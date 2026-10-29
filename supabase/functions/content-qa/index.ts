@@ -19,6 +19,7 @@
 // Auth: service_role, CRON_SECRET (pg_cron via Vault), or the admin JWT.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { aiGate, AiOffError } from '../_shared/ai-gate.ts'
 import { NATURAL_KOREAN_RULES } from '../_shared/korean-rules.ts'
 import { type Line, type Pack, validatePack, comboLines, dropBadOptions, sentenceLines, applySentenceFlags } from './pack.ts'
 import { type ContentRow, type Flag, contentLines, applyContentFlags, keLines, applyKeFlags } from './content.ts'
@@ -93,6 +94,8 @@ async function claudeJson(sb: any, apiKey: string, prompt: string, maxTokens: nu
   }
 }
 async function claudeJsonOnce(sb: any, apiKey: string, prompt: string, maxTokens: number, feature: string): Promise<any> {
+  const off = await aiGate(sb, 'content-qa', 'cron:' + feature)
+  if (off) throw new AiOffError(off)
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },

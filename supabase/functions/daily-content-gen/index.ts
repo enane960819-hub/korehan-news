@@ -14,6 +14,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { NATURAL_KOREAN_RULES } from '../_shared/korean-rules.ts'
+import { aiGate, AiOffError } from '../_shared/ai-gate.ts'
 
 const ALL_LEVELS = ['Starter', 'Beginner', 'Intermediate', 'Advanced'] as const
 type Level = typeof ALL_LEVELS[number]
@@ -207,6 +208,8 @@ async function callAnthropic(
   // pregenKeyExpressions follow-up calls within the same window
   // benefit. The cache key is implicitly per-level since the prefix
   // includes the level name + level-specific schema extras.
+  const off = await aiGate(sb, 'daily-content-gen', 'cron:' + feature)
+  if (off) throw new AiOffError(off)
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -266,6 +269,8 @@ async function callAnthropic(
 // the Key Expressions + situation-quiz pre-gen that returns a JSON
 // array of items instead of a wrapping object.
 async function callAnthropicArray(sb: any, apiKey: string, prompt: string, model: string, maxTokens: number, feature = 'daily-content-gen-ke'): Promise<unknown[]> {
+  const off = await aiGate(sb, 'daily-content-gen', 'cron:' + feature)
+  if (off) throw new AiOffError(off)
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
