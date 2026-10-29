@@ -99,6 +99,9 @@ body.tp-locked { overflow:hidden; }
 .tp-script { font-size:14.5px; } .tp-script b { color:#93c5fd; font-weight:800; }
 .tp-pass u { text-decoration:underline; text-decoration-color:#fbbf24; text-underline-offset:4px; text-decoration-thickness:2px; }
 .tp-ch svg { flex:1; }
+.tp-rep { display:block; margin-top:8px; font:inherit; font-size:12px; color:rgba(255,255,255,.55); background:none; border:0; padding:0; text-decoration:underline; cursor:pointer; }
+.tp-sel:disabled { opacity:.45; cursor:not-allowed; }
+#tp-nav button:disabled { opacity:.45; cursor:not-allowed; }
 .tp-sel { font:inherit; font-size:13px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:#0d1b3d; color:#fff; cursor:pointer; }
 .tp-wrong .h { font-size:12.5px; color:#93c5fd; font-weight:800; margin-bottom:4px; }
 </style>
@@ -108,7 +111,7 @@ body.tp-locked { overflow:hidden; }
 <main id="tp-root" class="tp-wrap"><div class="tp-empty">Loading…</div></main>
 <div id="kh-footer"></div>
 <!-- Page script first: it paints from the head prefetch while the shared scripts load. -->
-<script src="js/features/topik.js?v=20261029a"></script>
+<script src="js/features/topik.js?v=20261029b"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260525r"></script>
 <script src="js/core/storage.js?v=20260525r"></script>
