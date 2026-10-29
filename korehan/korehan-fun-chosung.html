@@ -219,6 +219,9 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
   var currentWord = null;
   var timer = null, timerStart = 0, timeLimit = 10000;
   var gameActive = false;
+  // Per-question guard: a double tap / double Enter (Korean IME commit)
+  // or a timeout racing a submit must score and advance only once.
+  var answered = false;
   var roundWords = [];
   var bestScore = parseInt(localStorage.getItem('kh_chosung_best') || '0');
 
@@ -247,6 +250,7 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
     reveal.style.display = 'none';
 
     currentWord = roundWords[qIdx];
+    answered = false;
     var chosung = getChosung(currentWord.ko);
     var spaced = chosung.split('').join(' ');
 
@@ -297,17 +301,19 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
   }
 
   function handleTimeout() {
-    if (!gameActive) return;
+    if (!gameActive || answered) return;
+    answered = true;
     streak = 0;
     showFeedback(false);
     showAnswer();
   }
 
   window.submitAnswer = function() {
-    if (!gameActive || !currentWord) return;
+    if (!gameActive || !currentWord || answered) return;
     var inp = document.getElementById('g-input');
     var ans = (inp.value || '').trim();
     if (!ans) return;
+    answered = true;
     inp.disabled = true;
     clearInterval(timer);
     // Clear urgency state immediately on submit so a quick correct answer
