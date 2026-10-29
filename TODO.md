@@ -24,8 +24,7 @@ Hand-reviewed content (no AI calls, two passes each, all live): article
 analyses + Grammar tabs (#937/#938), Word Bank meanings Seed/Sprout (270) and
 Tree/Forest (1,942), 44 conversations, 86 grammar_examples_cache lessons,
 Word Bank re-tag (210), rows marked qa_at so content-qa doesn't requeue them
-(#939–#943). Word Bank +4,993 frequency-ranked 한국어기초사전 words (#945,
-staging table `word_bank_candidates` can be dropped once checked). Three
+(#939–#943). Word Bank +4,993 frequency-ranked 한국어기초사전 words (#945). Three
 hand-written articles (#944, illustrations in /img/articles/).
 
 Fake News section live (#946): section `fake`, yellow tabloid style (B), first
@@ -41,7 +40,6 @@ Owner decisions still open:
 - **Anthropic credit is empty** — every AI feature fails until topped up.
 - Azure TTS key (tts-proxy returns 503 → device voice).
 - Word Bank examples from 한국어기초사전 are often too hard for Seed/Sprout.
-- conversations: ctx_en labels wrong on #16/#59, #52 left/right sides mixed.
 
 ---
 
