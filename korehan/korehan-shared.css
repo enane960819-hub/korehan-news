@@ -5819,3 +5819,17 @@ body[style*="overflow:hidden"]  #fj-widget {
 /* Article translation — English shown under each Korean paragraph/title */
 .kh-tr-line { margin: -6px 0 18px; padding: 8px 12px; border-left: 3px solid #93c5fd; background: rgba(147,197,253,.10); border-radius: 0 10px 10px 0; color: #475569; font-size: .92em; line-height: 1.6; font-family: 'DM Sans', 'Source Sans 3', sans-serif; }
 .kh-tr-title { margin: 4px 0 10px; color: #64748b; font-size: 15px; font-weight: 600; line-height: 1.45; font-family: 'DM Sans', 'Source Sans 3', sans-serif; }
+
+/* ── Fake News (2026-10-29): openly made-up joke articles, always labelled ── */
+.kh-fake-tag{display:inline-flex;align-items:center;gap:5px;background:#facc15;color:#111;font:900 11px/1 'DM Sans','Source Sans 3',sans-serif;letter-spacing:.14em;padding:4px 8px;border-radius:4px;white-space:nowrap;vertical-align:middle}
+.kh-fake-tag svg{width:13px;height:13px;flex:none}
+.article-info .kh-fake-tag{margin-right:6px}
+.art-hero-img .kh-fake-tag{position:absolute;left:0;right:0;top:0;border-radius:0;padding:6px 12px;z-index:2}
+.nc .kh-fake-tag,.khn-card .kh-fake-tag{position:absolute;top:10px;left:10px;z-index:3;font-size:10px;padding:3px 7px}
+.kh-fake-banner{display:flex;gap:10px;align-items:flex-start;margin:12px 0 14px;padding:11px 13px;border-radius:12px;background:#fefce8;border:1px solid #fde047;color:#713f12;font-size:13.5px;line-height:1.55}
+.kh-fake-banner svg{width:18px;height:18px;flex:none;margin-top:1px}
+.kh-fake-banner b{color:#422006}
+body.kh-fake-page .page-banner{background:#111 !important}
+body.kh-fake-page .page-banner h1{color:#facc15 !important}
+body.kh-fake-page .page-banner p{color:rgba(255,255,255,.8) !important}
+body.kh-fake-page .page-banner-inner{padding-top:14px;padding-bottom:14px}

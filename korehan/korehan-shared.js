@@ -3698,6 +3698,7 @@ function buildArticleRowHTML(a) {
     + '<div class="article-row">'
     + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.onerror=null;this.src=(window.KH_IMG_PLACEHOLDER||\'\')" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
     + '<div class="article-info">'
+    + khFakeTag(a)
     + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : khSecLabel(a.section)) + '</span>'
     + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
     + '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6">' + aBody + '</p>'
@@ -3732,7 +3733,21 @@ var SECTION_ALIASES = {
   'IT과학':  ['IT과학','it과학','tech','Tech','Technology','technology','과학','Science','science','IT'],
   'nature':  ['nature','Nature','자연','동물','wildlife','Wildlife'],
   '역사':    ['역사','History','history'],
+  'fake':    ['fake','Fake','Fake News','fake news','fakenews','가짜뉴스'],
 };
+
+// Fake News (2026-10-29): openly made-up joke articles. They never mix into
+// real-news lists (All News, home News grid/hero, related, next article) —
+// only their own home rail and section page show them, always labelled.
+var KH_FAKE_SECTION = { key: 'fake', label: 'Fake News', topics: 'Totally made up, just for laughs. Real Korean, fake facts.' };
+function khIsFakeNews(a) { return !!a && getSectionKey(a.section) === 'fake'; }
+function khFakeTag(a) {
+  return khIsFakeNews(a) ? '<span class="kh-fake-tag"><i data-lucide="drama" aria-hidden="true"></i>FAKE NEWS</span>' : '';
+}
+function khFakeBanner() {
+  return '<div class="kh-fake-banner" role="note"><i data-lucide="drama" aria-hidden="true"></i>'
+    + '<div><b>Fake News: made up for laughs.</b> None of this happened. The Korean is real, so study away.</div></div>';
+}
 
 function getSectionKey(rawSection) {
   var val = String(rawSection || '').trim();
@@ -3751,7 +3766,12 @@ function getSectionKey(rawSection) {
 
 async function renderSectionPage(section) {
   // 페이지 타이틀/배너
-  var secInfo = getSections().find(function(s){ return s.key === section; });
+  var secInfo = getSections().find(function(s){ return s.key === section; }) || (section === 'fake' ? KH_FAKE_SECTION : null);
+  if (section === 'fake') {
+    document.body.classList.add('kh-fake-page');
+    var _fkList = document.getElementById('dyn-hero');
+    if (_fkList && !document.querySelector('.kh-fake-banner')) _fkList.insertAdjacentHTML('beforebegin', khFakeBanner());
+  }
   if (secInfo) {
     document.title = secInfo.label + ' — KoreHani';
     var bannerH = document.querySelector('.page-banner h1');
@@ -3759,7 +3779,7 @@ async function renderSectionPage(section) {
     if (bannerH) bannerH.textContent = secInfo.label;
     if (bannerP) bannerP.textContent = secInfo.topics || '';
     var stEl = document.querySelector('.section-title');
-    if (stEl) stEl.textContent = secInfo.label + ' News';
+    if (stEl) stEl.textContent = section === 'fake' ? 'Latest Fake News' : secInfo.label + ' News';
   }
 
   // 로딩 표시
@@ -4257,6 +4277,7 @@ function renderArticlePage() {
     return;
   }
   wrap.dataset.artSig = _artSig;
+  document.body.classList.toggle('kh-fake-article', khIsFakeNews(a));
   wrap.innerHTML =
     '<article class="kh-article-wrap">'
 
@@ -4266,10 +4287,11 @@ function renderArticlePage() {
     + '<span>›</span>'
     + '<a href="korehan-section.html?s=' + encodeURIComponent(a.section) + '">' + escapeHtml(khSecLabel(a.section)) + '</a>'
     + '</nav>'
+    + (khIsFakeNews(a) ? khFakeBanner() : '')
 
     // 통합 기사 카드: 이미지(+뱃지 오버레이) → 제목 → 메타 → 탭 → 본문
     + '<div class="art-card">'
-    + '<div class="art-hero-img" style="position:relative">' + heroMedia
+    + '<div class="art-hero-img" style="position:relative">' + heroMedia + khFakeTag(a)
     + '<div class="art-badges-overlay">'
     + '<span class="art-section-badge">' + escapeHtml(typeof sectionLabel === 'function' ? sectionLabel(a.section) : a.section) + '</span>'
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')
@@ -6981,7 +7003,8 @@ async function markArticleRead(articleId, title, section, level) {
 function shareArticle() {
   // khShare handles a cancelled share sheet quietly and falls back to
   // the clipboard (with its own fallback when writeText is blocked).
-  return khShare({ title: document.title, url: window.location.href });
+  var fake = document.body.classList.contains('kh-fake-article');
+  return khShare({ title: (fake ? '[Fake News] ' : '') + document.title, url: window.location.href });
 }
 
 
@@ -8146,6 +8169,7 @@ function renderHeader() {
     + '<div class="tn-drop-col">'
     + '<div class="tn-drop-label">More to read</div>'
     + '<a href="korehan-section.html?s=buzz" class="tn-drop-item' + (isBuzz ? ' on' : '') + '">Korea Buzz</a>'
+    + '<a href="korehan-section.html?s=fake" class="tn-drop-item' + (isOn('korehan-section') && /[?&]s=fake/.test(location.search) ? ' on' : '') + '">Fake News</a>'
     + '<a href="korehan-life.html" class="tn-drop-item' + (isOn('korehan-life') ? ' on' : '') + '">Life in Korea</a>'
     + '<a href="korehan-conversations.html" class="tn-drop-item">Conversations</a>'
     + '<a href="korehan-conversations.html?cat=everyday" class="tn-drop-item tn-drop-sub">Everyday</a>'
@@ -8666,6 +8690,7 @@ var SECTION_ICON_LUCIDE = {
   '역사':   'scroll',
   'nature': 'leaf',
   'buzz':   'flame',
+  'fake':   'drama',
 };
 function _khSectionLucideHtml(name) {
   return '<i data-lucide="' + name + '" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>';
@@ -8770,7 +8795,7 @@ var KH_SECTION_EN = {
 };
 function sectionLabel(key) {
   var s = getSections().find(function(x){ return x.key === key; });
-  var label = s ? s.label : key;
+  var label = s ? s.label : (key === 'fake' ? KH_FAKE_SECTION.label : key);
   if (label && /[\uAC00-\uD7A3]/.test(label)) label = KH_SECTION_EN[key] || KH_SECTION_EN[label] || label;
   return label;
 }
@@ -11737,7 +11762,7 @@ function _khFeedRecentSet() {
 
 function pickNextFeedArticle(currentId) {
   var pool = (typeof getCachedArticles === 'function' ? getCachedArticles() : []).filter(function(a){
-    return a && a.id && String(a.id) !== String(currentId) && (a.status === 'published' || !a.status);
+    return a && a.id && String(a.id) !== String(currentId) && (a.status === 'published' || !a.status) && !khIsFakeNews(a);
   });
   if (!pool.length) return null;
   var recent = _khFeedRecentSet();
