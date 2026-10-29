@@ -541,7 +541,10 @@ async function renderPhrasePage() {
     } else {
       fresh.then(function (rows) {
         if (seq !== _kpRenderSeq || !rows || !rows.length) return;
-        if (rows.length !== phrases.length || rows[_kpPick(rows).idx].ko !== (window._currentPhrase || {}).ko) renderPhrasePage();
+        // Repaint when anything about the shown phrase changed (an admin edit or a
+        // new banner image keeps the same ko and list length).
+        var next = rows[_kpPick(rows).idx], cur = phrases[_kpPick(phrases).idx];
+        if (rows.length !== phrases.length || JSON.stringify(next) !== JSON.stringify(cur)) renderPhrasePage();
       });
     }
   }
