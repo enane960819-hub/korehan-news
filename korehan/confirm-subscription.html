@@ -6,32 +6,35 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Confirm subscription — KoreHani</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=DM+Sans:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
 <style>
-.kh-confirm { max-width:520px; margin:60px auto; padding:36px 28px; background:#fff; border-radius:18px; box-shadow:0 14px 36px rgba(15,23,42,.10); text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; }
-.kh-confirm h1 { font-family:'Noto Serif KR',serif; font-weight:900; font-size:28px; color:#0f172a; margin:0 0 12px; letter-spacing:-.01em; }
-.kh-confirm p { font-size:15px; color:#475569; line-height:1.6; margin:0 0 20px; }
-.kh-confirm .ok-icon, .kh-confirm .err-icon { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px; }
-.kh-confirm .ok-icon { background:#dcfce7; color:#15803d; }
-.kh-confirm .err-icon { background:#fee2e2; color:#b91c1c; }
-.kh-confirm .home-btn { display:inline-block; padding:11px 22px; background:#2563eb; color:#fff; border-radius:999px; text-decoration:none; font-weight:800; font-size:14px; transition:background .15s; }
+/* Newsletter landing (mockup 2026-10-29 ④) — simple dark card. */
+html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.kh-nl-page { padding:56px 16px 72px; }
+.kh-confirm { max-width:480px; margin:0 auto; padding:34px 26px 30px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:16px; text-align:center; font-family:'DM Sans','Source Sans 3',system-ui,sans-serif; }
+.kh-confirm h1 { font-family:'Playfair Display',Georgia,serif; font-weight:900; font-size:26px; color:#fff; margin:0 0 8px; }
+.kh-confirm p { font-size:14px; color:#94a3b8; line-height:1.6; margin:0 0 20px; }
+.kh-confirm .nl-ic { width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; background:rgba(255,255,255,.08); color:#cbd5e1; }
+.kh-confirm .nl-ic .kh-ui-icon, .kh-confirm .nl-ic svg { width:26px; height:26px; }
+.kh-confirm .nl-ic.ok { background:#14532d; color:#86efac; }
+.kh-confirm .nl-ic.err { background:rgba(220,38,38,.2); color:#fca5a5; }
+.kh-confirm .home-btn { display:inline-flex; align-items:center; gap:6px; padding:11px 22px; background:#2563eb; color:#fff; border-radius:999px; text-decoration:none; font-weight:800; font-size:14px; transition:background .15s; }
 .kh-confirm .home-btn:hover { background:#1d4ed8; }
-.kh-confirm .email { font-weight:800; color:#0f172a; }
+.kh-confirm .home-btn.ghost { background:rgba(255,255,255,.08); color:#e2e8f0; border:1px solid rgba(255,255,255,.16); }
+.kh-confirm .email { font-weight:800; color:#e2e8f0; }
 </style>
 </head>
-<body style="background:#f3f7fc">
+<body>
 <div id="kh-header"></div>
-<div class="container">
+<main class="kh-nl-page">
   <div class="kh-confirm" id="kh-confirm-wrap">
-    <div class="ok-icon" id="kh-confirm-icon" style="display:none">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>
+    <div class="nl-ic" id="kh-confirm-icon"><i data-lucide="mail" class="kh-ui-icon" aria-hidden="true"></i></div>
     <h1 id="kh-confirm-title">Confirming…</h1>
     <p id="kh-confirm-body">Hold on, we're activating your subscription.</p>
     <a class="home-btn" id="kh-confirm-cta" href="index.html" style="display:none">Back to home</a>
   </div>
-</div>
+</main>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260525r"></script>
@@ -58,22 +61,27 @@
   function $(id) { return document.getElementById(id); }
   function setError(title, body) {
     var ic = $('kh-confirm-icon');
-    ic.className = 'err-icon';
-    ic.style.display = 'flex';
-    ic.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    ic.className = 'nl-ic err';
+    ic.innerHTML = '<i data-lucide="mail-x" class="kh-ui-icon" aria-hidden="true"></i>';
     $('kh-confirm-title').textContent = title;
     $('kh-confirm-body').innerHTML = body;
-    $('kh-confirm-cta').style.display = 'inline-block';
+    var cta = $('kh-confirm-cta');
+    cta.className = 'home-btn ghost';
+    cta.textContent = 'Back to home';
+    cta.style.display = 'inline-flex';
   }
   function setSuccess(email) {
     var ic = $('kh-confirm-icon');
-    ic.className = 'ok-icon';
-    ic.style.display = 'flex';
-    $('kh-confirm-title').textContent = 'You\'re subscribed!';
+    ic.className = 'nl-ic ok';
+    ic.innerHTML = '<i data-lucide="mail-check" class="kh-ui-icon" aria-hidden="true"></i>';
+    $('kh-confirm-title').textContent = 'You\'re subscribed';
     $('kh-confirm-body').innerHTML = email
-      ? 'Welcome aboard. We\'ll send updates to <span class="email">' + escapeHtml(email) + '</span>.'
+      ? 'Welcome aboard. The KoreHani newsletter will come to <span class="email">' + escapeHtml(email) + '</span>.'
       : 'Welcome aboard. Watch your inbox for the next issue.';
-    $('kh-confirm-cta').style.display = 'inline-block';
+    var cta = $('kh-confirm-cta');
+    cta.className = 'home-btn';
+    cta.innerHTML = '<i data-lucide="newspaper" class="kh-ui-icon" aria-hidden="true"></i> Read today\'s article';
+    cta.style.display = 'inline-flex';
   }
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

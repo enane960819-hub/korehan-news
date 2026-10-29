@@ -248,6 +248,9 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 .cc-signin { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.1); }
 .cc-signin h2 { color:#fff; }
 .cc-signin p, .cc-loading { color:rgba(255,255,255,.55); }
+.cc-note { font-size:12.5px; color:rgba(255,255,255,.55); margin:10px auto 0; max-width:520px; line-height:1.5; }
+/* No real portrait: quiet initial on a dark gradient (same as the Reporters list). */
+.cc-ph { font-family:'Noto Serif KR',serif; color:rgba(255,255,255,.82); text-shadow:0 2px 18px rgba(0,0,0,.35); }
 </style>
 </head>
 <body>
@@ -261,6 +264,7 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
     <span style="color:rgba(255,255,255,.3)">·</span>
     <span><span class="cc-stat-num" id="cc-managers">0</span> managers</span>
   </div>
+  <p class="cc-note">A reporter becomes your manager when your affinity with them reaches 3,000. Send gifts on their page to build it.</p>
 </div>
 
 <div class="cc-grid" id="cc-grid">
@@ -313,6 +317,11 @@ function ccTier(points) {
   return                              { key: 'locked',   label: 'Locked',       min: 0,    max: 1    };
 }
 
+function ccPhBg(color) {
+  var c = /^#[0-9a-f]{6}$/i.test(color || '') ? color : '#475569';
+  return 'radial-gradient(120% 90% at 30% 15%,' + c + '73 0%,' + c + '26 45%,#0f1b33 100%)';
+}
+
 function ccCardHTML(reporter, points) {
   var tier = ccTier(points);
   var pct;
@@ -330,9 +339,9 @@ function ccCardHTML(reporter, points) {
   // aren't the reporter — fall back to the initial.
   var hasRealImage = !!imgSrc && imgSrc.indexOf('data:image/gif;base64,R0lGODlhAQAB') !== 0 && !/picsum\.photos/i.test(imgSrc);
   if (hasRealImage) {
-    portrait = '<img class="cc-img" src="' + imgSrc + '" alt="' + escapeHtml(reporter.name || '') + '" onerror="this.outerHTML=\'<div class=cc-ph style=&quot;background:' + (reporter.color || '#475569') + '&quot;>' + escapeHtml((reporter.name || '?').slice(0, 1)) + '</div>\'">';
+    portrait = '<img class="cc-img" src="' + imgSrc + '" alt="' + escapeHtml(reporter.name || '') + '" onerror="this.outerHTML=\'<div class=cc-ph style=&quot;background:' + ccPhBg(reporter.color) + '&quot;>' + escapeHtml((reporter.name || '?').slice(0, 1)) + '</div>\'">';
   } else {
-    portrait = '<div class="cc-ph" style="background:' + (reporter.color || '#475569') + '">' + escapeHtml((reporter.name || '?').slice(0, 1)) + '</div>';
+    portrait = '<div class="cc-ph" style="background:' + ccPhBg(reporter.color) + '">' + escapeHtml((reporter.name || '?').slice(0, 1)) + '</div>';
   }
 
   var lockOverlay = '';

@@ -8,17 +8,23 @@
   <title>Playground — KoreHani</title>
   <link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
   <style>
-    body{margin:0;background:#f3f7fc;color:#0f172a;font-family:'Happy Monkey','Jua','DM Sans',Inter,Pretendard,-apple-system,sans-serif}
-    .wrap{max-width:1280px;margin:0 auto;padding:0 24px 56px;position:relative;z-index:2}
-    /* Hero — matches the news/convo/stories family (eyebrow + bold h1 + p over a gradient banner). */
-    .hero{background:linear-gradient(160deg,#0b1f3f 0%,#1e3a8a 55%,#7c3aed 100%);color:#fff;padding:36px 0 80px;margin-bottom:-56px;position:relative;overflow:hidden}
-    .hero::before{content:'';position:absolute;top:-40%;right:-10%;width:260px;height:260px;background:radial-gradient(circle,rgba(124,58,237,.35),transparent 70%);pointer-events:none}
-    .hero-inner{max-width:1280px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
-    .hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.75);margin-bottom:10px}
-    .hero h1{margin:0 0 10px;font-family:'Playfair Display',Georgia,serif;font-size:38px;font-weight:900;line-height:1.15;letter-spacing:-.01em;display:inline-flex;align-items:center;gap:12px;color:#fff}
-    .hero p{margin:0;color:rgba(255,255,255,.85);line-height:1.7;font-size:15px;max-width:560px}
-
-    .fun-game-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px}
+    /* Playground (mockup 2026-10-29 ③) — dark like Shop / Word Bank / Reporter Cards; gradient tiles kept. */
+    html, html body, html body.mobile-light{background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important;color:#e2e8f0}
+    body{margin:0;font-family:'DM Sans','Noto Sans KR',-apple-system,sans-serif}
+    .wrap{max-width:1180px;margin:0 auto;padding:26px 24px 60px;position:relative;z-index:2}
+    .pg-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .pg-head h1{margin:0;font-family:'Playfair Display',Georgia,serif;font-size:32px;font-weight:900;line-height:1.15;color:#fff;display:inline-flex;align-items:center;gap:10px}
+    .pg-head p{margin:5px 0 0;color:#94a3b8;font-size:13.5px;line-height:1.55;max-width:560px}
+    .pg-today{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;font-size:12.5px;color:#cbd5e1;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+    .pg-today b{color:#fbbf24;font-weight:800}
+    .pg-today .kh-ui-icon{width:14px;height:14px;vertical-align:-2px;color:#fbbf24}
+    .pg-today small{display:block;width:100%;font-size:11px;color:#94a3b8;margin-top:-6px}
+    .pg-chip{position:absolute;top:10px;right:10px;z-index:3;display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;background:rgba(0,0,0,.35);color:#fff;padding:4px 9px;border-radius:999px;backdrop-filter:blur(3px)}
+    .pg-chip .kh-ui-icon{width:12px;height:12px}
+    .pg-chip.off{opacity:.65}
+    .pg-done{position:absolute;top:10px;left:10px;z-index:3;display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;background:#16a34a;color:#fff;padding:4px 9px;border-radius:999px}
+    .pg-done .kh-ui-icon{width:12px;height:12px}
+    .fun-game-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:20px}
     .fun-game-card{display:block;border-radius:18px;overflow:hidden;text-decoration:none;color:#fff;transition:.25s transform,.25s box-shadow;position:relative;aspect-ratio:4/3}
     .fun-game-card:hover{transform:translateY(-5px);box-shadow:0 20px 40px rgba(0,0,0,.25)}
 
@@ -72,25 +78,21 @@
     /* Fortune: glow */
     @keyframes fGlow{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:.6;transform:scale(1.3)}}
 
-    /* Neon overrides */
-    body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
-    body.kh-neon-on .hero{background:linear-gradient(135deg,#0c1a35,#1a2f6b 56%,#5b21b6);box-shadow:0 20px 38px rgba(0,0,0,.4)}
-
-    @media(max-width:900px){.fun-game-grid{grid-template-columns:repeat(2,1fr);gap:14px}.hero{padding:30px 0 60px}.hero h1{font-size:30px}}
-    @media(max-width:560px){.fun-game-grid{grid-template-columns:repeat(2,1fr);gap:10px}.wrap{padding:0 14px 40px}.hero{padding:22px 0 50px;margin-bottom:-34px}.hero-inner{padding:0 16px}.hero h1{font-size:24px;margin-bottom:6px}.hero p{font-size:12px;line-height:1.5}.fun-game-card{aspect-ratio:1/1;border-radius:14px}.fun-overlay{padding:10px 12px}.fun-title{font-size:14px;margin-bottom:1px}.fun-sub{font-size:10px}}
+    @media(max-width:900px){.fun-game-grid{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:700px){.fun-game-grid{grid-template-columns:repeat(2,1fr);gap:10px}.wrap{padding:18px 16px 44px}.pg-head h1{font-size:26px}.pg-head p{font-size:12.5px}.pg-today{width:100%;box-sizing:border-box;gap:10px 14px}.fun-game-card{aspect-ratio:1/1;border-radius:14px}.fun-overlay{padding:10px 12px}.fun-title{font-size:14px;margin-bottom:1px}.fun-sub{font-size:10px}.pg-chip,.pg-done{font-size:9.5px;padding:3px 7px;top:8px}.pg-chip{right:8px}.pg-done{left:8px}}
   </style>
 </head>
 <body>
   <div id="kh-header"></div>
-  <section class="hero">
-    <div class="hero-inner">
-      <div class="hero-eyebrow">KoreHani</div>
-      <h1><i data-lucide="gamepad-2" class="kh-ui-icon" style="width:32px;height:32px" aria-hidden="true"></i><span>Playground</span></h1>
-      <p>Pick a mini game and have fun while learning Korean. Each game opens on its own dedicated page.</p>
-    </div>
-  </section>
   <main class="wrap">
-    <section id="fun-game-grid" class="fun-game-grid" style="padding-top:24px"></section>
+    <div class="pg-head">
+      <div>
+        <h1><i data-lucide="gamepad-2" class="kh-ui-icon" style="width:30px;height:30px" aria-hidden="true"></i><span>Playground</span></h1>
+        <p>Quick games with real Korean. Finish a game with at least one right answer to earn XP; a rewarded game also counts toward your streak.</p>
+      </div>
+      <div class="pg-today" id="pg-today" style="display:none"></div>
+    </div>
+    <section id="fun-game-grid" class="fun-game-grid"></section>
   </main>
   <div id="kh-footer"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -137,17 +139,17 @@
   }
 
   var games = [
-    {id:'word-drop',title:'Word Drop',sub:'Type before they fall',href:'korehan-fun-worddrop.html',cv:'cv-worddrop',
+    {id:'word-drop',gid:'worddrop',title:'Word Drop',sub:'Type before they fall',href:'korehan-fun-worddrop.html',cv:'cv-worddrop',
      anim:function(){var w=['친구','학교','사랑','음식','여행','커피','영화','행복'];var h='';for(var i=0;i<8;i++)h+='<div class="fl" style="left:'+((i*13+5)%90)+'%;animation-duration:'+(2.5+i*.4)+'s;animation-delay:-'+(i*.6)+'s">'+w[i]+'</div>';return h;}},
-    {id:'chosung-quiz',title:'Chosung Quiz',sub:'Guess from consonants',href:'korehan-fun-chosung.html',cv:'cv-chosung',
+    {id:'chosung-quiz',gid:'chosung',title:'Chosung Quiz',sub:'Guess from consonants',href:'korehan-fun-chosung.html',cv:'cv-chosung',
      anim:function(){var c=['ㅎㄱ','ㅊㄱ','ㅅㄹ','ㅇㅅ','ㅎㅂ','ㄱㅈ','ㅇㅎ'];var h='';for(var i=0;i<7;i++)h+='<div class="ch" style="left:'+(8+i*13)+'%;top:'+(10+((i*17)%60))+'%;animation-delay:'+(i*.3)+'s;font-size:'+(24+i%3*6)+'px">'+c[i]+'</div>';return h;}},
-    {id:'memory-match',title:'Memory Match',sub:'Flip & match pairs',href:'korehan-fun-memory.html',cv:'cv-memory',
+    {id:'memory-match',gid:'memory',title:'Memory Match',sub:'Flip & match pairs',href:'korehan-fun-memory.html',cv:'cv-memory',
      anim:function(){var t=['가','나','A','B','다','C','라','D','마','E','바','F'];var h='';for(var i=0;i<12;i++){var r=Math.floor(i/4),col=i%4;h+='<div class="mc" style="left:'+(12+col*22)+'%;top:'+(12+r*32)+'%;animation-delay:'+(i*.25)+'s">'+t[i]+'</div>';}return h;}},
-    {id:'hangul-tetris',title:'Hangul Tetris',sub:'Build Korean syllables',href:'korehan-fun-hangul-tetris.html',cv:'cv-tetris',
+    {id:'hangul-tetris',gid:'hangul-tetris',title:'Hangul Tetris',sub:'Build Korean syllables',href:'korehan-fun-hangul-tetris.html',cv:'cv-tetris',
      anim:function(){var j=['ㅎ','ㅏ','ㄴ','ㄱ','ㅜ','ㄹ','ㅁ','ㅣ'];var h='';for(var i=0;i<8;i++)h+='<div class="tb" style="left:'+((i*14+3)%85)+'%;animation-duration:'+(2+i*.3)+'s;animation-delay:-'+(i*.5)+'s">'+j[i]+'</div>';return h;}},
-    {id:'sentence-order',title:'Sentence Order',sub:'Build sentences in order',href:'korehan-fun-sentence-order.html',cv:'cv-sentorder',
+    {id:'sentence-order',gid:'sentence-order',title:'Sentence Order',sub:'Build sentences in order',href:'korehan-fun-sentence-order.html',cv:'cv-sentorder',
      anim:function(){var w=['저는','한국어를','배워요','오늘','날씨가','좋아요','커피','한 잔','주세요'];var h='';for(var i=0;i<9;i++)h+='<div class="sw" style="left:'+(8+(i%3)*32)+'%;top:'+(12+Math.floor(i/3)*30)+'%;animation-delay:'+(i*.25)+'s">'+w[i]+'</div>';return h;}},
-    {id:'dictation',title:'Dictation',sub:'Listen & type Korean',href:'korehan-fun-dictation.html',cv:'cv-dictation',
+    {id:'dictation',gid:'dictation',title:'Dictation',sub:'Listen & type Korean',href:'korehan-fun-dictation.html',cv:'cv-dictation',
      anim:function(){
        // Dictation card: headphones / volume SVG plus the existing
        // ♪♫◐◑ Unicode music glyphs (not emoji — those are kept).
@@ -162,7 +164,7 @@
        }
        return h;
      }},
-    {id:'ox-quiz',title:'Korea OX Quiz',sub:'True or false?',href:'korehan-fun-ox.html',cv:'cv-ox',
+    {id:'ox-quiz',gid:'ox',title:'Korea OX Quiz',sub:'True or false?',href:'korehan-fun-ox.html',cv:'cv-ox',
      anim:function(){
        // OX card: alternating CHECK (✓ for the ⭕ side) and X icons.
        // The actual game retains ⭕/❌ on the click targets (those are
@@ -176,7 +178,7 @@
        }
        return h;
      }},
-    {id:'name-generator',title:'Korean Name Generator',sub:'Get your Korean name',href:'korehan-fun-name.html',cv:'cv-name',
+    {id:'name-generator',gid:'name',title:'Korean Name Generator',sub:'Get your Korean name',href:'korehan-fun-name.html',cv:'cv-name',
      anim:function(){
        // Name-generator card: alternating SPARKLE + STAR SVGs and the
        // existing 가/나/한/이 hangul syllables (those are text, kept).
@@ -193,19 +195,106 @@
      }}
   ];
 
+  // Rewards: khGameComplete(gid) → award_xp 'game_complete' (korehan-shared.js,
+  // 20261029_playground_game_rewards.sql): one grant per game per KST day,
+  // at most daily_cap rewarded games a day. Every game page, the Name
+  // Generator included, calls it, so every tile shows the reward. The amount
+  // and the cap are read from xp_config / coin_reward_config (both readable
+  // by the client); 10 XP / 5 games are the fallbacks.
+  var reward = { xp: 10, cap: 5 };
+  var today = null; // { doneIds:{gid:1}, xp, played, words } for a signed-in learner
+
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+
   function render(){
     var el=document.getElementById('fun-game-grid');if(!el)return;
+    var capped = !!(today && today.played >= reward.cap);
     el.innerHTML=games.map(function(g){
-      return '<a class="fun-game-card" href="'+g.href+'">'
+      var done = !!(today && today.doneIds[g.gid]);
+      var chip = (capped && !done)
+        ? '<span class="pg-chip off" title="You already earned XP from ' + reward.cap + ' games today">Daily limit reached</span>'
+        : '<span class="pg-chip"' + (today ? '' : ' title="Log in to earn XP"') + '><i data-lucide="zap" class="kh-ui-icon" aria-hidden="true"></i>+' + reward.xp + ' XP</span>';
+      return '<a class="fun-game-card" href="'+g.href+'" aria-label="'+esc(g.title)+(done?' (done today)':'')+'">'
         +'<div class="fun-cover '+g.cv+'">'+g.anim()+'</div>'
+        +(done ? '<span class="pg-done"><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Done today</span>' : '')
+        +chip
         +'<div class="fun-overlay">'
         +'<div class="fun-title">'+g.title+'</div>'
         +'<div class="fun-sub">'+g.sub+'</div>'
         +'</div></a>';
     }).join('');
-    var countEl = document.getElementById('hero-game-count');
-    if (countEl) countEl.textContent = games.length;
+    renderToday();
   }
+
+  function renderToday(){
+    var box = document.getElementById('pg-today'); if (!box) return;
+    if (!today) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    box.style.display = '';
+    box.innerHTML = '<span><i data-lucide="zap" class="kh-ui-icon" aria-hidden="true"></i> Today: <b>+' + today.xp + ' XP</b> from games</span>'
+      + '<span>' + Math.min(today.played, reward.cap) + ' / ' + reward.cap + ' rewarded</span>'
+      + (today.words != null ? '<span>' + today.words + (today.words === 1 ? ' new word' : ' new words') + '</span>' : '');
+  }
+
+  function kstDayStartIso(){
+    var day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    return new Date(day + 'T00:00:00+09:00').toISOString();
+  }
+
+  async function waitForAuth(){
+    if (typeof supaUser !== 'undefined' && supaUser) return supaUser;
+    await new Promise(function(resolve){
+      var done = false;
+      function finish(){ if (done) return; done = true; resolve(); }
+      window.addEventListener('kh-auth-signed-in', finish);
+      var poll = setInterval(function(){ if (supaUser || window._sessionChecked) { clearInterval(poll); finish(); } }, 100);
+      setTimeout(function(){ clearInterval(poll); finish(); }, 8000);
+    });
+    return (typeof supaUser !== 'undefined') ? supaUser : null;
+  }
+
+  async function loadRewardConfig(sb){
+    try {
+      var r = await Promise.all([
+        sb.from('xp_config').select('xp_amount,is_active').eq('action_key', 'game_complete').maybeSingle(),
+        sb.from('coin_reward_config').select('daily_cap').eq('action_key', 'game_complete').maybeSingle()
+      ]);
+      if (!r[0].error && r[0].data && r[0].data.is_active !== false && Number(r[0].data.xp_amount) > 0) reward.xp = Number(r[0].data.xp_amount);
+      if (!r[1].error && r[1].data && Number(r[1].data.daily_cap) > 0) reward.cap = Number(r[1].data.daily_cap);
+    } catch (_) {}
+  }
+
+  // The learner's own game rewards today (xp_log is owner-readable) and the
+  // words they saved from a game today (user_saved_words.source_kind, e.g.
+  // 'memory_game' from Memory Match).
+  async function loadToday(sb, user){
+    var since = kstDayStartIso();
+    var r = await Promise.all([
+      sb.from('xp_log').select('xp_amount,meta,created_at').eq('user_id', user.id).eq('action_key', 'game_complete').gte('created_at', since),
+      sb.from('user_saved_words').select('id', { count: 'exact', head: true }).eq('user_id', user.id).ilike('source_kind', '%game%').gte('created_at', since)
+    ]);
+    if (r[0].error) return null;
+    var t = { doneIds: {}, xp: 0, played: 0, words: null };
+    (r[0].data || []).forEach(function(row){
+      var cid = String((row.meta && row.meta.content_id) || '');
+      if (cid.indexOf('game:') === 0) t.doneIds[cid.slice(5)] = 1;
+      t.xp += Number(row.xp_amount || 0);
+      t.played++;
+    });
+    if (!r[1].error && typeof r[1].count === 'number') t.words = r[1].count;
+    return t;
+  }
+
+  async function refresh(){
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) return;
+    await loadRewardConfig(sb);
+    render();
+    var user = await waitForAuth();
+    if (!user) { today = null; render(); return; }
+    try { today = await loadToday(sb, user); } catch (_) { today = null; }
+    render();
+  }
+
   // Hero "Surprise me" picks a random game so the header has a real
   // CTA, not just decoration.
   window.khPlaygroundSurprise = function(){
@@ -213,8 +302,11 @@
     var pick = games[Math.floor(Math.random() * games.length)];
     if (pick && pick.href) location.href = pick.href;
   };
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render);
-  else render();
+  function start(){ render(); refresh(); }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);
+  else start();
+  // Coming back from a game via the Back button (bfcache): pick up the new reward.
+  window.addEventListener('pageshow', function(e){ if (e.persisted) refresh(); });
 })();
 </script>
 </body>

@@ -6,39 +6,44 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Unsubscribe — KoreHani</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=DM+Sans:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
 <style>
-.kh-unsub { max-width:520px; margin:60px auto; padding:36px 28px; background:#fff; border-radius:18px; box-shadow:0 14px 36px rgba(15,23,42,.10); text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; }
-.kh-unsub h1 { font-family:'Noto Serif KR',serif; font-weight:900; font-size:26px; color:#0f172a; margin:0 0 12px; letter-spacing:-.01em; }
-.kh-unsub p { font-size:15px; color:#475569; line-height:1.6; margin:0 0 20px; }
-.kh-unsub .icon { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px; background:#fef3c7; color:#b45309; }
-.kh-unsub .icon.ok { background:#dcfce7; color:#15803d; }
-.kh-unsub .icon.err { background:#fee2e2; color:#b91c1c; }
+/* Newsletter landing (mockup 2026-10-29 ④) — simple dark card. */
+html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.kh-nl-page { padding:56px 16px 72px; }
+.kh-unsub { max-width:480px; margin:0 auto; padding:34px 26px 30px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:16px; text-align:center; font-family:'DM Sans','Source Sans 3',system-ui,sans-serif; }
+.kh-unsub h1 { font-family:'Playfair Display',Georgia,serif; font-weight:900; font-size:26px; color:#fff; margin:0 0 8px; }
+.kh-unsub p { font-size:14px; color:#94a3b8; line-height:1.6; margin:0 0 20px; }
+.kh-unsub p a { color:#93c5fd; }
+.kh-unsub .icon { width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; background:#334155; color:#cbd5e1; }
+.kh-unsub .icon .kh-ui-icon, .kh-unsub .icon svg { width:26px; height:26px; }
+.kh-unsub .icon.err { background:rgba(220,38,38,.2); color:#fca5a5; }
 .kh-unsub .btn-row { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
-.kh-unsub .btn { padding:11px 20px; border-radius:999px; font-weight:800; font-size:13px; cursor:pointer; border:0; font-family:inherit; transition:background .15s, transform .12s; }
+.kh-unsub .btn { display:inline-flex; align-items:center; gap:6px; padding:11px 20px; border-radius:999px; font-weight:800; font-size:13.5px; cursor:pointer; border:0; font-family:inherit; text-decoration:none; transition:background .15s; }
+.kh-unsub .btn:disabled { opacity:.6; cursor:default; }
 .kh-unsub .btn-primary { background:#dc2626; color:#fff; }
 .kh-unsub .btn-primary:hover { background:#b91c1c; }
-.kh-unsub .btn-ghost { background:#f1f5f9; color:#475569; text-decoration:none; display:inline-block; }
-.kh-unsub .btn-ghost:hover { background:#e2e8f0; }
-.kh-unsub .email { font-weight:800; color:#0f172a; }
+.kh-unsub .btn-ghost { background:rgba(255,255,255,.08); color:#e2e8f0; border:1px solid rgba(255,255,255,.16); }
+.kh-unsub .btn-ghost:hover { background:rgba(255,255,255,.14); }
+.kh-unsub .email { font-weight:800; color:#e2e8f0; }
+.kh-unsub .nl-msg { font-size:12.5px; margin:12px 0 0; min-height:1em; }
 </style>
 </head>
-<body style="background:#f3f7fc">
+<body>
 <div id="kh-header"></div>
-<div class="container">
+<main class="kh-nl-page">
   <div class="kh-unsub" id="kh-unsub-wrap">
-    <div class="icon" id="kh-unsub-icon">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    </div>
+    <div class="icon" id="kh-unsub-icon"><i data-lucide="mail-minus" class="kh-ui-icon" aria-hidden="true"></i></div>
     <h1 id="kh-unsub-title">Unsubscribe?</h1>
     <p id="kh-unsub-body">Confirm to stop receiving KoreHani emails.</p>
     <div class="btn-row" id="kh-unsub-actions">
       <button class="btn btn-primary" id="kh-unsub-confirm" onclick="khRunUnsubscribe()">Yes, unsubscribe</button>
       <a class="btn btn-ghost" href="index.html">Keep subscribed</a>
     </div>
+    <div class="nl-msg" id="kh-unsub-msg" style="display:none"></div>
   </div>
-</div>
+</main>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260525r"></script>
@@ -72,24 +77,59 @@
   function showResult(state, email) {
     var icon = $('kh-unsub-icon');
     if (state === 'ok' || state === 'already') {
-      icon.className = 'icon ok';
-      icon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-      $('kh-unsub-title').textContent = state === 'already' ? "You're already unsubscribed" : "You're unsubscribed";
-      var leadVerb = state === 'already' ? 'is not subscribed to' : "won't receive";
-      var followupOk = "We're sorry to see you go.";
-      var followupAlready = 'No further action needed — you can ignore future emails from this address as well, in case any are still queued for delivery.';
-      $('kh-unsub-body').innerHTML = email
-        ? '<span class="email">' + escapeHtml(email) + '</span> ' + leadVerb + " KoreHani updates anymore. " + (state === 'already' ? followupAlready : followupOk)
-        : (state === 'already' ? "This email is already unsubscribed. " + followupAlready : "You won't receive KoreHani updates anymore. " + followupOk);
-      $('kh-unsub-actions').innerHTML = '<a class="btn btn-ghost" href="index.html">Back to home</a>';
+      icon.className = 'icon';
+      icon.innerHTML = '<i data-lucide="mail-x" class="kh-ui-icon" aria-hidden="true"></i>';
+      $('kh-unsub-title').textContent = state === 'already' ? "You're already unsubscribed" : "You've been unsubscribed";
+      $('kh-unsub-body').innerHTML = (email ? '<span class="email">' + escapeHtml(email) + '</span> won\'t get' : "You won't get")
+        + ' the KoreHani newsletter any more. Your account and progress are untouched.';
+      $('kh-unsub-actions').innerHTML = '<button class="btn btn-ghost" id="kh-resub-btn" type="button">Resubscribe</button>';
+      $('kh-resub-btn').onclick = function () { khResubscribe(email || ''); };
     } else {
       icon.className = 'icon err';
-      icon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      icon.innerHTML = '<i data-lucide="circle-x" class="kh-ui-icon" aria-hidden="true"></i>';
       $('kh-unsub-title').textContent = 'Link not recognized';
       $('kh-unsub-body').innerHTML = 'This unsubscribe link doesn\'t match any record on file. Please use the link from a recent email, or contact <a href="mailto:hello@korehani.com">hello@korehani.com</a>.';
       $('kh-unsub-actions').innerHTML = '<a class="btn btn-ghost" href="index.html">Back to home</a>';
     }
   }
+
+  // Resubscribe goes through the same path as the footer form: the
+  // newsletter-send Edge Function ('subscribe' → newsletter_request_subscribe,
+  // which flips an unsubscribed row back to pending and emails a fresh
+  // confirmation link). Without an email on hand, send them to the footer form.
+  window.khResubscribe = async function (email) {
+    var msg = $('kh-unsub-msg');
+    function say(t, color) { msg.style.display = 'block'; msg.style.color = color || '#94a3b8'; msg.textContent = t; }
+    if (!email) {
+      var f = document.getElementById('kh-nl-email');
+      if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function(){ try { f.focus(); } catch (_) {} }, 400); }
+      else location.href = 'index.html#kh-nl-form';
+      return;
+    }
+    var btn = $('kh-resub-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try {
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      var session = sb ? (await sb.auth.getSession()).data.session : null;
+      var anonKey = (typeof SUPA_KEY !== 'undefined' ? SUPA_KEY : '');
+      var supaUrl = (typeof SUPA_URL !== 'undefined' ? SUPA_URL : '');
+      var resp = await fetch(supaUrl + '/functions/v1/newsletter-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': 'Bearer ' + (session ? session.access_token : anonKey) },
+        body: JSON.stringify({ action: 'subscribe', email: email, source: 'resubscribe' })
+      });
+      var data = {};
+      try { data = await resp.json(); } catch (_) {}
+      if (!resp.ok || !data.ok) throw new Error('subscribe_failed');
+      if (btn) btn.style.display = 'none';
+      if (data.status === 'already_confirmed') say("You're subscribed again.", '#86efac');
+      else if (data.mailed === false) say("Got it. We'll send a confirmation link as soon as our mailer is live.", '#86efac');
+      else say('Almost done. Check your inbox and click the confirmation link.', '#86efac');
+    } catch (_) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Resubscribe'; }
+      say('Something went wrong. Please try again.', '#fca5a5');
+    }
+  };
 
   window.khRunUnsubscribe = async function () {
     var p = new URLSearchParams(location.search);
@@ -120,6 +160,8 @@
   document.addEventListener('DOMContentLoaded', function () {
     var p = new URLSearchParams(location.search);
     if (!p.get('t') && !p.get('token')) {
+      $('kh-unsub-icon').className = 'icon err';
+      $('kh-unsub-icon').innerHTML = '<i data-lucide="circle-x" class="kh-ui-icon" aria-hidden="true"></i>';
       $('kh-unsub-title').textContent = 'Missing token';
       $('kh-unsub-body').textContent = 'This unsubscribe link is incomplete. Please use the link from your email.';
       $('kh-unsub-actions').innerHTML = '<a class="btn btn-ghost" href="index.html">Back to home</a>';

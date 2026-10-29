@@ -9,7 +9,7 @@
 <title>Reporter Profile — KoreHani</title>
 <meta name="description" content="A KoreHani reporter's articles, fan reviews and one-on-one Korean study.">
 <link rel="canonical" href="https://korehani.com/korehan-reporter.html">
-<meta name="theme-color" content="#0a1423">
+<meta name="theme-color" content="#0d1b3d">
 <meta property="og:type" content="profile">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:url" content="https://korehani.com/korehan-reporter.html">
@@ -22,447 +22,176 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
 <style>
-/* ── Layout ── */
-body {
-  position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
-  overflow-x: hidden;
-}
-.rp-page-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: saturate(1.05) brightness(.78);
-  transform: scale(1.02);
-}
-.rp-page-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(4,16,44,.58) 0%, rgba(8,14,28,.7) 60%, rgba(8,14,28,.84) 100%);
-}
-.rp-content-layer { position: relative; z-index: 1; }
-.rp-wrap { max-width: 960px; margin: 0 auto; padding: 36px 20px 60px; }
+/* Reporter page (mockup 2026-10-29 ②) — dark, like Shop / Word Bank / Reporter Cards. */
+html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+body { overflow-x:hidden; }
+.rp-wrap { max-width:1000px; margin:0 auto; padding:24px 20px 70px; font-family:'DM Sans','Noto Sans KR',sans-serif; }
+.rp-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.rp-nav a { color:#93c5fd; font-size:13px; font-weight:700; text-decoration:none; }
+.rp-nav a:hover { color:#bfdbfe; }
 
-/* ── Profile card ── */
-.rp-profile {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 36px;
-  background: #fff;
-  border-radius: 28px;
-  border: 1px solid #e8eef7;
-  box-shadow: 0 8px 32px rgba(15,23,42,.07);
-  overflow: hidden;
-  margin-bottom: 28px;
-}
-.rp-photo-col {
-  position: relative;
-  min-height: 320px;
-  overflow: hidden;
-}
-.rp-photo-col img, .rp-photo-ph {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  display: block;
-  min-height: 320px;
-}
-.rp-photo-ph {
-  display: flex; align-items: center; justify-content: center;
-  font-size: 80px; font-weight: 900; color: #fff;
-}
-.rp-color-bar {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: 6px; border-radius: 0 0 16px 16px; pointer-events: none;
-}
-.rp-info-col {
-  padding: 32px 32px 28px 0;
-  display: flex; flex-direction: column; gap: 0;
-}
-.rp-name {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 30px; font-weight: 900; color: #0f172a;
-  margin-bottom: 4px;
-}
-.rp-role-badge {
-  display: inline-block;
-  font-size: 12px; font-weight: 700;
-  padding: 4px 12px; border-radius: 999px;
-  color: #fff; margin-bottom: 20px;
-}
-.rp-stats {
-  display: flex; gap: 28px; margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-.rp-stat { display: flex; flex-direction: column; gap: 2px; }
-.rp-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
-.rp-stat-val { font-size: 16px; font-weight: 800; color: #0f172a; }
-.rp-divider { height: 1px; background: #f1f5f9; margin: 16px 0; }
-.rp-intro {
-  font-size: 14px; line-height: 1.8; color: #475569;
-  font-family: 'Noto Sans KR', sans-serif;
-  flex: 1;
-}
-.rp-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
-.rp-tag {
-  font-size: 11px; font-weight: 700;
-  padding: 4px 12px; border-radius: 999px;
-  background: #f1f5f9; color: #475569;
-  border: 1px solid #e2e8f0;
-}
+/* ── Header ── */
+.rp-profile { display:grid; grid-template-columns:240px minmax(0,1fr); gap:22px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:18px; overflow:hidden; margin-bottom:16px; }
+.rp-photo-col { position:relative; min-height:300px; background:#0f1b33; cursor:zoom-in; }
+.rp-photo-col img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top; display:block; }
+.rp-photo-ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Noto Serif KR',serif; font-size:84px; font-weight:900; color:rgba(255,255,255,.82); text-shadow:0 2px 18px rgba(0,0,0,.35); cursor:default; }
+.rp-info-col { padding:20px 22px 20px 0; display:flex; flex-direction:column; min-width:0; }
+.rp-name { font-family:'Noto Serif KR',serif; font-size:30px; font-weight:900; color:#fff; line-height:1.2; margin:0; }
+.rp-name-rom { font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; color:#94a3b8; margin-left:8px; letter-spacing:.01em; }
+.rp-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.rp-chip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:999px; background:#334155; color:#e2e8f0; }
+.rp-chip.role { color:#fff; }
+.rp-chip .kh-ui-icon { width:12px; height:12px; }
+.rp-intro { font-size:14px; line-height:1.7; color:#cbd5e1; margin:12px 0 0; }
+.rp-intro-ko { font-size:12.5px; line-height:1.6; color:#94a3b8; margin:4px 0 0; font-family:'Noto Sans KR',sans-serif; }
+.rp-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.rp-tag { font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; background:rgba(255,255,255,.06); color:#cbd5e1; border:1px solid rgba(255,255,255,.1); }
 
-/* ── Favorability ── */
-.rp-fav-card {
-  background: #fff;
-  border-radius: 24px;
-  border: 1px solid #e8eef7;
-  box-shadow: 0 4px 20px rgba(15,23,42,.05);
-  padding: 28px;
-  margin-bottom: 28px;
-}
-.rp-fav-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 16px;
-}
-.rp-fav-title { font-size: 16px; font-weight: 800; color: #0f172a; }
-.rp-fav-level {
-  font-size: 12px; font-weight: 700;
-  padding: 4px 12px; border-radius: 999px;
-  background: #f1f5f9; color: #64748b;
-}
-.rp-fav-bar-bg {
-  height: 10px; border-radius: 999px;
-  background: #f1f5f9; margin-bottom: 6px; overflow: hidden;
-}
-.rp-fav-bar-fill {
-  height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, #facc15, #f97316);
-  transition: width .6s ease;
-}
-.rp-fav-meta {
-  display: flex; justify-content: space-between;
-  font-size: 12px; color: #94a3b8; margin-bottom: 24px;
-}
-.rp-gifts {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-  margin-bottom: 20px;
-}
-.rp-gift {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  background: #f8fafc; border: 1.5px solid #e2e8f0;
-  border-radius: 16px; padding: 16px 8px;
-  cursor: pointer; opacity: 1;
-  position: relative;
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-.rp-gift:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(2,6,23,.08); }
-.rp-gift.disabled { cursor:not-allowed; opacity:.55; }
-.rp-gift-icon { font-size: 28px; }
-.rp-gift-name { font-size: 11px; font-weight: 700; color: #475569; text-align: center; }
-.rp-gift-cost {
-  font-size: 11px; font-weight: 800; color: #f97316;
-  background: #fff7ed; padding: 2px 8px; border-radius: 999px;
-}
-.rp-gift-lock {
-  position: absolute; top: 8px; right: 8px;
-  font-size: 11px; color: #94a3b8;
-}
-.rp-gift-own { font-size:10px; color:#15803d; font-weight:800; }
-.rp-nyang-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:#ecfeff; color:#0f766e; font-size:12px; font-weight:800; border:1px solid #a5f3fc; }
-.rp-hire-btn {
-  width: 100%; padding: 14px;
-  border-radius: 14px; border: 2px dashed #e2e8f0;
-  background: #f8fafc; color: #94a3b8;
-  font-size: 15px; font-weight: 800;
-  cursor: not-allowed;
-  font-family: inherit;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.rp-hire-progress {
-  font-size: 12px; color: #94a3b8; text-align: center; margin-top: 8px;
-}
+/* Affinity */
+.rp-aff { margin-top:auto; padding-top:16px; }
+.rp-aff-row { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:12.5px; color:#cbd5e1; font-weight:700; }
+.rp-aff-row b { color:#fff; }
+.rp-aff-row .kh-ui-icon { width:13px; height:13px; color:#f9a8d4; vertical-align:-2px; }
+.rp-aff-bar { height:7px; border-radius:999px; background:rgba(255,255,255,.1); overflow:hidden; margin-top:7px; }
+.rp-aff-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#f472b6,#a78bfa); transition:width .5s ease; }
+.rp-aff-note { font-size:11.5px; color:#94a3b8; line-height:1.5; margin-top:7px; }
 
-/* ── Articles ── */
-.rp-sec-title {
-  font-size: 13px; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .06em;
-  color: #94a3b8; margin-bottom: 14px;
-}
-.rp-art-list { display: flex; flex-direction: column; gap: 10px; }
-.rp-art-item {
-  background: #fff; border-radius: 14px;
-  border: 1px solid #e8eef7; padding: 14px 18px;
-  text-decoration: none; display: block;
-  transition: box-shadow .15s, transform .15s;
-}
-.rp-art-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); transform: translateY(-2px); }
-.rp-art-title { font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.45; margin-bottom: 3px; font-family: 'Noto Serif KR', serif; }
-.rp-art-meta { font-size: 12px; color: #94a3b8; }
-
-/* ── Reporter body layout — single column with idol-style tabs ── */
-.rp-body-grid {
-  display:block;
-}
-.rp-main-col { min-width:0; }
-.rp-side-col { min-width:0; }
-
-/* ── Idol-style tab bar (Posts / Album / Photocards / Articles) ── */
-.rp-tabbar {
-  display:flex; gap:6px;
-  background:#fff; border:1px solid #e8eef7; border-radius:18px;
-  padding:6px; margin:0 0 18px;
-  box-shadow:0 4px 20px rgba(15,23,42,.05);
-  overflow-x:auto; scrollbar-width:none;
-}
+/* ── Tabs ── */
+.rp-tabbar { display:flex; gap:6px; margin:4px 0 14px; overflow-x:auto; scrollbar-width:none; }
 .rp-tabbar::-webkit-scrollbar { display:none; }
-.rp-tab {
-  flex:1 1 auto;
-  padding:11px 14px;
-  border-radius:12px; border:none; background:transparent;
-  font:inherit; font-size:13px; font-weight:800;
-  color:#64748b; cursor:pointer;
-  display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  white-space:nowrap;
-  transition: background .15s, color .15s, transform .12s;
-}
-.rp-tab:hover { color:#0f172a; }
-.rp-tab.on {
-  background:#0f172a; color:#fff;
-  transform:translateY(-1px);
-  box-shadow:0 6px 18px rgba(15,23,42,.18);
-}
-.rp-tab-count {
-  font-size:11px; padding:1px 7px; border-radius:999px;
-  background:rgba(15,23,42,.08); color:#64748b; font-weight:800;
-}
-.rp-tab.on .rp-tab-count { background:rgba(255,255,255,.18); color:#fff; }
-
+.rp-tab { flex:0 0 auto; padding:9px 15px; border-radius:999px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05); font:inherit; font-size:13px; font-weight:800; color:#cbd5e1; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; transition:background .15s, color .15s; }
+.rp-tab:hover { color:#fff; background:rgba(255,255,255,.09); }
+.rp-tab.on { background:#e2e8f0; color:#0b1426; border-color:#e2e8f0; }
+.rp-tab .kh-ui-icon { width:14px; height:14px; }
+.rp-tab-count { font-weight:800; }
+.rp-tab-count:empty { display:none; }
+.rp-tab-count:not(:empty)::before { content:'· '; }
 .rp-panel { display:none; }
-.rp-panel.on { display:block; animation: rpPanelIn .22s ease; }
-@keyframes rpPanelIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+.rp-panel.on { display:block; animation:rpPanelIn .2s ease; }
+@keyframes rpPanelIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 
-/* ── Compact stat strip (favorability + nyang) under profile ── */
-.rp-stat-strip {
-  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-  background:#fff; border:1px solid #e8eef7; border-radius:16px;
-  padding:12px 16px; margin:0 0 14px;
-  box-shadow:0 4px 18px rgba(15,23,42,.05);
-}
-.rp-stat-strip-fav {
-  flex:1 1 auto; min-width:160px;
-  display:flex; flex-direction:column; gap:6px;
-}
-.rp-stat-strip-bar {
-  position:relative; height:8px; border-radius:999px; background:#f1f5f9; overflow:hidden;
-}
-.rp-stat-strip-bar-fill {
-  position:absolute; inset:0 auto 0 0; border-radius:999px;
-  transition: width .35s ease;
-}
-.rp-stat-strip-row {
-  display:flex; justify-content:space-between; align-items:center;
-  font-size:11px; color:#64748b; font-weight:700;
-}
-.rp-stat-strip-row b { color:#0f172a; font-size:12px; font-weight:900; }
+/* Articles */
+.rp-art-list { display:flex; flex-direction:column; gap:8px; }
+.rp-art-item { display:flex; align-items:center; gap:12px; padding:9px 12px 9px 9px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); text-decoration:none; color:inherit; transition:background .15s, border-color .15s; }
+.rp-art-item:hover { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.16); }
+.rp-art-thumb { flex:0 0 auto; width:64px; height:46px; border-radius:8px; background:linear-gradient(135deg,#334155,#1e293b) center/cover no-repeat; }
+.rp-art-body { flex:1; min-width:0; }
+.rp-art-title { font-family:'Noto Sans KR',sans-serif; font-size:14px; font-weight:700; color:#f1f5f9; line-height:1.4; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.rp-art-meta { font-size:11.5px; color:#94a3b8; margin-top:2px; }
+.rp-lv { flex:0 0 auto; font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:999px; background:rgba(255,255,255,.08); color:#cbd5e1; }
+.rp-lv.s { background:rgba(167,139,250,.18); color:#ddd6fe; }
+.rp-lv.b { background:rgba(34,197,94,.16); color:#86efac; }
+.rp-lv.i { background:rgba(245,158,11,.16); color:#fcd34d; }
+.rp-lv.a { background:rgba(244,63,94,.16); color:#fda4af; }
+.rp-more { display:block; width:100%; margin-top:10px; padding:11px; border-radius:12px; border:1px dashed rgba(255,255,255,.2); background:none; color:#cbd5e1; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.rp-more:hover { color:#fff; border-color:rgba(255,255,255,.35); }
 
-/* ── Album grid (Instagram-style 3-col image grid) ── */
-.rp-album-grid {
-  display:grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap:4px;
-}
-@media (min-width: 640px) {
-  .rp-album-grid { gap:6px; grid-template-columns: repeat(4, 1fr); }
-}
-@media (min-width: 960px) {
-  .rp-album-grid { grid-template-columns: repeat(5, 1fr); }
-}
-.rp-album-tile {
-  position:relative; aspect-ratio:1/1; overflow:hidden;
-  background:#0f172a; cursor:zoom-in;
-  border-radius:6px;
-}
-.rp-album-tile img {
-  width:100%; height:100%; object-fit:cover; display:block;
-  transition: transform .25s ease;
-}
-.rp-album-tile:hover img { transform: scale(1.05); }
-.rp-album-empty {
-  text-align:center; padding:48px 20px; color:#64748b; font-size:13px;
-  background:#fff; border:1px dashed #cbd5e1; border-radius:14px;
-}
+/* Gifts */
+.rp-gift-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.rp-gift-head p { margin:0; font-size:12.5px; color:#94a3b8; }
+.rp-nyang-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px; background:rgba(45,212,191,.12); color:#5eead4; font-size:12px; font-weight:800; border:1px solid rgba(45,212,191,.3); }
+.rp-nyang-chip .kh-ui-icon { width:13px; height:13px; }
+.rp-gifts { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
+.rp-gift { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 6px 11px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:#e2e8f0; font:inherit; cursor:pointer; transition:transform .15s, background .15s, border-color .15s; }
+.rp-gift:hover { transform:translateY(-2px); background:rgba(255,255,255,.08); border-color:rgba(249,168,212,.4); }
+.rp-gift.disabled { cursor:not-allowed; opacity:.45; transform:none; }
+.rp-gift-icon { color:#f9a8d4; display:flex; }
+.rp-gift-icon .kh-ui-icon { width:26px; height:26px; }
+.rp-gift-name { font-size:11.5px; font-weight:700; text-align:center; line-height:1.3; }
+.rp-gift-cost { font-size:11px; font-weight:800; color:#fbbf24; }
+.rp-gift-own { position:absolute; top:6px; right:6px; font-size:9.5px; font-weight:800; padding:1px 6px; border-radius:999px; background:rgba(34,197,94,.2); color:#86efac; }
+.rp-gift-msg { font-size:12px; color:#94a3b8; margin-top:10px; }
+.rp-signin { display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:9px 18px; border-radius:999px; border:0; background:#2563eb; color:#fff; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
 
-/* ── Photocards (idol photocard tiles) ── */
-.rp-pc-grid {
-  display:grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap:14px;
-}
-@media (min-width: 480px) {
-  .rp-pc-grid { grid-template-columns: repeat(3, 1fr); }
-}
-@media (min-width: 720px) {
-  .rp-pc-grid { grid-template-columns: repeat(4, 1fr); }
-}
-.rp-pc {
-  position:relative;
-  aspect-ratio: 2/3;
-  border-radius:18px;
-  overflow:hidden;
-  border:3px solid #fff;
-  box-shadow: 0 12px 28px rgba(15,23,42,.22), 0 0 0 1px rgba(15,23,42,.08);
-  background:#0f172a;
-  cursor:zoom-in;
-  transition: transform .2s ease, box-shadow .2s ease;
-}
-.rp-pc:hover { transform: translateY(-4px) rotate(-1deg); box-shadow: 0 18px 36px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.08); }
-.rp-pc-img {
-  position:absolute; inset:0;
-  background-size:cover; background-position:center top;
-}
-.rp-pc-fade {
-  position:absolute; inset:auto 0 0 0; height:60%;
-  background: linear-gradient(180deg, rgba(8,14,28,0) 0%, rgba(8,14,28,.55) 55%, rgba(8,14,28,.92) 100%);
-}
-.rp-pc-edge {
-  position:absolute; top:0; left:0; right:0; height:5px;
-}
-.rp-pc-body {
-  position:absolute; left:0; right:0; bottom:0;
-  padding:14px 14px 14px;
-  color:#fff;
-}
-.rp-pc-num {
-  position:absolute; top:10px; right:12px;
-  font-family:'Source Sans 3', system-ui, sans-serif;
-  font-size:11px; font-weight:900; letter-spacing:.18em;
-  color:rgba(255,255,255,.85);
-  text-shadow:0 1px 2px rgba(0,0,0,.4);
-}
-.rp-pc-tag {
-  display:inline-block;
-  font-size:9px; font-weight:900; letter-spacing:.16em; text-transform:uppercase;
-  padding:3px 8px; border-radius:999px;
-  background:rgba(255,255,255,.16);
-  border:1px solid rgba(255,255,255,.32);
-  backdrop-filter: blur(4px);
-  margin-bottom:6px;
-}
-.rp-pc-name {
-  font-family:'Noto Serif KR', serif;
-  font-size:18px; font-weight:900; line-height:1.15;
-  margin:0;
-  text-shadow: 0 2px 8px rgba(0,0,0,.45);
-}
-.rp-pc-role {
-  font-size:10px; font-weight:700; letter-spacing:.04em;
-  color:rgba(255,255,255,.85); margin-top:3px;
-  text-shadow: 0 1px 3px rgba(0,0,0,.45);
-}
-.rp-pc-ph {
-  position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
-  font-family:'Noto Serif KR', serif; font-size:88px; font-weight:900; color:#fff;
-}
-.rp-pc-empty {
-  text-align:center; padding:48px 20px; color:#64748b; font-size:13px;
-  background:#fff; border:1px dashed #cbd5e1; border-radius:14px;
-}
+/* Album */
+.rp-album-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+@media (min-width:640px) { .rp-album-grid { gap:6px; grid-template-columns:repeat(4,1fr); } }
+@media (min-width:960px) { .rp-album-grid { grid-template-columns:repeat(5,1fr); } }
+.rp-album-tile { position:relative; aspect-ratio:1/1; overflow:hidden; background:#0f172a; cursor:zoom-in; border-radius:6px; }
+.rp-album-tile img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .25s ease; }
+.rp-album-tile:hover img { transform:scale(1.05); }
 
-.rp-post-compose {
-  background:#fff; border:1px solid #e8eef7; border-radius:22px; padding:18px; margin-bottom:14px;
-  box-shadow:0 4px 18px rgba(15,23,42,.05);
-}
-.rp-post-compose textarea {
-  width:100%; min-height:92px; resize:vertical; border:1px solid #e2e8f0; border-radius:14px;
-  padding:12px; font:inherit; font-size:14px; color:#0f172a; background:#f8fafc;
-}
-.rp-post-compose-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
-.rp-post-select, .rp-post-file {
-  border:1px solid #dbe5f2; border-radius:10px; padding:8px 10px; background:#fff; font:inherit; font-size:12px;
-}
-.rp-post-btn {
-  border:1px solid #0f172a; background:#0f172a; color:#fff; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer;
-}
-.rp-post-btn.ghost { background:#fff; color:#334155; border-color:#dbe5f2; }
+/* Photocards */
+.rp-pc-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+@media (min-width:480px) { .rp-pc-grid { grid-template-columns:repeat(3,1fr); } }
+@media (min-width:720px) { .rp-pc-grid { grid-template-columns:repeat(4,1fr); } }
+.rp-pc { position:relative; aspect-ratio:2/3; border-radius:16px; overflow:hidden; border:2px solid rgba(255,255,255,.18); box-shadow:0 12px 28px rgba(0,0,0,.35); background:#0f172a; cursor:zoom-in; transition:transform .2s ease; }
+.rp-pc:hover { transform:translateY(-4px) rotate(-1deg); }
+.rp-pc-img { position:absolute; inset:0; background-size:cover; background-position:center top; }
+.rp-pc-fade { position:absolute; inset:auto 0 0 0; height:60%; background:linear-gradient(180deg,rgba(8,14,28,0) 0%,rgba(8,14,28,.55) 55%,rgba(8,14,28,.92) 100%); }
+.rp-pc-edge { position:absolute; top:0; left:0; right:0; height:5px; }
+.rp-pc-body { position:absolute; left:0; right:0; bottom:0; padding:14px; color:#fff; }
+.rp-pc-num { position:absolute; top:10px; right:12px; font-size:11px; font-weight:900; letter-spacing:.18em; color:rgba(255,255,255,.85); text-shadow:0 1px 2px rgba(0,0,0,.4); }
+.rp-pc-tag { display:inline-block; font-size:9px; font-weight:900; letter-spacing:.16em; text-transform:uppercase; padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.32); margin-bottom:6px; }
+.rp-pc-name { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:900; line-height:1.15; margin:0; text-shadow:0 2px 8px rgba(0,0,0,.45); }
+.rp-pc-role { font-size:10px; font-weight:700; letter-spacing:.04em; color:rgba(255,255,255,.85); margin-top:3px; }
+.rp-pc-ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Noto Serif KR',serif; font-size:88px; font-weight:900; color:#fff; }
+
+/* Posts (only reporters / admins write them) */
+.rp-post-compose { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:16px; margin-bottom:14px; }
+.rp-post-compose textarea { width:100%; min-height:92px; resize:vertical; border:1px solid rgba(255,255,255,.15); border-radius:12px; padding:12px; font:inherit; font-size:14px; color:#f1f5f9; background:rgba(0,0,0,.2); box-sizing:border-box; }
+.rp-post-compose-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; font-size:12px; color:#cbd5e1; }
+.rp-post-select, .rp-post-file { border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:8px 10px; background:rgba(0,0,0,.2); color:#e2e8f0; font:inherit; font-size:12px; }
+.rp-post-btn { border:0; background:#2563eb; color:#fff; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; }
+.rp-post-btn.ghost { background:rgba(255,255,255,.08); color:#e2e8f0; }
 .rp-post-feed { display:flex; flex-direction:column; gap:12px; }
-.rp-post-card {
-  background:#fff; border:1px solid #e8eef7; border-radius:18px; overflow:hidden;
-  box-shadow:0 4px 18px rgba(15,23,42,.04);
-}
+.rp-post-card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:16px; overflow:hidden; }
 .rp-post-head { display:flex; justify-content:space-between; gap:12px; padding:14px 16px 8px; }
+.rp-post-who { font-weight:800; color:#fff; }
 .rp-post-meta { font-size:11px; color:#94a3b8; }
-.rp-post-pin { font-size:11px; color:#f97316; font-weight:900; }
-.rp-post-content { padding:0 16px 12px; color:#1e293b; font-size:14px; line-height:1.7; white-space:pre-wrap; }
-.rp-post-images {
-  display:grid; gap:4px; grid-template-columns: repeat(2, 1fr);
-}
+.rp-post-pin { font-size:11px; color:#fdba74; font-weight:900; }
+.rp-post-content { padding:0 16px 12px; color:#e2e8f0; font-size:14px; line-height:1.7; white-space:pre-wrap; }
+.rp-post-images { display:grid; gap:4px; grid-template-columns:repeat(2,1fr); }
 .rp-post-images img { width:100%; height:220px; object-fit:cover; display:block; cursor:zoom-in; }
 .rp-post-images.one { grid-template-columns:1fr; }
 .rp-post-images.one img { height:360px; }
-.rp-post-foot {
-  padding:10px 16px 14px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #f1f5f9;
-}
-.rp-post-status { font-size:11px; color:#64748b; font-weight:700; }
+.rp-post-foot { padding:10px 16px 14px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,.08); }
+.rp-post-status { font-size:11px; color:#94a3b8; font-weight:700; }
 .rp-post-actions { display:flex; gap:8px; }
-.rp-post-act {
-  border:1px solid #dbe5f2; background:#fff; color:#334155; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:800; cursor:pointer;
-}
-.rp-name-rom { display:block; font-family:'DM Sans','Source Sans 3',sans-serif; font-size:15px; font-weight:700; color:#64748b; letter-spacing:.01em; margin-top:2px; }
-.rp-tab-count:empty { display:none; }
-.rp-empty { background:#fff; border:1px solid #e8eef7; border-radius:18px; padding:32px 20px; text-align:center; box-shadow:0 4px 18px rgba(15,23,42,.04); }
-.rp-empty-ic { width:48px; height:48px; border-radius:50%; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; background:#eff6ff; color:#2563eb; font-size:22px; }
-.rp-empty-t { font-size:15px; font-weight:800; color:#0f172a; margin-bottom:4px; }
-.rp-empty-s { font-size:13px; color:#64748b; line-height:1.55; }
-.rp-post-empty {
-  background:#ffffffcc; border:1px dashed #cbd5e1; border-radius:14px; padding:20px; text-align:center; color:#94a3b8; font-size:13px;
-}
+.rp-post-act { border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:#e2e8f0; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:800; cursor:pointer; }
+.rp-post-empty { padding:20px; text-align:center; color:#94a3b8; font-size:13px; }
 
-/* ── Loading / Error ── */
-.rp-loading { text-align: center; padding: 80px 20px; color: #94a3b8; font-size: 15px; }
-.rp-not-found { text-align: center; padding: 80px 20px; }
-.rp-not-found h2 { font-size: 22px; color: #0f172a; margin-bottom: 8px; }
-.rp-not-found p { color: #64748b; }
+/* Empty states */
+.rp-empty { background:rgba(255,255,255,.04); border:1px dashed rgba(255,255,255,.15); border-radius:16px; padding:30px 20px; text-align:center; }
+.rp-empty-ic { width:46px; height:46px; border-radius:50%; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; background:rgba(96,165,250,.14); color:#93c5fd; }
+.rp-empty-t { font-size:15px; font-weight:800; color:#fff; margin-bottom:4px; }
+.rp-empty-s { font-size:13px; color:#94a3b8; line-height:1.55; }
 
-/* ── Lightbox ── */
+/* Loading / not found */
+.rp-loading { text-align:center; padding:80px 20px; color:rgba(255,255,255,.55); font-size:15px; }
+.rp-not-found { text-align:center; padding:80px 20px; }
+.rp-not-found h2 { font-size:22px; color:#fff; margin-bottom:8px; }
+.rp-not-found p { color:#94a3b8; }
+.rp-not-found a { color:#93c5fd; font-weight:700; }
+
+/* Lightbox */
 #rp-lb { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
 #rp-lb.on { display:flex; }
 #rp-lb img { max-width:90vw; max-height:90vh; border-radius:16px; box-shadow:0 24px 80px rgba(0,0,0,.6); object-fit:contain; }
-.rp-photo-col { cursor:zoom-in; }
 
-/* ── Mobile ── */
-@media(max-width: 640px) {
-  .rp-profile { grid-template-columns: 1fr; }
-  .rp-photo-col { min-height: 240px; max-height: 260px; }
-  .rp-info-col { padding: 24px 20px 24px; }
-  .rp-gifts { grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .rp-gift { padding: 12px 4px; }
-  .rp-gift-icon { font-size: 22px; }
+@media (max-width:760px) {
+  .rp-gifts { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media (max-width:640px) {
+  .rp-wrap { padding:16px 16px 56px; }
+  .rp-profile { grid-template-columns:1fr; gap:0; }
+  .rp-photo-col { min-height:280px; }
+  .rp-info-col { padding:16px; }
+  .rp-name { font-size:26px; }
+  .rp-name-rom { display:block; margin:2px 0 0; }
+  .rp-tab { padding:8px 12px; font-size:12.5px; }
+  .rp-art-thumb { width:52px; height:40px; }
   .rp-post-images img { height:170px; }
   .rp-post-images.one img { height:240px; }
-  .rp-body-grid { grid-template-columns: 1fr; }
-  .rp-side-col { position: static; }
-  /* Tab bar: compact icons on the smallest screens so 4 labels still
-     fit in a single row without horizontal scroll bars dominating. */
-  .rp-tab { padding:10px 10px; font-size:12px; }
-  .rp-tabbar { padding:5px; gap:4px; border-radius:14px; }
-  .rp-stat-strip { padding:10px 12px; gap:8px; }
 }
 </style>
 </head>
 <body>
 <h1 class="kh-sr-only">Reporter Profile — KoreHani</h1>
-<div id="rp-page-bg" class="rp-page-bg"></div>
-<div class="rp-content-layer">
 <div id="kh-header"></div>
 <div id="rp-root"><div class="rp-loading">Loading…</div></div>
 <div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" alt=""></div>
 <div id="kh-footer"></div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260525r"></script>
@@ -492,7 +221,6 @@ body {
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 var FAV_HIRE_THRESHOLD = 3000;
-var REPORTER_BG_DEFAULT = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=2200&q=80';
 var _giftCatalog = [];
 var _giftOwnedMap = {};
 var _giftBalance = 0;
@@ -537,155 +265,123 @@ document.addEventListener('DOMContentLoaded', async function() {
   _postMode = getPostModePref();
   var sb = getSupa();
 
-  // Fire all three independent queries in parallel rather than sequentially
-  // — was costing ~3x the network round-trip of the slowest call.
-  // Each catch swallows its own failure so a slow/missing endpoint doesn't
-  // sink the others.
-  var bgPromise = sb
-    ? sb.from('app_settings').select('value').eq('key', 'reporter_bg_image_url').maybeSingle().then(function(r){
-        if (!r.error && r.data && r.data.value) return String(r.data.value);
-        return REPORTER_BG_DEFAULT;
-      }).catch(function(){ return REPORTER_BG_DEFAULT; })
-    : Promise.resolve(REPORTER_BG_DEFAULT);
-
+  // Reporter row + the learner's affinity in parallel; each swallows its own failure.
   var reporterPromise = sb
     ? sb.from('character_reporters').select('data').eq('id', rid).maybeSingle().then(function(r){
         if (!r.error && r.data) return r.data.data || r.data;
         return null;
-      }).catch(function(){ return null; })
+      }, function(){ return null; })
     : Promise.resolve(null);
-
   var favPromise = loadAffinityPoints(sb, rid).catch(function(){ return 0; });
 
-  var bgUrl, reporter, favXP;
+  var reporter, favXP;
   try {
-    var results = await Promise.all([bgPromise, reporterPromise, favPromise]);
-    bgUrl    = results[0];
-    reporter = results[1];
-    favXP    = results[2] || 0;
-  } catch(e) {
-    bgUrl = REPORTER_BG_DEFAULT; reporter = null; favXP = 0;
-  }
+    var results = await Promise.all([reporterPromise, favPromise]);
+    reporter = results[0];
+    favXP    = results[1] || 0;
+  } catch(e) { reporter = null; favXP = 0; }
 
-  var bgEl = document.getElementById('rp-page-bg');
-  if (bgEl) bgEl.style.backgroundImage = 'url(\"' + (bgUrl || REPORTER_BG_DEFAULT).replace(/\"/g, '%22') + '\")';
-
-  // Fall back to KH_REPORTERS cache (already seeded synchronously by
-  // reporters.js + any localStorage cache) if Supabase had no row.
+  // Fall back to KH_REPORTERS cache (seeded by reporters.js + localStorage) if Supabase had no row.
   if (!reporter || !reporter.name) {
     var b = KH_REPORTERS[rid];
-    if (b) reporter = { id:rid, name:b.name, role:b.role, image:b.img, color:b.color, intro:'', tags:[] };
+    if (b) reporter = { id:rid, name:b.name, name_en:b.name_en, role:b.role, image:b.img, color:b.color, intro:'', tags:[] };
   }
   if (!reporter || !reporter.name) {
-    if (bgEl) bgEl.style.display = 'none';
-    root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p>This reporter page doesn\'t exist or the link is incomplete.</p><p style="margin-top:14px"><a href="korehan-reporters.html" style="color:var(--bright);font-weight:700">See all reporters →</a></p></div>';
+    root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p>This reporter page doesn\'t exist or the link is incomplete.</p><p style="margin-top:14px"><a href="korehan-reporters.html">See all reporters</a></p></div>';
     return;
   }
+  if (!reporter.id) reporter.id = rid;
 
-  var color = reporter.color || '#2563eb';
-  // Random stock photos (picsum.photos) and the 1x1 seed placeholder are not
-  // the reporter — show the initials tile.
-  if (reporter.image && (/picsum\.photos/i.test(String(reporter.image)) || /^data:image\/gif;base64,R0lGODlhAQABA/.test(String(reporter.image)))) reporter.image = '';
+  var color = /^#[0-9a-f]{6}$/i.test(reporter.color || '') ? reporter.color : '#2563eb';
+  // Random stock photos (picsum.photos) and the 1x1 seed placeholder are not the reporter.
+  if (reporter.image && (/picsum\.photos/i.test(String(reporter.image)) || /^data:image\/gif;base64,R0lGODlhAQAB/.test(String(reporter.image)))) reporter.image = '';
   document.title = reporter.name + ' · Reporter — KoreHani';
 
   _currentReporterId = rid;
   _currentReporter = reporter;
   _canManagePosts = canManageReporterPosts(reporter);
   _currentAffinityXP = favXP;
-  var favPct = Math.min(100, Math.round(favXP / FAV_HIRE_THRESHOLD * 100));
-  var favLevel = favXP >= FAV_HIRE_THRESHOLD ? 'Manager' : favXP >= 200 ? 'Friend' : favXP >= 80 ? 'Acquaintance' : 'Stranger';
 
+  var ph = '<div class="rp-photo-ph" style="background:radial-gradient(120% 90% at 30% 15%,' + color + '73 0%,' + color + '26 45%,#0f1b33 100%)">' + escHtml(reporter.name.charAt(0)) + '</div>';
   var photoHtml = reporter.image
-    ? '<img src="' + reporter.image + '" alt="' + reporter.name + '" style="width:100%;height:100%;object-fit:cover;display:block;min-height:320px" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
-      + '<div class="rp-photo-ph" style="background:' + color + ';display:none;min-height:320px">' + reporter.name.charAt(0) + '</div>'
-    : '<div class="rp-photo-ph" style="background:' + color + '">' + reporter.name.charAt(0) + '</div>';
+    ? '<img src="' + escHtml(reporter.image) + '" alt="' + escHtml(reporter.name) + '" onerror="this.parentNode.innerHTML=rpPhHtml()">'
+    : ph;
+  window.rpPhHtml = function(){ return ph; };
 
-  var tagsHtml = (reporter.tags||[]).map(function(t){ return '<span class="rp-tag">' + (typeof khSecLabel==='function' ? khSecLabel(t) : t) + '</span>'; }).join('');
+  var rom = (typeof khReporterNameEn === 'function') ? khReporterNameEn(reporter) : '';
+  var role = reporter.role_en || (typeof khReporterRole === 'function' ? khReporterRole(reporter.role || '') : (reporter.role || ''));
+  var tagsHtml = (reporter.tags || []).map(function(t){ return '<span class="rp-tag">' + escHtml(typeof khSecLabel === 'function' ? khSecLabel(t) : t) + '</span>'; }).join('');
+  var who = rom || reporter.name;
 
   root.innerHTML =
     '<div class="rp-wrap">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    +   '<a href="#" onclick="rpGoBack(event)" style="color:var(--bright);font-size:14px;font-weight:700;text-decoration:none;opacity:.8">← Back</a>'
-    +   '<a href="korehan-reporters.html" style="color:var(--bright);font-size:13px;font-weight:700;text-decoration:none;opacity:.8">View all reporters →</a>'
+    + '<div class="rp-nav">'
+    +   '<a href="#" onclick="rpGoBack(event)"><i data-lucide="arrow-left" class="kh-ui-icon" aria-hidden="true"></i> Back</a>'
+    +   '<a href="korehan-reporters.html">All reporters</a>'
     + '</div>'
 
-    // ── Profile ──
+    // ── Header ──
     + '<div class="rp-profile">'
-    +   '<div class="rp-photo-col" onclick="rpOpenLb()">'
-    +     photoHtml
-    +     '<div class="rp-color-bar" style="background:' + color + '"></div>'
-    +   '</div>'
+    +   '<div class="rp-photo-col"' + (reporter.image ? ' onclick="rpOpenLb()"' : '') + '>' + photoHtml + '</div>'
     +   '<div class="rp-info-col">'
-    +     '<div class="rp-name">' + escHtml(reporter.name) + (typeof khReporterNameEn === 'function' && khReporterNameEn(reporter) ? ' <span class="rp-name-rom">' + escHtml(khReporterNameEn(reporter)) + '</span>' : '') + '</div>'
-    +     '<span class="rp-role-badge" style="background:' + color + '">' + (reporter.role_en || (typeof khReporterRole==='function'?khReporterRole:String)(reporter.role||'')) + '</span>'
-    +     '<div class="rp-stats">'
-    +       (reporter.age ? '<div class="rp-stat"><span class="rp-stat-label">Age</span><span class="rp-stat-val">' + reporter.age + '</span></div>' : '')
-    +       (reporter.tone ? '<div class="rp-stat"><span class="rp-stat-label">Tone</span><span class="rp-stat-val" style="font-size:13px">' + reporter.tone + '</span></div>' : '')
+    +     '<h1 class="rp-name">' + escHtml(reporter.name) + (rom ? '<span class="rp-name-rom">' + escHtml(rom) + '</span>' : '') + '</h1>'
+    +     '<div class="rp-chips">'
+    +       (role ? '<span class="rp-chip role" style="background:' + color + '">' + escHtml(role) + '</span>' : '')
+    +       (reporter.tone ? '<span class="rp-chip">' + escHtml(String(reporter.tone).replace(/,\s*ethnically[^,]*/i, '')) + '</span>' : '')
+    +       (reporter.age ? '<span class="rp-chip">Age ' + escHtml(reporter.age) + '</span>' : '')
     +     '</div>'
-    +     '<div class="rp-divider"></div>'
-    +     '<div class="rp-intro">' + (reporter.intro_en || reporter.intro || 'No intro yet.') + '</div>'
-    +     (reporter.intro_en && reporter.intro ? '<div class="rp-intro" lang="ko" style="font-size:12px;opacity:.7;margin-top:4px">' + reporter.intro + '</div>' : '')
+    +     '<p class="rp-intro">' + escHtml(reporter.intro_en || reporter.intro || 'No intro yet.') + '</p>'
+    +     (reporter.intro_en && reporter.intro ? '<p class="rp-intro-ko" lang="ko">' + escHtml(reporter.intro) + '</p>' : '')
     +     (tagsHtml ? '<div class="rp-tags">' + tagsHtml + '</div>' : '')
+    +     '<div class="rp-aff">'
+    +       '<div class="rp-aff-row"><span><i data-lucide="heart" class="kh-ui-icon" aria-hidden="true"></i> Affinity · <b id="rp-fav-level"></b></span><span id="rp-fav-xp"></span></div>'
+    +       '<div class="rp-aff-bar"><div class="rp-aff-fill" id="rp-fav-bar-fill" style="width:0"></div></div>'
+    // What 3,000 actually does today: the reporter counts as your manager on
+    // Reporter Cards (Platinum card + "Hired" ribbon). There is no hire
+    // button or other manager feature in the code, so don't promise one.
+    +       '<div class="rp-aff-note" id="rp-fav-note">'
+    +         (supaUser
+              ? 'Gifts raise affinity. At ' + FAV_HIRE_THRESHOLD.toLocaleString() + ', ' + escHtml(who) + ' becomes your Korean manager: their card turns Platinum and is marked Hired in <a href="korehan-cards.html" style="color:#93c5fd">Reporter Cards</a>.'
+              : 'Log in and send gifts to build affinity. At ' + FAV_HIRE_THRESHOLD.toLocaleString() + ', ' + escHtml(who) + ' becomes your Korean manager on Reporter Cards.')
+    +       '</div>'
+    +     '</div>'
     +   '</div>'
     + '</div>'
 
-    // ── Compact favorability/nyang strip under the profile ──
-    + '<div class="rp-stat-strip">'
-    +   '<div class="rp-stat-strip-fav">'
-    +     '<div class="rp-stat-strip-row"><span><i data-lucide="heart" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Affinity · <b id="rp-fav-level">' + favLevel + '</b></span><span id="rp-fav-xp"><b>' + favXP + '</b> / ' + FAV_HIRE_THRESHOLD + '</span></div>'
-    +     '<div class="rp-stat-strip-bar"><div class="rp-stat-strip-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
-    +   '</div>'
-    +   '<span class="rp-nyang-chip" id="rp-nyang-balance"><i data-lucide="paw-print" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> - Nyang</span>'
-    + '</div>'
-
-    // ── Idol-style tab bar ──
+    // ── Tabs: Articles first and default. Posts / Album only appear when
+    // they have something (only reporters and admins post), so learners
+    // never meet a tab that is always empty. ──
     + '<div class="rp-tabbar" role="tablist">'
-    +   '<button type="button" class="rp-tab on" data-tab="posts"      role="tab" aria-selected="true" onclick="rpSwitchTab(\'posts\')"><i data-lucide="notebook-pen" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Posts <span class="rp-tab-count" id="rp-tab-c-posts"></span></button>'
-    +   '<button type="button" class="rp-tab"    data-tab="album"      role="tab" aria-selected="false" onclick="rpSwitchTab(\'album\')"><i data-lucide="camera" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Album <span class="rp-tab-count" id="rp-tab-c-album"></span></button>'
-    +   '<button type="button" class="rp-tab"    data-tab="photocards" role="tab" aria-selected="false" onclick="rpSwitchTab(\'photocards\')"><i data-lucide="credit-card" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Photocards <span class="rp-tab-count" id="rp-tab-c-pc"></span></button>'
-    +   '<button type="button" class="rp-tab"    data-tab="articles"   role="tab" aria-selected="false" onclick="rpSwitchTab(\'articles\')"><i data-lucide="newspaper" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Articles <span class="rp-tab-count" id="rp-tab-c-arts"></span></button>'
+    +   '<button type="button" class="rp-tab on" data-tab="articles" role="tab" aria-selected="true" onclick="rpSwitchTab(\'articles\')"><i data-lucide="newspaper" class="kh-ui-icon" aria-hidden="true"></i> Articles <span class="rp-tab-count" id="rp-tab-c-arts"></span></button>'
+    +   '<button type="button" class="rp-tab" data-tab="posts" role="tab" aria-selected="false" onclick="rpSwitchTab(\'posts\')" style="display:none"><i data-lucide="notebook-pen" class="kh-ui-icon" aria-hidden="true"></i> Posts <span class="rp-tab-count" id="rp-tab-c-posts"></span></button>'
+    +   '<button type="button" class="rp-tab" data-tab="photocards" role="tab" aria-selected="false" onclick="rpSwitchTab(\'photocards\')"><i data-lucide="credit-card" class="kh-ui-icon" aria-hidden="true"></i> Photocards <span class="rp-tab-count" id="rp-tab-c-pc"></span></button>'
+    +   '<button type="button" class="rp-tab" data-tab="album" role="tab" aria-selected="false" onclick="rpSwitchTab(\'album\')" style="display:none"><i data-lucide="camera" class="kh-ui-icon" aria-hidden="true"></i> Album <span class="rp-tab-count" id="rp-tab-c-album"></span></button>'
+    +   '<button type="button" class="rp-tab" data-tab="gift" role="tab" aria-selected="false" onclick="rpSwitchTab(\'gift\')"><i data-lucide="gift" class="kh-ui-icon" aria-hidden="true"></i> Send a gift</button>'
     + '</div>'
 
-    // ── Tab panels ──
-    + '<div class="rp-panel on" id="rp-panel-posts" role="tabpanel">'
+    + '<div class="rp-panel on" id="rp-panel-articles" role="tabpanel"><div id="rp-arts"><div class="rp-post-empty">Loading articles…</div></div></div>'
+    + '<div class="rp-panel" id="rp-panel-posts" role="tabpanel">'
     +   '<div id="rp-post-compose"></div>'
     +   '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Loading posts…</div></div>'
     + '</div>'
-
-    + '<div class="rp-panel" id="rp-panel-album" role="tabpanel">'
-    +   '<div id="rp-album-root"><div class="rp-album-empty">Loading album…</div></div>'
+    + '<div class="rp-panel" id="rp-panel-photocards" role="tabpanel"><div id="rp-pc-root"></div></div>'
+    + '<div class="rp-panel" id="rp-panel-album" role="tabpanel"><div id="rp-album-root"></div></div>'
+    + '<div class="rp-panel" id="rp-panel-gift" role="tabpanel">'
+    +   '<div class="rp-gift-head"><p>Each gift raises your affinity with ' + escHtml(who) + '.</p><span class="rp-nyang-chip" id="rp-nyang-balance" style="display:none"></span></div>'
+    +   '<div class="rp-gifts" id="rp-gifts"><div class="rp-post-empty" style="grid-column:1/-1">Loading gifts…</div></div>'
+    +   '<div class="rp-gift-msg" id="rp-gift-msg"></div>'
     + '</div>'
-
-    + '<div class="rp-panel" id="rp-panel-photocards" role="tabpanel">'
-    +   '<div id="rp-pc-root"><div class="rp-pc-empty">Loading photocards…</div></div>'
-    + '</div>'
-
-    + '<div class="rp-panel" id="rp-panel-articles" role="tabpanel">'
-    +   '<div id="rp-arts"></div>'
-    + '</div>'
-
-    // ── Gift panel (kept as a card below the tabs since it spans every tab's idol-stan flow) ──
-    + '<div class="rp-fav-card" style="margin-top:24px">'
-    +   '<div class="rp-fav-header">'
-    +     '<div class="rp-fav-title"><i data-lucide="gift" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Send a gift</div>'
-    +   '</div>'
-    +   '<div class="rp-gifts" id="rp-gifts">Loading gifts…</div>'
-    +   '<div id="rp-gift-msg" style="font-size:12px;color:#64748b;margin:2px 0 10px"></div>'
-    +   '<button class="rp-hire-btn" disabled><i data-lucide="graduation-cap" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> Hire as Korean manager</button>'
-    +   '<div class="rp-hire-progress" id="rp-fav-progress">Hireable at affinity ' + FAV_HIRE_THRESHOLD + ' · currently ' + favPct + '%</div>'
-    + '</div>'
-
     + '</div>';
 
+  updateAffinityUI(favXP);
+  rpRenderPhotocards();
   loadReporterArticles(rid, reporter.name);
   loadReporterGiftPanel(rid);
   initReporterPosts(rid, reporter);
 });
 
-// Idol-style tab switching: toggle .on between buttons and panels.
-// Panel rendering is lazy — Posts loads automatically (initReporterPosts),
-// Album + Photocards hydrate from the cached _postCache when first opened,
-// Articles is loaded by loadReporterArticles in the main entry.
+// Tab switching: toggle .on between buttons and panels. Album and
+// Photocards render from _postCache (already loaded by initReporterPosts).
 window.rpSwitchTab = function(tab) {
   document.querySelectorAll('.rp-tab').forEach(function(b){
     var on = b.dataset.tab === tab;
@@ -698,6 +394,18 @@ window.rpSwitchTab = function(tab) {
   if (tab === 'album')      rpRenderAlbum();
   if (tab === 'photocards') rpRenderPhotocards();
 };
+
+// Show the Posts / Album tabs only when there is something in them (or for
+// the reporter's owner / an admin, who need Posts to write).
+function rpSyncOptionalTabs() {
+  var posts = _postCache || [];
+  var imgs = 0;
+  posts.forEach(function(p){ imgs += (p.images || []).filter(Boolean).length; });
+  var pt = document.querySelector('.rp-tab[data-tab="posts"]');
+  var at = document.querySelector('.rp-tab[data-tab="album"]');
+  if (pt) pt.style.display = (posts.length || _canManagePosts) ? '' : 'none';
+  if (at) at.style.display = imgs ? '' : 'none';
+}
 
 // Album: every post image flattened into a square Instagram-style grid.
 // Pulls from _postCache (already loaded by initReporterPosts) so there's
@@ -781,6 +489,7 @@ function rpRenderPhotocards() {
 function rpUpdatePostsCount() {
   var el = document.getElementById('rp-tab-c-posts');
   if (el) el.textContent = (_postCache && _postCache.length) ? _postCache.length : '';
+  rpSyncOptionalTabs();
 }
 
 function canManageReporterPosts(reporter) {
@@ -994,7 +703,7 @@ function renderReporterPosts(posts) {
       : '';
     return '<article class="rp-post-card">'
       + '<div class="rp-post-head">'
-      +   '<div><div style="font-weight:800;color:#0f172a">Reporter post</div><div class="rp-post-meta">' + escHtml(formatPostTime(p.created_at)) + (p.updated_at && p.updated_at !== p.created_at ? ' · edited' : '') + '</div></div>'
+      +   '<div><div class="rp-post-who">' + escHtml(rpFirstName()) + '</div><div class="rp-post-meta">' + escHtml(formatPostTime(p.created_at)) + (p.updated_at && p.updated_at !== p.created_at ? ' · edited' : '') + '</div></div>'
       +   (p.pinned ? '<div class="rp-post-pin"><i data-lucide="pin" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> PINNED</div>' : '')
       + '</div>'
       + '<div class="rp-post-content">' + escHtml(p.content || '') + '</div>'
@@ -1166,8 +875,10 @@ async function loadReporterGiftPanel(reporterId) {
   var msg = document.getElementById('rp-gift-msg');
   if (!grid) return;
   var sb = getSupa();
+  if (!supaUser) await _waitForSupaUser(4000);
   if (!sb || !supaUser) {
-    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#94a3b8">Log in to send gifts.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1">' + rpEmpty('gift', 'Log in to send gifts', 'Gifts are bought with Nyang you earn by studying, and they raise your affinity.')
+      .replace('</div></div>', '</div><button class="rp-signin" onclick="if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')">Log in</button></div>') + '</div>';
     if (msg) msg.textContent = '';
     return;
   }
@@ -1182,32 +893,57 @@ async function loadReporterGiftPanel(reporterId) {
     (res[1].data || []).forEach(function(o){ _giftOwnedMap[o.item_id] = Number(o.quantity || 0); });
     _giftBalance = Number(res[2].data && res[2].data.coin_balance || 0);
     var bal = document.getElementById('rp-nyang-balance');
-    if (bal) bal.innerHTML = '<i data-lucide="paw-print" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> ' + _giftBalance.toLocaleString() + ' Nyang';
+    if (bal) { bal.style.display = ''; bal.innerHTML = '<i data-lucide="paw-print" class="kh-ui-icon" aria-hidden="true"></i> ' + _giftBalance.toLocaleString() + ' Nyang'; }
     renderGiftGrid(reporterId);
-    if (msg) msg.textContent = 'Uses inventory if owned, otherwise sent instantly with Nyang.';
+    if (msg) msg.textContent = 'A gift you own is used first; otherwise it is bought with Nyang and sent right away.';
   } catch(e) {
-    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#ef4444">Cannot load gift info.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#fca5a5">Couldn\'t load gifts. Please try again later.</div>';
   }
+}
+
+// One Lucide icon per gift, by item id first, then by name keywords.
+var RP_GIFT_ICON = {
+  reporter_coffee: 'coffee', reporter_bubble_tea: 'cup-soda', reporter_flower: 'flower',
+  reporter_tteokbokki: 'soup', reporter_hotteok: 'cookie', reporter_mandu: 'utensils-crossed',
+  reporter_chimaek: 'drumstick', reporter_kimchi_jeon: 'egg-fried', reporter_korean_tea: 'leaf',
+  reporter_postcard: 'mail', reporter_polaroid: 'camera'
+};
+var RP_GIFT_SHORT = {
+  reporter_coffee: 'Coffee', reporter_bubble_tea: 'Bubble tea', reporter_flower: 'Bouquet',
+  reporter_tteokbokki: 'Tteokbokki', reporter_hotteok: 'Hotteok', reporter_mandu: 'Mandu',
+  reporter_chimaek: 'Chimaek', reporter_kimchi_jeon: 'Kimchi pancake', reporter_korean_tea: 'Korean tea',
+  reporter_postcard: 'Postcard', reporter_polaroid: 'Polaroids'
+};
+function rpGiftIcon(g) {
+  if (RP_GIFT_ICON[g.id]) return RP_GIFT_ICON[g.id];
+  var n = String(g.name || '').toLowerCase();
+  var rules = [[/coffee|커피/, 'coffee'], [/bubble|boba|버블|soda/, 'cup-soda'], [/flower|bouquet|꽃/, 'flower'],
+    [/tteok|떡|soup|ramen|라면/, 'soup'], [/chicken|chimaek|치맥|치킨/, 'drumstick'], [/postcard|letter|card|편지/, 'mail'],
+    [/tea|차/, 'leaf'], [/photo|polaroid|사진/, 'camera'], [/cake|케이크/, 'cake-slice'], [/cookie|hotteok|호떡/, 'cookie'],
+    [/mandu|dumpling|만두|jeon|전/, 'utensils-crossed']];
+  for (var i = 0; i < rules.length; i++) if (rules[i][0].test(n)) return rules[i][1];
+  return 'gift';
 }
 
 function renderGiftGrid(reporterId) {
   var grid = document.getElementById('rp-gifts');
   if (!grid) return;
   if (!_giftCatalog.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#94a3b8">No reporter gifts available.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1">' + rpEmpty('gift', 'No gifts right now', 'Reporter gifts will be back in the shop soon.') + '</div>';
     return;
   }
   grid.innerHTML = _giftCatalog.map(function(g) {
     var own = Number(_giftOwnedMap[g.id] || 0);
     var price = Number(g.coin_price || 0);
-    var canBuy = _giftBalance >= price;
-    var disabled = own <= 0 && !canBuy;
-    var icon = g.name.indexOf('Coffee') >= 0 || g.name.indexOf('커피') >= 0 ? 'coffee' : g.name.indexOf('Bubble') >= 0 || g.name.indexOf('버블') >= 0 ? 'cup-soda' : 'flower-2';
-    return '<button class="rp-gift' + (disabled ? ' disabled' : '') + '" ' + (disabled ? 'disabled' : '') + ' onclick="sendGiftToReporter(\'' + reporterId + '\',\'' + g.id + '\')">'
-      + '<span class="rp-gift-icon"><i data-lucide="' + icon + '" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i></span>'
-      + '<span class="rp-gift-name">' + g.name + '</span>'
-      + '<span class="rp-gift-cost"><i data-lucide="paw-print" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> ' + price.toLocaleString() + ' Nyang</span>'
-      + (own > 0 ? '<span class="rp-gift-own">Inventory x' + own + '</span>' : '<span class="rp-gift-lock">Buy now</span>')
+    var disabled = own <= 0 && _giftBalance < price;
+    var label = RP_GIFT_SHORT[g.id] || String(g.name || '').replace(/^Reporter\s+/i, '');
+    return '<button type="button" class="rp-gift' + (disabled ? ' disabled' : '') + '" ' + (disabled ? 'disabled ' : '')
+      + 'title="' + escHtml(g.name + (g.description ? ' — ' + g.description : '') + (disabled ? ' (not enough Nyang)' : '')) + '" '
+      + 'onclick="sendGiftToReporter(\'' + escHtml(reporterId) + '\',\'' + escHtml(g.id) + '\')">'
+      + '<span class="rp-gift-icon"><i data-lucide="' + rpGiftIcon(g) + '" class="kh-ui-icon" aria-hidden="true"></i></span>'
+      + '<span class="rp-gift-name">' + escHtml(label) + '</span>'
+      + '<span class="rp-gift-cost">' + price.toLocaleString() + ' Nyang</span>'
+      + (own > 0 ? '<span class="rp-gift-own">x' + own + '</span>' : '')
       + '</button>';
   }).join('');
 }
@@ -1385,18 +1121,15 @@ async function loadAffinityPoints(sb, reporterId) {
 }
 
 function updateAffinityUI(favXP) {
-  var pct = Math.min(100, Math.round(Number(favXP || 0) / FAV_HIRE_THRESHOLD * 100));
+  favXP = Number(favXP || 0);
+  var pct = Math.min(100, Math.round(favXP / FAV_HIRE_THRESHOLD * 100));
   var level = favXP >= FAV_HIRE_THRESHOLD ? 'Manager' : favXP >= 200 ? 'Friend' : favXP >= 80 ? 'Acquaintance' : 'Stranger';
   var fill = document.getElementById('rp-fav-bar-fill');
-  if (fill) fill.style.width = pct + '%';
+  if (fill) fill.style.width = (favXP > 0 ? Math.max(2, pct) : 0) + '%';
   var xp = document.getElementById('rp-fav-xp');
-  if (xp) xp.textContent = Number(favXP || 0) + ' / ' + FAV_HIRE_THRESHOLD + ' Affinity';
-  var left = document.getElementById('rp-fav-left');
-  if (left) left.textContent = Math.max(0, FAV_HIRE_THRESHOLD - Number(favXP || 0)) + ' to go until you can hire';
+  if (xp) xp.innerHTML = '<b>' + favXP.toLocaleString() + '</b> / ' + FAV_HIRE_THRESHOLD.toLocaleString();
   var lv = document.getElementById('rp-fav-level');
   if (lv) lv.textContent = level;
-  var p = document.getElementById('rp-fav-progress');
-  if (p) p.textContent = 'Hireable at affinity ' + FAV_HIRE_THRESHOLD + ' · currently ' + pct + '%';
 }
 
 function rpOpenLb() {
@@ -1407,27 +1140,71 @@ function rpOpenLb() {
 }
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('rp-lb').classList.remove('on'); });
 
-async function loadReporterArticles(rid, name) {
+// The reporter's own published articles, straight from the articles table
+// (the shared list cache only holds the newest 80, which undercounts busy
+// reporters). Count comes from the same query (count: 'exact').
+var RP_ART_PAGE = 20;
+var RP_ART_SELECT = 'id,title,title_en,image,section,level,date,created_at,status';
+var _rpArtOffset = 0, _rpArtTotal = 0;
+function rpArtQuery(sb, rid, sel, from) {
+  return sb.from('articles').select(sel, { count: 'exact' })
+    .eq('reporter_id', rid)
+    .or('status.is.null,status.eq.published')
+    .or('section.is.null,section.neq.fake')
+    .order('created_at', { ascending: false })
+    .range(from, from + RP_ART_PAGE - 1);
+}
+function rpArtItem(a) {
+  var lv = a.level || '';
+  var lvName = (typeof KH_LEVEL_MAP === 'object' && KH_LEVEL_MAP[lv]) || lv;
+  var lvCls = { Starter:'s', Beginner:'b', Intermediate:'i', Advanced:'a' }[lv] || '';
+  var dRaw = a.date || a.created_at;
+  var d = dRaw ? new Date(dRaw) : null;
+  var dTxt = d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }) : '';
+  var sec = typeof khSecLabel === 'function' ? khSecLabel(a.section) : (a.section || '');
+  var img = String(a.image || '');
+  var thumbStyle = /^https?:\/\//i.test(img) && !/picsum\.photos/i.test(img) ? ' style="background-image:url(\'' + escHtml(img).replace(/'/g, '%27') + '\')"' : '';
+  return '<a class="rp-art-item" href="korehan-article.html?id=' + encodeURIComponent(a.id) + '">'
+    + '<span class="rp-art-thumb"' + thumbStyle + '></span>'
+    + '<span class="rp-art-body"><span class="rp-art-title" lang="ko">' + escHtml(a.title || '') + '</span>'
+    + '<span class="rp-art-meta" style="display:block">' + escHtml([sec, dTxt].filter(Boolean).join(' · ')) + '</span></span>'
+    + (lvName ? '<span class="rp-lv ' + lvCls + '">' + escHtml(lvName) + '</span>' : '')
+    + '</a>';
+}
+async function loadReporterArticles(rid, name, more) {
   var el = document.getElementById('rp-arts');
   var countEl = document.getElementById('rp-tab-c-arts');
   if (!el) return;
-  await loadArticlesFromDB({ force: false });
-  var arts = getCachedArticles().filter(function(a){ return a.reporter_id === rid && (!a.status || a.status === 'published'); });
-  if (countEl) countEl.textContent = arts.length ? arts.length : '';
-  if (!arts.length) {
-    el.innerHTML = rpEmpty('newspaper', 'No articles yet', rpFirstName() + '\'s articles will be listed here once they are published.');
+  var sb = getSupa();
+  if (!more) { _rpArtOffset = 0; _rpArtTotal = 0; }
+  var rows = [], total = 0, failed = false;
+  if (sb) {
+    try {
+      var res = await rpArtQuery(sb, rid, RP_ART_SELECT, _rpArtOffset);
+      // { data: [], error: null } can be column drift (CLAUDE.md 2026-05-16) — retry with '*'.
+      if (!more && (res.error || !(res.data && res.data.length))) res = await rpArtQuery(sb, rid, '*', _rpArtOffset);
+      if (res.error) failed = true;
+      rows = res.data || [];
+      total = Number(res.count || 0) || (_rpArtOffset + rows.length);
+    } catch (e) { failed = true; }
+  } else failed = true;
+  if (!more) _rpArtTotal = total;
+  if (countEl) countEl.textContent = _rpArtTotal ? _rpArtTotal : '';
+  var btn = document.getElementById('rp-art-more');
+  if (btn) btn.remove();
+  if (!more && !rows.length) {
+    el.innerHTML = failed
+      ? rpEmpty('wifi-off', 'Couldn\'t load articles', 'Please check your connection and try again.')
+      : rpEmpty('newspaper', 'No articles yet', rpFirstName() + '\'s articles will be listed here once they are published.');
     return;
   }
-  arts.sort(function(a,b){ return (b.date||'') > (a.date||'') ? 1 : -1; });
-  el.innerHTML = '<div class="rp-sec-title">' + name + '’s articles (' + arts.length + ')</div>'
-    + '<div class="rp-art-list">'
-    + arts.slice(0,12).map(function(a){
-        var d = a.date ? new Date(a.date).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'}) : '';
-        return '<a class="rp-art-item" href="korehan-article.html?id=' + a.id + '">'
-          + '<div class="rp-art-title">' + (a.title||'') + '</div>'
-          + '<div class="rp-art-meta">' + (typeof khSecLabel === 'function' ? khSecLabel(a.section) : (a.section||'')) + (d?' · '+d:'') + '</div></a>';
-      }).join('')
-    + '</div>';
+  var html = rows.map(rpArtItem).join('');
+  if (!more) el.innerHTML = '<div class="rp-art-list" id="rp-art-list">' + html + '</div>';
+  else { var list = document.getElementById('rp-art-list'); if (list) list.insertAdjacentHTML('beforeend', html); }
+  _rpArtOffset += rows.length;
+  if (_rpArtOffset < _rpArtTotal && rows.length) {
+    el.insertAdjacentHTML('beforeend', '<button type="button" class="rp-more" id="rp-art-more" onclick="this.disabled=true;this.textContent=\'Loading…\';loadReporterArticles(_currentReporterId,\'\',true)">Show more (' + (_rpArtTotal - _rpArtOffset) + ' left)</button>');
+  }
 }
 </script>
 </body>
