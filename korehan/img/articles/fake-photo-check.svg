@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2fa"/>
+      <stop offset="1" stop-color="#e3e8f5"/>
+    </linearGradient>
+    <linearGradient id="view" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe3f3"/>
+      <stop offset="1" stop-color="#e9f2f8"/>
+    </linearGradient>
+    <clipPath id="photo">
+      <rect x="462" y="190" width="276" height="250" rx="10"/>
+    </clipPath>
+    <clipPath id="lens">
+      <circle cx="770" cy="330" r="112"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <circle cx="200" cy="180" r="120" fill="#f6f8fd"/>
+  <circle cx="1040" cy="640" r="150" fill="#f6f8fd"/>
+  <circle cx="1010" cy="160" r="46" fill="#dfe6f4"/>
+  <circle cx="170" cy="620" r="60" fill="#dfe6f4"/>
+
+  <!-- phone -->
+  <rect x="434" y="96" width="332" height="640" rx="46" fill="#4b5568"/>
+  <rect x="448" y="110" width="304" height="612" rx="34" fill="#fafbfe"/>
+  <rect x="560" y="122" width="80" height="14" rx="7" fill="#4b5568"/>
+
+  <!-- post header (avatar + bars, no text) -->
+  <circle cx="482" cy="164" r="16" fill="#c9d3e6"/>
+  <rect x="508" y="154" width="120" height="10" rx="5" fill="#cfd6e4"/>
+  <rect x="508" y="170" width="74" height="8" rx="4" fill="#e1e6ef"/>
+
+  <!-- the photo: cafe window -->
+  <g clip-path="url(#photo)">
+    <rect x="462" y="190" width="276" height="250" fill="url(#view)"/>
+    <path d="M462 340 C 520 300, 590 320, 640 300 C 690 282, 720 300, 738 296 L738 440 L462 440 Z" fill="#b9d2b4"/>
+    <path d="M462 370 C 540 350, 640 365, 738 350 L738 440 L462 440 Z" fill="#a6c3a1"/>
+    <!-- oversized gun shape -->
+    <g>
+      <rect x="560" y="350" width="130" height="44" rx="10" fill="#8d9a72"/>
+      <rect x="590" y="326" width="70" height="30" rx="8" fill="#7f8c66"/>
+      <rect x="640" y="334" width="96" height="10" rx="5" fill="#7f8c66" transform="rotate(-14 640 339)"/>
+      <rect x="556" y="390" width="140" height="18" rx="9" fill="#5f6a52"/>
+      <circle cx="576" cy="399" r="7" fill="#7f8c66"/><circle cx="600" cy="399" r="7" fill="#7f8c66"/><circle cx="624" cy="399" r="7" fill="#7f8c66"/><circle cx="648" cy="399" r="7" fill="#7f8c66"/><circle cx="672" cy="399" r="7" fill="#7f8c66"/>
+    </g>
+    <!-- tiny flag figures -->
+    <g>
+      <rect x="492" y="380" width="10" height="26" rx="4" fill="#6f7a8c"/><circle cx="497" cy="374" r="6" fill="#6f7a8c"/>
+      <line x1="505" y1="352" x2="505" y2="404" stroke="#6f7a8c" stroke-width="3"/>
+      <path d="M505 352 L 528 360 L 505 368 Z" fill="#e07a6e"/>
+      <rect x="524" y="384" width="10" height="24" rx="4" fill="#6f7a8c"/><circle cx="529" cy="378" r="6" fill="#6f7a8c"/>
+      <line x1="537" y1="358" x2="537" y2="406" stroke="#6f7a8c" stroke-width="3"/>
+      <path d="M537 358 L 558 365 L 537 372 Z" fill="#e07a6e"/>
+    </g>
+    <!-- window frame -->
+    <rect x="462" y="190" width="276" height="250" fill="none" stroke="#a7825f" stroke-width="18"/>
+    <rect x="594" y="190" width="12" height="250" fill="#a7825f"/>
+    <rect x="462" y="300" width="276" height="10" fill="#a7825f" opacity=".85"/>
+  </g>
+
+  <!-- dashed check box around the suspicious part -->
+  <rect x="548" y="316" width="196" height="104" rx="8" fill="none" stroke="#e58c55" stroke-width="4" stroke-dasharray="12 9"/>
+
+  <!-- like / share icons and caption bars -->
+  <g fill="none" stroke="#9aa6bd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M482 476 c -10 -12, -26 -2, -18 10 l 18 18 l 18 -18 c 8 -12, -8 -22, -18 -10 Z"/>
+    <circle cx="536" cy="484" r="13"/>
+    <path d="M574 494 l 16 -16 l 16 16 M590 478 v 26"/>
+  </g>
+  <rect x="470" y="520" width="250" height="12" rx="6" fill="#cfd6e4"/>
+  <rect x="470" y="544" width="210" height="12" rx="6" fill="#e1e6ef"/>
+  <rect x="470" y="568" width="230" height="12" rx="6" fill="#e1e6ef"/>
+  <rect x="470" y="620" width="260" height="62" rx="14" fill="#eef1f8"/>
+  <circle cx="496" cy="651" r="12" fill="#d6dcea"/>
+  <rect x="518" y="644" width="150" height="12" rx="6" fill="#d6dcea"/>
+
+  <!-- magnifying glass -->
+  <g>
+    <rect x="845" y="415" width="40" height="190" rx="20" fill="#5b6b86" transform="rotate(-42 865 510)"/>
+    <rect x="850" y="415" width="12" height="150" rx="6" fill="#7385a3" transform="rotate(-42 865 510)" opacity=".7"/>
+    <!-- magnified view: pixel blocks show the edit -->
+    <g clip-path="url(#lens)">
+      <rect x="650" y="210" width="240" height="240" fill="#e9f2f8"/>
+      <rect x="650" y="330" width="240" height="120" fill="#b9d2b4"/>
+      <rect x="690" y="300" width="160" height="60" fill="#8d9a72"/>
+      <g fill="#a3af89">
+        <rect x="690" y="300" width="20" height="20"/><rect x="730" y="300" width="20" height="20"/><rect x="770" y="300" width="20" height="20"/><rect x="810" y="300" width="20" height="20"/>
+        <rect x="710" y="320" width="20" height="20"/><rect x="750" y="320" width="20" height="20"/><rect x="790" y="320" width="20" height="20"/><rect x="830" y="320" width="20" height="20"/>
+        <rect x="690" y="340" width="20" height="20"/><rect x="730" y="340" width="20" height="20"/><rect x="770" y="340" width="20" height="20"/><rect x="810" y="340" width="20" height="20"/>
+      </g>
+      <g fill="#cfe3f3">
+        <rect x="850" y="300" width="20" height="20"/><rect x="870" y="320" width="20" height="20"/><rect x="850" y="340" width="20" height="20"/>
+      </g>
+      <path d="M690 300 L 690 360 M850 300 L 850 360" stroke="#e58c55" stroke-width="4" stroke-dasharray="8 6"/>
+    </g>
+    <circle cx="770" cy="330" r="112" fill="#ffffff" opacity=".12"/>
+    <circle cx="770" cy="330" r="112" fill="none" stroke="#5b6b86" stroke-width="22"/>
+    <path d="M700 280 A 80 80 0 0 1 760 245" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity=".8"/>
+  </g>
+</svg>
