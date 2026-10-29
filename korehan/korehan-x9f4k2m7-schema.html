@@ -81,6 +81,11 @@
 // add a feature that writes a new column. The health check tells
 // you whether prod has caught up.
 //
+// Columns verified against production 2026-10-29 (anon REST select=*) and
+// limited to the ones the site / CMS code actually uses. Tables anon cannot
+// read (user_* tables, logs) were left as they were — verify them with the
+// admin session before trusting a "missing" result there.
+//
 // Each entry: { table: 'table_name', required: ['col1', 'col2', ...] }
 //   - required = columns the frontend code references in
 //     .insert()/.upsert()/.update() calls.
@@ -88,13 +93,12 @@
 //     aren't in the required list — those are usually fine
 //     (legacy / admin-only) but flagged for visibility.
 var EXPECTED_SCHEMA = [
-  { table: 'articles',                 required: ['id','title','title_en','title_ko','body','image','section','level','date','published_at','created_at','updated_at','status','view_count','featured','reporter_id','reporter','video_url','use_video','video_kind','video_fallback_url'] },
-  { table: 'article_study_content',    required: ['article_id','vocab','phrases','wrong_phrases','word_order','questions','custom_highlights','admin_edited','prompt_version','updated_at'] },
-  { table: 'article_cache',            required: ['article_id','vocab','grammar','mission','updated_at'] },
-  { table: 'conversations_data',       required: ['id','data','level','category','topic','created_at','updated_at'] },
-  { table: 'stories_data',             required: ['id','data','level','category','title','created_at','updated_at'] },
-  { table: 'vocabulary_bank',          required: ['id','ko','en','rom','level','category','created_at'] },
-  { table: 'hover_vocab_master',       required: ['word','definition','rom','created_at'] },
+  { table: 'articles',                required: ['id','title','body','section','date','image','level','status','featured','breaking','created_at','updated_at','reporter_id','video_url','video_kind','use_video','source_url','title_en','netizen_talk'] },
+  { table: 'article_study_content',   required: ['article_id','vocab','phrases','wrong_phrases','word_order','questions','custom_highlights','admin_edited','prompt_version','updated_at'] },
+  { table: 'article_cache',           required: ['article_id','translation','vocab','grammar','quiz','expressions','created_at','updated_at','qa_at'] },
+  { table: 'conversations_data',      required: ['id','data','cat','lvl','name','ctx','ctx_en','status','qa_report','qa_at','created_at'] },
+  { table: 'vocabulary_bank',         required: ['id','word_key','word_ko','word_rom','word_en','level','interest_tag','frequency','is_active','pos','example_ko','source','qa_at','created_at'] },
+  { table: 'hover_vocab_master',      required: ['id','word_ko','meaning_en','reading','note','is_active','sort_order','created_at','updated_at'] },
   { table: 'app_settings',             required: ['key','value','updated_at'] },
   { table: 'user_stats',               required: ['user_id','total_xp','streak_days','last_active','level','onboarded','words_learned','articles_read','conversations_completed','stories_completed'] },
   { table: 'user_read_history',        required: ['user_id','content_type','content_id','read_at'] },
@@ -102,9 +106,9 @@ var EXPECTED_SCHEMA = [
   { table: 'user_saved_phrases',       required: ['user_id','source_type','source_id','msg_idx','ko','en','created_at'] },
   { table: 'user_daily_progress',      required: ['user_id','date','reading_minutes','words_added','quiz_score'] },
   { table: 'user_quiz_results',        required: ['user_id','quiz_type','content_id','score','total','created_at'] },
-  { table: 'study_daily_content',      required: ['date','level','content','created_at','updated_at'] },
+  { table: 'study_daily_content',     required: ['scheduled_date','level','topic_ko','topic_en','vocab','grammar','helpers','dictation_sentences','dictation_questions','key_expressions','confusing_grammar','formality_exercise','culture_note','topic_writing_sentences','phrase_munch_lessons','admin_edited','status','qa_at','qa_report','created_at','updated_at'] },
   { table: 'signup_notifications_log', required: ['email','created_at'] },
-  { table: 'article_cache_generation_log', required: ['article_id','status','error','created_at'] },
+  { table: 'article_cache_generation_log', required: ['article_id','step','status','error_message','created_at'] }, // from 20260423_article_cache_log.sql + CMS selects
   { table: 'client_errors',            required: ['user_id','message','stack','url','user_agent','context','created_at'] },
 ];
 

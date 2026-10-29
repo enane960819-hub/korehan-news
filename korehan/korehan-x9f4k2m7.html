@@ -40,6 +40,8 @@ a{color:inherit;text-decoration:none}
 /* SIDEBAR */
 .sb{width:230px;flex-shrink:0;background:var(--w);border-right:1px solid var(--br);overflow-y:auto}
 .sb-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#99aabb;padding:16px 20px 4px}
+a.sb-btn{text-decoration:none;box-sizing:border-box}
+.sb-btn .ico svg{width:16px;height:16px}
 .sb-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 20px;font-size:13px;font-weight:600;color:var(--gr);cursor:pointer;border:none;background:none;text-align:left;border-left:3px solid transparent;font-family:inherit;transition:all .15s}
 .sb-btn:hover{background:var(--li);color:var(--a)}
 .sb-btn.on{background:var(--li);color:var(--a);border-left-color:var(--a)}
@@ -337,8 +339,9 @@ body.sb-open .sb-backdrop{display:block}
 
   <!-- SIDEBAR -->
   <div class="sb">
+    <button class="sb-btn on" id="sb-today" onclick="goToday()"><span class="ico"><i data-lucide="activity"></i></span>Today</button>
     <div class="sb-lbl">📰 콘텐츠</div>
-    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>Article List<span class="pill" id="p-all">0</span></button>
+    <button class="sb-btn" id="sb-all" onclick="goList()"><span class="ico">📰</span>Article List<span class="pill" id="p-all">0</span></button>
     <button class="sb-btn" onclick="openModal(null)"><span class="ico">✏️</span>New Article</button>
     <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Article Generator</button>
     <button class="sb-btn" id="sb-bulk-seed" onclick="goBulkSeed()"><span class="ico">🌱</span>Bulk Seed (AI)</button>
@@ -380,6 +383,15 @@ body.sb-open .sb-backdrop{display:block}
     <button class="sb-btn" id="sb-char-cast" onclick="goCharCast()"><span class="ico">👥</span>대화 캐릭터</button>
     <button class="sb-btn" id="sb-essential-exprs" onclick="goEssentialExpressions()"><span class="ico">📝</span>필수표현</button>
     <button class="sb-btn" id="sb-shop" onclick="goShopContent()"><span class="ico">🛍️</span>상점 & 코인</button>
+
+    <div class="section-sep" style="margin-top:8px"></div>
+    <div class="sb-lbl">Tools</div>
+    <a class="sb-btn" href="korehan-x9f4k2m7-errors.html"><span class="ico"><i data-lucide="bug"></i></span>Client Errors</a>
+    <a class="sb-btn" href="korehan-x9f4k2m7-schema.html"><span class="ico"><i data-lucide="table-2"></i></span>Schema Check</a>
+    <a class="sb-btn" href="korehan-x9f4k2m7-hover-vocab.html"><span class="ico"><i data-lucide="mouse-pointer-2"></i></span>Hover Vocab</a>
+    <a class="sb-btn" href="korehan-x9f4k2m7-phrases.html"><span class="ico"><i data-lucide="quote"></i></span>Daily Phrases</a>
+    <a class="sb-btn" href="korehan-x9f4k2m7-conversations.html"><span class="ico"><i data-lucide="messages-square"></i></span>Conversations Review</a>
+    <a class="sb-btn" href="korehan-topik.html" target="_blank" rel="noopener"><span class="ico"><i data-lucide="graduation-cap"></i></span>TOPIK Review</a>
   </div>
 
   <!-- MAIN -->
@@ -1091,7 +1103,11 @@ function normalizeNewsSection(section) {
   return key;
 }
 
-async function dbLoadFromSupabase() {
+// opts.initial → route from the URL hash (default landing: Today panel).
+// opts.nav === false → refresh DB in the background without leaving the
+// current panel (only re-render if the article list is what's on screen).
+async function dbLoadFromSupabase(opts) {
+  opts = opts || {};
   const sb = getSb();
   if (!sb) { console.warn('Supabase not available'); goList(); return; }
   try {
@@ -1105,6 +1121,12 @@ async function dbLoadFromSupabase() {
       clone.section = normalizeNewsSection(row.section);
       return clone;
     });
+    if (opts.initial) { _khRouteFromHash(); return; }
+    if (opts.nav === false) {
+      var onList = document.getElementById('sb-all') && document.getElementById('sb-all').classList.contains('on');
+      if (onList) goList(); else if (typeof refreshCounts === 'function') refreshCounts();
+      return;
+    }
     goList();
   } catch(e) {
     // Toast was getting hidden behind the sidebar on mobile, so the user
@@ -1330,8 +1352,8 @@ async function batchReclassifySections() {
   refreshCounts && refreshCounts();
 }
 
-// Init — Supabase에서 기사 로드
-dbLoadFromSupabase();
+// Init — Supabase에서 기사 로드, then open the panel the URL hash asks for.
+dbLoadFromSupabase({ initial: true });
 
 // ══ COUNTS ══════════════════════════════════════════════════
 function refreshCounts(){
@@ -1343,6 +1365,152 @@ function refreshCounts(){
 }
 
 // ══ ARTICLE LIST ════════════════════════════════════════════
+// ══ ROUTING (URL hash) ══════════════════════════════════════
+//   #ai-cache-<articleId>  → AI Cache Management, scrolled to that article
+//                            (cache-miss notifications link here)
+//   #ai-cache              → AI Cache Management
+//   #study-room / #study-picture-prompts → Study Room ops
+//   #articles              → Article List
+//   anything else          → Today
+async function _khRouteFromHash() {
+  var h = '';
+  try { h = decodeURIComponent((location.hash || '').replace(/^#/, '')); } catch (_) {}
+  try {
+    var m = h.match(/^ai-cache-(.+)$/);
+    if (m) { await _khOpenAICacheFor(m[1]); return; }
+    if (h === 'ai-cache') { await goAICache(); return; }
+    if (h === 'study-room' || h === 'study-picture-prompts') { await goStudyRoomOps(); return; }
+    if (h === 'articles') { goList(); return; }
+  } catch (e) { console.warn('[route]', e); }
+  goToday();
+}
+async function _khOpenAICacheFor(articleId) {
+  await goAICache();
+  var row = document.getElementById('crow-' + articleId);
+  if (!row) { toast('Article ' + articleId + ' is not in the AI Cache list (only published / draft articles are shown).', true); return; }
+  row.scrollIntoView({ block: 'center' });
+  row.style.boxShadow = '0 0 0 3px #f59e0b';
+  setTimeout(function(){ row.style.boxShadow = ''; }, 4000);
+}
+window.addEventListener('hashchange', function() { if (DB && DB.length) _khRouteFromHash(); });
+
+// ══ TODAY (landing health panel) ════════════════════════════
+// One admin RPC (kh_admin_health, migration 20261029_admin_health.sql)
+// with the admin's own session. Read-only, no AI. Each tile opens the
+// panel that deals with it.
+function goToday() {
+  setSbOn('sb-today');
+  if (!document.getElementById('kh-today-css')) {
+    var st = document.createElement('style');
+    st.id = 'kh-today-css';
+    st.textContent = ''
+      + '.td-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}'
+      + '.td-tile{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;text-align:left;background:#fff;border:1px solid var(--bo,#e2e8f0);border-radius:12px;padding:14px 16px;cursor:pointer;font-family:inherit;color:#0f172a;transition:border-color .15s,box-shadow .15s;width:100%}'
+      + '.td-tile:hover{border-color:#94a3b8;box-shadow:0 2px 10px rgba(15,23,42,.06)}'
+      + '.td-tile.static{cursor:default}.td-tile.static:hover{border-color:var(--bo,#e2e8f0);box-shadow:none}'
+      + '.td-hd{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em}'
+      + '.td-hd svg,.td-hd i{width:16px;height:16px;flex-shrink:0}'
+      + '.td-big{font-size:28px;font-weight:900;margin-top:6px;line-height:1.1}'
+      + '.td-sub{font-size:12px;color:#64748b;margin-top:6px;line-height:1.5;word-break:break-word}'
+      + '.td-sub a{color:inherit;text-decoration:underline}'
+      + '.td-ok .td-big{color:#16a34a}.td-warn .td-big{color:#d97706}.td-bad .td-big{color:#dc2626}.td-na .td-big{color:#94a3b8}'
+      + '.td-bad{border-color:#fecaca}.td-warn{border-color:#fde68a}';
+    document.head.appendChild(st);
+  }
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>Today</h1><p>What needs attention right now. Click a tile to open its panel.</p></div>'
+    + '<div><button class="btn btn-gh" onclick="goToday()"><i data-lucide="refresh-cw" style="width:14px;height:14px;vertical-align:-2px"></i> Refresh</button></div></div>'
+    + '<div id="td-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">Loading…</div></div>';
+  _khLoadToday();
+}
+
+async function _khLoadToday() {
+  var r;
+  try { r = await _sarClient().rpc('kh_admin_health'); } catch (e) { r = { error: e }; }
+  var wrap = document.getElementById('td-wrap');
+  if (!wrap) return; // admin navigated away meanwhile
+  if (r.error || !r.data) {
+    var em = (r.error && (r.error.message || String(r.error))) || 'no data';
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">Health check failed: ' + esc(em)
+      + (/kh_admin_health|function/i.test(em) ? '<br>The kh_admin_health() migration (20261029_admin_health.sql) may not be applied yet.' : '') + '</div>';
+    return;
+  }
+  var d = r.data;
+  function n(v) { return (v === null || v === undefined) ? null : Number(v); }
+  function tile(o) {
+    var cls = 'td-tile ' + (o.level ? 'td-' + o.level : '') + (o.go ? '' : ' static');
+    var tag = o.go ? 'button' : 'div';
+    return '<' + tag + ' class="' + cls + '"' + (o.go ? ' onclick="' + o.go + '"' : '') + '>'
+      + '<div class="td-hd"><i data-lucide="' + o.icon + '"></i>' + esc(o.title) + '</div>'
+      + '<div class="td-big">' + o.big + '</div>'
+      + (o.sub ? '<div class="td-sub">' + o.sub + '</div>' : '')
+      + '</' + tag + '>';
+  }
+  var NA = '<span title="Not available on this database">n/a</span>';
+  var tiles = [];
+  var fmtT = function(t) { return new Date(t).toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }); };
+
+  // Cron jobs
+  if (Array.isArray(d.crons)) {
+    var failing = d.crons.filter(function(c){ return Number(c.failed_24h) > 0; });
+    var subC = failing.length
+      ? failing.map(function(c){ return '<b>' + esc(c.name) + '</b> failed ' + Number(c.failed_24h) + '× — ' + esc(String(c.last_error || '').slice(0, 90))
+          + (c.last_success ? ' (last ok ' + fmtT(c.last_success) + ')' : ' (never succeeded)'); }).join('<br>')
+      : d.crons.length + ' jobs, none failed in 24 h';
+    tiles.push(tile({ icon:'timer', title:'Cron failures (24h)', big: failing.length, level: failing.length ? 'bad' : 'ok', sub: subC, go:"location.href='korehan-x9f4k2m7-ai.html'" }));
+  } else tiles.push(tile({ icon:'timer', title:'Cron failures (24h)', big: NA, level:'na' }));
+
+  // Content-QA backlog (rows with qa_at is null)
+  if (d.qa_backlog && typeof d.qa_backlog === 'object') {
+    var keys = Object.keys(d.qa_backlog);
+    var total = keys.reduce(function(s, k){ return s + (Number(d.qa_backlog[k]) || 0); }, 0);
+    var GO = { article_cache: 'goAICache()', vocabulary_bank: "goVocabContent('vocabdb')", conversations_data: "location.href='korehan-x9f4k2m7-conversations.html'" };
+    var subQ = keys.filter(function(k){ return Number(d.qa_backlog[k]) > 0; }).map(function(k){
+      var label = esc(k) + ': ' + Number(d.qa_backlog[k]).toLocaleString();
+      return GO[k] ? '<a href="#" onclick="event.stopPropagation();' + GO[k].replace(/"/g, '&quot;') + ';return false">' + label + '</a>' : label;
+    }).join(' · ') || 'all reviewed';
+    tiles.push(tile({ icon:'shield-check', title:'Content-QA backlog', big: total.toLocaleString(), level: total > 500 ? 'warn' : 'ok', sub: subQ + '<br>Reviewed by the content-qa cron.' }));
+  } else tiles.push(tile({ icon:'shield-check', title:'Content-QA backlog', big: NA, level:'na' }));
+
+  // Drafts
+  var ad = n(d.article_drafts), tdr = n(d.topik_drafts);
+  tiles.push(tile({ icon:'file-pen', title:'Article drafts', big: ad === null ? NA : ad, level: ad === null ? 'na' : (ad ? 'warn' : 'ok'), sub:'Waiting for review / publish', go:'goList()' }));
+  tiles.push(tile({ icon:'graduation-cap', title:'TOPIK tests in draft', big: tdr === null ? NA : tdr, level: tdr === null ? 'na' : (tdr ? 'warn' : 'ok'), sub:'Approve in the TOPIK admin review', go:"window.open('korehan-topik.html','_blank')" }));
+
+  // Reports
+  var cr = n(d.content_reports_open), trp = n(d.topik_reports_open), sar = n(d.analysis_reports_open);
+  tiles.push(tile({ icon:'flag', title:'Open content reports', big: cr === null ? NA : cr, level: cr === null ? 'na' : (cr ? 'bad' : 'ok'), go:'goReports()' }));
+  tiles.push(tile({ icon:'message-square-warning', title:'Open TOPIK reports', big: trp === null ? NA : trp, level: trp === null ? 'na' : (trp ? 'warn' : 'ok'), go:"window.open('korehan-topik.html','_blank')" }));
+  tiles.push(tile({ icon:'puzzle', title:'Open analysis reports', big: sar === null ? NA : sar, level: sar === null ? 'na' : (sar ? 'warn' : 'ok'), go:'goAnalysisReports()' }));
+
+  // Client errors
+  if (d.client_errors_24h && typeof d.client_errors_24h === 'object') {
+    var ce = d.client_errors_24h, ceTotal = 0;
+    Object.keys(ce).forEach(function(k){ ceTotal += Number(ce[k]) || 0; });
+    var ceLvl = (Number(ce.critical) || 0) ? 'bad' : ((Number(ce.error) || 0) ? 'warn' : 'ok');
+    tiles.push(tile({ icon:'bug', title:'Client errors (24h)', big: ceTotal, level: ceLvl,
+      sub: Object.keys(ce).map(function(k){ return esc(k) + ' ' + Number(ce[k]); }).join(' · ') || 'none', go:"location.href='korehan-x9f4k2m7-errors.html'" }));
+  } else tiles.push(tile({ icon:'bug', title:'Client errors (24h)', big: NA, level:'na', go:"location.href='korehan-x9f4k2m7-errors.html'" }));
+
+  // Generation jobs
+  var gj = n(d.gen_jobs_failed_24h);
+  tiles.push(tile({ icon:'bot', title:'Article jobs failed (24h)', big: gj === null ? NA : gj, level: gj === null ? 'na' : (gj ? 'bad' : 'ok'), go:'goAutoArticle()' }));
+
+  // AI spend vs daily cap
+  var spend = n(d.ai_spend_today_usd), cap = n(d.ai_daily_cap_usd);
+  var lvl = spend === null ? 'na' : (cap && spend >= cap ? 'bad' : (cap && spend >= cap * 0.8 ? 'warn' : 'ok'));
+  tiles.push(tile({ icon:'circle-dollar-sign', title:'AI spend today (KST)', big: spend === null ? NA : '$' + spend.toFixed(2),
+    level: lvl, sub: (cap ? 'Daily cap $' + cap.toFixed(2) : 'No daily cap set') + (d.ai_all_on === false ? ' · <b>AI is switched OFF</b>' : ''), go:"location.href='korehan-x9f4k2m7-ai.html'" }));
+
+  // DB size
+  var mb = n(d.db_size_mb);
+  tiles.push(tile({ icon:'database', title:'Database size', big: mb === null ? NA : mb.toLocaleString() + ' MB', level: mb === null ? 'na' : (mb > 400 ? 'warn' : 'ok'),
+    sub:'Free tier limit 500 MB (Supabase dashboard → Usage)' }));
+
+  wrap.innerHTML = '<div class="td-grid">' + tiles.join('') + '</div>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:10px">Checked ' + new Date(d.at || Date.now()).toLocaleString('ko-KR') + '</div>';
+}
+
 function goList(){
   setSbOn('sb-all');
   activeFilter='';
@@ -4454,7 +4622,7 @@ async function _agRefresh() {
   _agJobs.forEach(function(j){
     if (j.status === 'done' && !_agDoneSeen[j.id]) { _agDoneSeen[j.id] = true; newlyDone = true; }
   });
-  if (newlyDone && typeof dbLoadFromSupabase === 'function') { try { await dbLoadFromSupabase(); } catch(_) {} }
+  if (newlyDone && typeof dbLoadFromSupabase === 'function') { try { await dbLoadFromSupabase({ nav: false }); } catch(_) {} }
   _agRender();
   _autoGenPillRender();
   return true;
@@ -7585,6 +7753,7 @@ async function loadUsers(){
     writings.forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.writings++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
     comments.forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.comments++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
 
+    if (!el || !el.isConnected) return; // admin left the panel while loading
     if (!authUsers.length) {
       el.innerHTML = '<div class="infobox">가입한 회원이 없습니다.</div>';
       return;
@@ -7643,7 +7812,7 @@ async function loadUsers(){
       +'</tbody></table>';
 
   } catch(err) {
-    el.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 실패: '+err.message+'</div>';
+    if (el && el.isConnected) el.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 실패: '+esc(err.message)+'</div>';
   }
 }
 
@@ -13606,9 +13775,6 @@ async function saveHomeworkFeedback(id) {
   toast('Saved');
 }
 
-if (window.location.hash === '#study-picture-prompts' || window.location.hash === '#study-room') {
-  setTimeout(function(){ goStudyRoomOps(); }, 120);
-}
 
 // ═══════════════════════════════════════════════════════════
 // ARTICLE STUDY 편집
@@ -17231,5 +17397,23 @@ async function currGenExtra(level) {
 
 </script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
+<script>
+// emoji-icons.js rewrites title / placeholder / aria-label even when the
+// stripped value is unchanged. A kept mark (✓ ✗ ★) still matches its regex,
+// so every rewrite fires the attribute observer again — an endless
+// microtask loop that froze this tab (AI Cache Management: "Study 캐시 ✗인"
+// title). Only write when the value actually changes. The observer looks the
+// function up by its global name, so this override applies to it.
+if (typeof window._khEmoAttrs === 'function' && typeof khStripEmoji === 'function') {
+  window._khEmoAttrs = function(el) {
+    ['title', 'placeholder', 'aria-label', 'alt'].forEach(function(a) {
+      var v = el.getAttribute && el.getAttribute(a);
+      if (!v) return;
+      var nv = khStripEmoji(v);
+      if (nv !== v) el.setAttribute(a, nv);
+    });
+  };
+}
+</script>
 </body>
 </html>

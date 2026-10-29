@@ -85,7 +85,12 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#64748b}
         <input type="hidden" id="hv-id">
         <div>
           <label>Korean word</label>
-          <input id="hv-word" placeholder="예: 감기">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="hv-word" placeholder="예: 감기" style="flex:1">
+            <button type="button" class="btn-soft" id="hv-ai-btn" onclick="hvAiFill()" title="Ask Claude Haiku for a reading + meaning (one paid call). Only fills empty fields.">
+              <i data-lucide="sparkles" style="width:14px;height:14px;vertical-align:-2px"></i> Fill with AI
+            </button>
+          </div>
         </div>
         <div class="row" style="margin-top:10px">
           <div>
@@ -187,9 +192,11 @@ function previewHover() {
 });
 
 // ── Auto-fill romanization + English meaning when admin types a
-// Korean word. Lookup order: hover_vocab_master → vocabulary_bank →
-// Claude. Only writes into fields the admin left empty so manual
-// edits are never overwritten.
+// Korean word, from our own tables only (hover_vocab_master →
+// vocabulary_bank; free). Claude is called ONLY from the explicit
+// "Fill with AI" button — never automatically while typing (owner rule:
+// no AI spend without approval). Only empty fields are filled, so
+// manual edits are never overwritten.
 let _hvAutoFillTimer = null;
 let _hvLastQueriedWord = '';
 
@@ -240,7 +247,20 @@ async function hvAutoFill(word) {
     }
   } catch(_) { /* fall through */ }
 
-  // 3) Claude AI fallback
+  status('사전 테이블에 없음 — 필요하면 "Fill with AI" 버튼을 누르세요.');
+}
+
+// Explicit, one paid Haiku call per click.
+async function hvAiFill() {
+  const word = (document.getElementById('hv-word').value || '').trim();
+  if (!word || !/[가-힣]/.test(word)) { status('한국어 단어를 먼저 입력하세요.', true); return; }
+  const readingEl = document.getElementById('hv-reading');
+  const meaningEl = document.getElementById('hv-meaning');
+  const needReading = !readingEl.value.trim();
+  const needMeaning = !meaningEl.value.trim();
+  if (!needReading && !needMeaning) { status('Reading 과 meaning 이 이미 채워져 있어요.'); return; }
+  const btn = document.getElementById('hv-ai-btn');
+  if (btn) btn.disabled = true;
   status('AI 제안 생성 중...');
   try {
     const sess = await sb.auth.getSession();
@@ -280,6 +300,8 @@ async function hvAutoFill(word) {
     status(filled ? 'AI 제안으로 채움 (확인 후 Save)' : 'AI 응답이 비어 있음');
   } catch(err) {
     status('AI 자동완성 실패: ' + (err.message || err), true);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
