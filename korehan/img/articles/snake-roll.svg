@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef5e9"/>
+      <stop offset="1" stop-color="#d7e8cf"/>
+    </linearGradient>
+    <linearGradient id="soil" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d8c29a"/>
+      <stop offset="1" stop-color="#c4a87c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#sky)"/>
+
+  <!-- soft light patches -->
+  <circle cx="930" cy="150" r="120" fill="#f7fbf3" opacity=".7"/>
+  <circle cx="250" cy="110" r="80" fill="#f7fbf3" opacity=".5"/>
+
+  <!-- far trees -->
+  <g opacity=".55">
+    <rect x="70" y="160" width="34" height="440" rx="12" fill="#b9a68c"/>
+    <circle cx="87" cy="170" r="95" fill="#b5d3ab"/>
+    <rect x="1040" y="140" width="40" height="460" rx="14" fill="#b9a68c"/>
+    <circle cx="1060" cy="150" r="110" fill="#b5d3ab"/>
+    <rect x="780" y="220" width="26" height="380" rx="10" fill="#c1af95"/>
+    <circle cx="793" cy="225" r="70" fill="#c3dcb9"/>
+  </g>
+
+  <!-- near trees -->
+  <rect x="190" y="90" width="56" height="520" rx="18" fill="#a88f72"/>
+  <rect x="204" y="200" width="10" height="120" rx="5" fill="#97806a" opacity=".6"/>
+  <circle cx="218" cy="110" r="130" fill="#9fc596"/>
+  <circle cx="320" cy="150" r="90" fill="#a9cc9f"/>
+  <rect x="930" y="60" width="64" height="550" rx="20" fill="#a88f72"/>
+  <rect x="950" y="260" width="12" height="140" rx="6" fill="#97806a" opacity=".6"/>
+  <circle cx="962" cy="80" r="150" fill="#9fc596"/>
+  <circle cx="840" cy="120" r="90" fill="#abcea1"/>
+
+  <!-- ferns -->
+  <g fill="#8fbb85">
+    <path d="M120 600 C 110 540, 70 520, 40 515 C 80 540, 95 570, 100 600 Z"/>
+    <path d="M140 600 C 150 530, 190 505, 225 500 C 185 535, 165 565, 160 600 Z"/>
+    <path d="M1100 600 C 1090 545, 1055 525, 1025 520 C 1060 545, 1075 572, 1080 600 Z"/>
+    <path d="M1120 600 C 1130 540, 1165 515, 1195 512 C 1160 540, 1145 568, 1140 600 Z"/>
+  </g>
+
+  <!-- forest floor -->
+  <path d="M0 585 C 200 565, 420 600, 620 585 C 820 570, 1000 595, 1200 580 L1200 800 L0 800 Z" fill="url(#soil)"/>
+  <path d="M0 680 C 240 660, 480 700, 720 682 C 920 668, 1060 690, 1200 676 L1200 800 L0 800 Z" fill="#bb9f74" opacity=".6"/>
+
+  <!-- fallen leaves -->
+  <g>
+    <ellipse cx="120" cy="640" rx="26" ry="10" transform="rotate(-20 120 640)" fill="#e6b97e"/>
+    <ellipse cx="300" cy="700" rx="30" ry="11" transform="rotate(15 300 700)" fill="#d99c6d"/>
+    <ellipse cx="420" cy="630" rx="22" ry="9" transform="rotate(35 420 630)" fill="#b5cc93"/>
+    <ellipse cx="700" cy="720" rx="28" ry="10" transform="rotate(-30 700 720)" fill="#e6b97e"/>
+    <ellipse cx="840" cy="650" rx="24" ry="9" transform="rotate(10 840 650)" fill="#d99c6d"/>
+    <ellipse cx="1080" cy="720" rx="30" ry="11" transform="rotate(-12 1080 720)" fill="#b5cc93"/>
+    <ellipse cx="560" cy="760" rx="26" ry="9" transform="rotate(22 560 760)" fill="#d99c6d"/>
+    <ellipse cx="200" cy="760" rx="22" ry="8" transform="rotate(-40 200 760)" fill="#e6b97e"/>
+  </g>
+
+  <!-- log the snake will hide under -->
+  <g>
+    <rect x="800" y="540" width="250" height="78" rx="38" fill="#9c7a5b"/>
+    <rect x="820" y="552" width="200" height="12" rx="6" fill="#ae8c6b" opacity=".7"/>
+    <ellipse cx="1030" cy="579" rx="30" ry="39" fill="#c9a77f"/>
+    <ellipse cx="1030" cy="579" rx="18" ry="25" fill="none" stroke="#a9845f" stroke-width="5"/>
+    <ellipse cx="1030" cy="579" rx="7" ry="10" fill="#a9845f"/>
+    <path d="M860 540 C 870 515, 890 510, 905 520" stroke="#8fbb85" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <ellipse cx="910" cy="518" rx="16" ry="8" fill="#9fc596" transform="rotate(-20 910 518)"/>
+  </g>
+
+  <!-- motion trail -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" opacity=".85">
+    <path d="M330 430 A 150 150 0 0 0 340 560" stroke-width="10"/>
+    <path d="M280 420 A 180 180 0 0 0 290 575" stroke-width="7" opacity=".7"/>
+    <path d="M235 440 A 200 200 0 0 0 245 570" stroke-width="5" opacity=".5"/>
+  </g>
+  <!-- dust puffs -->
+  <g fill="#efe3cc">
+    <circle cx="380" cy="585" r="18"/>
+    <circle cx="352" cy="592" r="13"/>
+    <circle cx="328" cy="596" r="9"/>
+    <circle cx="306" cy="598" r="6"/>
+  </g>
+
+  <!-- shadow -->
+  <ellipse cx="520" cy="592" rx="120" ry="14" fill="#a88c63" opacity=".45"/>
+
+  <!-- the snake rolling like a wheel -->
+  <g>
+    <!-- body ring -->
+    <path d="M540 347 A115 115 0 1 1 481 352" fill="none" stroke="#6b5646" stroke-width="40" stroke-linecap="round"/>
+    <!-- belly highlight -->
+    <path d="M540 347 A115 115 0 1 1 481 352" fill="none" stroke="#8a725e" stroke-width="22" stroke-linecap="round"/>
+    <!-- bands -->
+    <path d="M540 347 A115 115 0 1 1 481 352" fill="none" stroke="#56443a" stroke-width="40" stroke-dasharray="10 34" opacity=".55"/>
+    <!-- tail tucked in -->
+    <path d="M481 352 C 468 360, 462 375, 470 392" fill="none" stroke="#6b5646" stroke-width="16" stroke-linecap="round"/>
+    <path d="M470 392 L 474 404" stroke="#6b5646" stroke-width="7" stroke-linecap="round"/>
+    <!-- head -->
+    <g transform="rotate(-18 560 338)">
+      <ellipse cx="562" cy="338" rx="38" ry="25" fill="#6b5646"/>
+      <ellipse cx="572" cy="345" rx="24" ry="11" fill="#8a725e" opacity=".8"/>
+      <circle cx="578" cy="328" r="7.5" fill="#2f2621"/>
+      <circle cx="580.5" cy="325.5" r="2.5" fill="#ffffff"/>
+    </g>
+  </g>
+</svg>
