@@ -12705,3 +12705,59 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 2000);
 });
+
+// ── Owner preview link (?kh_preview=<token>) ─────────────────────
+// Signs this browser in as the dedicated Premium preview account through
+// the preview-login Edge Function — no credentials typed, not the owner's
+// own account. A bar on every page says so and offers Exit.
+(function khPreviewLogin() {
+  var m = location.search.match(/[?&]kh_preview=([A-Za-z0-9_-]{20,100})/);
+  function cleanUrl() {
+    return location.pathname + location.search.replace(/([?&])kh_preview=[^&]*&?/, '$1').replace(/[?&]$/, '') + location.hash;
+  }
+  function bar() {
+    var on = false;
+    try { on = localStorage.getItem('kh_preview') === '1'; } catch (_) {}
+    if (!on || document.getElementById('kh-preview-bar')) return;
+    var sb = getSupa();
+    if (!sb) return;
+    sb.auth.getSession().then(function (r) {
+      var u = r && r.data && r.data.session && r.data.session.user;
+      if (!u || !/\+khpreview@/.test(u.email || '')) { try { localStorage.removeItem('kh_preview'); } catch (_) {} return; }
+      var d = document.createElement('div');
+      d.id = 'kh-preview-bar';
+      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:100000;background:#fbbf24;color:#111;font:700 12px/1 "DM Sans",sans-serif;padding:7px 8px 7px 12px;border-radius:999px;display:flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.25)';
+      d.innerHTML = '<span>Preview account · Premium</span><button type="button" style="border:0;border-radius:999px;background:#111;color:#fff;font:inherit;padding:5px 10px;cursor:pointer">Exit</button>';
+      d.querySelector('button').onclick = function () {
+        try { localStorage.removeItem('kh_preview'); } catch (_) {}
+        sb.auth.signOut().then(function () { location.href = 'index.html'; }, function () { location.href = 'index.html'; });
+      };
+      document.body.appendChild(d);
+    });
+  }
+  function start() {
+    if (!m) { bar(); return; }
+    var sb = getSupa();
+    if (!sb) return;
+    fetch(SUPA_URL + '/functions/v1/preview-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
+      body: JSON.stringify({ token: m[1] })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.j.access_token) throw new Error(res.j && res.j.error || 'failed');
+        return sb.auth.setSession({ access_token: res.j.access_token, refresh_token: res.j.refresh_token });
+      })
+      .then(function () {
+        try { localStorage.setItem('kh_preview', '1'); } catch (_) {}
+        location.replace(cleanUrl());
+      })
+      .catch(function (e) {
+        console.warn('[preview] failed', e);
+        if (typeof toast === 'function') toast('This preview link has expired or is not valid.', true);
+        history.replaceState(null, '', cleanUrl());
+      });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
