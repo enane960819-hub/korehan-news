@@ -1,3 +1,4 @@
+-- (app_settings.value is text holding JSON.)
 -- Did the 2026-10-29 draft catch-up (20261029_draft_catchup.sql) make today's drafts?
 select json_build_object(
   'catchup_job_still_scheduled', exists (select 1 from cron.job where jobname = 'daily-article-draft-catchup'),
@@ -13,8 +14,8 @@ select json_build_object(
                      where coalesce(j->>'created_at', j->>'date') >= '2026-10-29'),
   'queue_picks', (select json_agg(json_build_object('level', p->>'level', 'status', p->>'status', 'attempts', p->>'attempts', 'title', left(p->'headline'->>'title', 60)))
                   from public.app_settings s, jsonb_array_elements(
-                    (case when jsonb_typeof(s.value) = 'string' then (s.value #>> '{}')::jsonb else s.value end)->'picks') p
+                    (s.value::jsonb)->'picks') p
                   where s.key = 'daily_article_draft_queue'),
-  'queue_date', (select (case when jsonb_typeof(value) = 'string' then (value #>> '{}')::jsonb else value end)->>'date'
+  'queue_date', (select (value::jsonb)->>'date'
                  from public.app_settings where key = 'daily_article_draft_queue')
 );
