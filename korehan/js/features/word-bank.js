@@ -59,6 +59,36 @@
       }, function () {});
     });
   }
+  // Words per topic at each level. A topic with only a handful of words at a
+  // level (Seed has 3 "work" words) is hidden there instead of showing a
+  // near-empty list; the chips show their counts.
+  var MIN_TOPIC = 12;
+  var tagCounts = {};
+  function loadTagCounts(level) {
+    if (!sb() || tagCounts[level]) return;
+    tagCounts[level] = {};
+    TOPICS.forEach(function (t) {
+      sb().from('word_bank').select('id', { count: 'exact', head: true }).eq('level', level).eq('tag', t).then(function (r) {
+        tagCounts[level][t] = r.count || 0;
+        if (S.level === level && S.tab === 'words') paintChips();
+      }, function () {});
+    });
+  }
+  function paintChips() {
+    var box = document.querySelector('.wb-chips'); if (!box) return;
+    var tc = tagCounts[S.level] || {};
+    box.querySelectorAll('[data-tag]').forEach(function (b) {
+      var t = b.getAttribute('data-tag'); if (t === 'all') return;
+      var n = tc[t];
+      var sm = b.querySelector('small');
+      if (n != null) {
+        if (!sm) { sm = document.createElement('small'); b.appendChild(sm); }
+        sm.textContent = ' ' + n;
+      }
+      // Never hide the topic the learner is on.
+      b.style.display = (n != null && n < MIN_TOPIC && S.tag !== t) ? 'none' : '';
+    });
+  }
   function loadTotal() {
     S.total = null;
     if (!sb()) return Promise.resolve();
@@ -133,11 +163,17 @@
       }).join('') + '</div>'
       + '<div id="wb-list"></div>';
     body.querySelectorAll('[data-lv]').forEach(function (b) {
-      b.onclick = function () { S.level = b.getAttribute('data-lv'); try { localStorage.setItem('kh_wb_level', S.level); } catch (_) {} render(); reset(); };
+      b.onclick = function () {
+        S.level = b.getAttribute('data-lv'); try { localStorage.setItem('kh_wb_level', S.level); } catch (_) {}
+        var tc = tagCounts[S.level];
+        if (S.tag !== 'all' && tc && tc[S.tag] != null && tc[S.tag] < MIN_TOPIC) S.tag = 'all';
+        render(); reset();
+      };
     });
     body.querySelectorAll('[data-tag]').forEach(function (b) {
       b.onclick = function () { S.tag = b.getAttribute('data-tag'); render(); reset(); };
     });
+    loadTagCounts(S.level); paintChips();
     $('wb-dock').innerHTML = '<button type="button" onclick="khWordBank.drill(\'cards\')">' + ico('layers') + 'Flashcards</button>'
       + '<button type="button" onclick="khWordBank.drill(\'meaning\')">' + ico('circle-check') + 'Meaning quiz</button>'
       + '<button type="button" class="p" onclick="khWordBank.drill(\'listen\')">' + ico('headphones') + 'Listen &amp; pick</button>';
