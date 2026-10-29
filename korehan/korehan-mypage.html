@@ -477,6 +477,7 @@ body.kh-neon-on .mypage-hero {
 
 /* ═══ Mini Room ═══ */
 #miniroom-container { user-select:none; -webkit-user-select:none; }
+#mp-miniroom-section.is-editing #room-unlocks { display:none !important; }
 .room-placed-item {
   position:absolute; background-repeat:no-repeat;
   transition: outline .15s, box-shadow .15s;
@@ -1195,8 +1196,6 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
       <button type="button" id="room-theme-btn" class="room-theme-btn" onclick="toggleRoomThemeDrawer(event)" aria-label="Wallpaper and floor" title="Wallpaper &amp; floor"><i data-lucide="image" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
       <div id="room-theme-drawer" class="room-theme-drawer" role="menu" aria-label="Wallpaper and floor"></div>
     </div>
-    <!-- Study unlocks (js/features/room-learn.js, room_unlocks) -->
-    <div id="room-unlocks" class="ru" hidden></div>
     <!-- Controls -->
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
       <button onclick="openRoomShop(true)" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">My Items</button>
@@ -1220,6 +1219,9 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
       </div>
       <div style="font-size:10px;color:#94a3b8;margin-top:6px">Tap → resize/flip/layer · Hold → remove</div>
     </div>
+    <!-- Study unlocks (js/features/room-learn.js, room_unlocks). Below the room controls so the
+         edit buttons sit right under the room; hidden while editing. -->
+    <div id="room-unlocks" class="ru" hidden></div>
   </div>
 
   <!-- Shortcuts (My Room stays inline above) -->
@@ -1309,7 +1311,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029ra"></script>
+<script src="korehan-shared.js?v=20261029rc"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261029ng"></script>
 <script src="js/features/room-view.js?v=20261029ra"></script>
@@ -4016,6 +4018,8 @@ function toggleRoomEdit() {
   var container = document.getElementById('miniroom-container');
   if (btn) btn.textContent = _roomEditing ? 'Editing...' : 'Edit Room';
   if (saveBtn) saveBtn.style.display = _roomEditing ? '' : 'none';
+  var roomSec = document.getElementById('mp-miniroom-section');
+  if (roomSec) roomSec.classList.toggle('is-editing', _roomEditing);
   if (container) {
     container.classList.toggle('room-editing-active', _roomEditing);
     container.style.touchAction = _roomEditing ? 'none' : 'auto';

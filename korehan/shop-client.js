@@ -377,8 +377,9 @@
     var tag = own && !it.is_repeatable ? '<span class="sh-own">Owned</span>'
       : '<span class="sh-pr">' + Number(it.coin_price || 0) + '</span>';
     return '<button type="button" class="sh-li" onclick="shopOpen(\'item\',\'' + it.id + '\')">'
-      + '<span class="sh-pv">' + preview + '</span>'
-      + '<span class="sh-tx"><b>' + _esc(it.kind === 'title' ? _titleLabel(it) : it.name) + '</b><small>' + _esc(it.description || '') + '</small></span>'
+      + '<span class="sh-pv' + (it.kind === 'title' ? ' sh-pv-title' : '') + '">' + preview + '</span>'
+      // A title's pill already shows its name, so the row only adds the description.
+      + '<span class="sh-tx">' + (it.kind === 'title' ? '' : '<b>' + _esc(it.name) + '</b>') + '<small>' + _esc(it.description || '') + '</small></span>'
       + tag + (own && it.is_repeatable ? '<span class="sh-qty">x' + own + '</span>' : '') + '</button>';
   }
   function _framePv(it) { return '<span class="sh-av-wrap"><span class="sh-av-frame is-on ' + SHOP_FRAME_CLASS[it.id] + '"></span><span class="sh-av">' + _initial() + '</span></span>'; }

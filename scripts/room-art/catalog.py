@@ -222,6 +222,10 @@ STYLE = ("I'm making item sprites for a cozy pixel-art room game. Style for EVER
 def fname(i):
     return i.replace('_', '-') + '.png'
 
+ROOM = os.path.join(os.path.dirname(__file__), '..', '..', 'korehan', 'assets', 'room')
+def has_art(i):
+    return os.path.exists(os.path.join(ROOM, fname(i)))
+
 def migration(groups, path, header, sort0):
     q = lambda s: "'" + str(s).replace("'", "''") + "'"
     vals, sort = [], sort0
@@ -237,7 +241,7 @@ def migration(groups, path, header, sort0):
 
 def main():
     root = os.path.join(os.path.dirname(__file__), '..', '..')
-    total = sum(len(i) for _, i in PROPS) + sum(len(i) for _, i in SHEETS) + len(OLD_MISSING)
+    total = sum(1 for _, g in PROPS + SHEETS for i in g if not has_art(i[0])) + sum(1 for i, _ in OLD_MISSING if not has_art(i))
     groups = SHEETS + PROPS
     lines = ["# My Room item art: prompts", "",
       f"{total} items still need a picture. Nine at a time: each sheet below is ONE message that",
@@ -251,6 +255,13 @@ def main():
       "`Same sheet, but leave clear white space between all nine items and keep each one inside its own cell.`",
       "If one item comes out wrong, redraw only that one: `Draw ONE item, centred, nothing else: <description>`.", ""]
     def sheet(n, title, items):
+        todo = [i for i in items if not has_art(i[0])]
+        if not todo: return
+        if len(todo) < len(items):
+            lines.append(f"### Sheet {n}: {title} (only these are still missing, one picture each)"); lines.append("")
+            lines.append("| file | description |"); lines.append("|------|-------------|")
+            for i in todo: lines.append(f"| `{fname(i[0])}` | {i[6]} |")
+            lines.append(""); return
         lines.append(f"### Sheet {n}: {title}"); lines.append(""); lines.append("```")
         lines.append("Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell "
                      "with plenty of empty white space around it, nothing touching, no grid lines, no labels.")
@@ -258,13 +269,14 @@ def main():
             lines.append(f"Row {r + 1}: " + "; ".join(i[6] for i in items[r * 3:r * 3 + 3]) + ".")
         lines.append("```")
         lines.append("Files, row by row: " + ", ".join(f"`{fname(i[0])}`" for i in items)); lines.append("")
-    lines.append(f"## A. New props: sheets {len(SHEETS) + 1}-{len(groups)} ({sum(len(i) for _, i in PROPS)} items)"); lines.append("")
+    lines.append(f"## A. New props: sheets {len(SHEETS) + 1}-{len(groups)}"); lines.append("")
     for n, (title, items) in enumerate(PROPS, len(SHEETS) + 1): sheet(n, title, items)
     lines.append(f"## B. Catalogue items still without a picture: sheets 1-{len(SHEETS)}"); lines.append("")
     for n, (title, items) in enumerate(SHEETS, 1): sheet(n, title, items)
     lines.append("### Older items (one picture each)"); lines.append("")
     lines.append("| file | description |"); lines.append("|------|-------------|")
-    for i, d in OLD_MISSING: lines.append(f"| `{fname(i)}` | {d} |")
+    for i, d in OLD_MISSING:
+        if not has_art(i): lines.append(f"| `{fname(i)}` | {d} |")
     lines.append("")
     open(os.path.join(root, 'docs', 'reference', 'room-art-prompts.md'), 'w').write("\n".join(lines))
 

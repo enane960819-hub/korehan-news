@@ -41,9 +41,10 @@ My Room fixed (#952) and neglected-page bugs fixed (#953). Approved mockups
 shipped (#954): My Room learning version (today's word, 9 study unlocks via
 kh_claim_room_unlocks, unlock items not sold), dark public profile with the
 read-only room + room likes, dark Reporters / Playground / newsletter pages.
-Room item art: 24 of the 29 old items are in (2026-10-29). Still to draw: norigae,
-jangdok, cat-white, koi-pond, chuseok-lantern, plus the 63 sheet items (prompts in git
-a1da780 / docs/reference/room-art-prompts.md, process with scripts/room-art/process.py).
+Room item art: 96 items have pictures (2026-10-29); 86 still to draw, listed as
+copy-paste sheet messages in docs/reference/room-art-prompts.md (regenerate with
+`python3 scripts/room-art/catalog.py`; cut any layout with `process.py --auto <pic> a,b,c`).
+After adding art, bump KH_ROOM_ART_V + shared.js ?v.
 Also reporters cr6/cr9/cr10, cigar + fennec + hedgehog portraits.
 Character editor: sprites (korehan/assets/avatar/, 4 hair bases x 9 outfits + 16
 accessories) and room themes (korehan/assets/room/themes/, 7 of 10) are in, not wired;
