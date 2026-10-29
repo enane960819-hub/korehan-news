@@ -329,9 +329,13 @@ supabase functions deploy claude-proxy
   Every question is reviewed before learners see it (`scripts/topik/REVIEW.md`): `lint.ts` blocks the build,
   an independent reviewer reads every item, and new tests seed as drafts that the admin approves in the app.
   New tests set `balance: true`; never reshuffle an existing test (saved attempts store choice positions).
-- **Live class** is a paid add-on: Premium members only, $5 a seat, 8 seats, refund ≥24 h before, no recording.
-  Seats are written only by `billing` (`live_checkout` / `live_cancel`, atomic `kh_live_hold_seat`) and
-  `billing-webhook` — never from the client.
+- **Live class** is part of **Premium Live** ($27.99/mo, monthly only — owner 2026-10-29): Premium ($8.99/mo,
+  $69/yr) has no live class; Premium Live = Premium + one included seat a week (8 seats, book/cancel until booking
+  closes 1 h before, no rollover, no recording). Plan value `premium_live` (from the Stripe price lookup_key
+  `kh_premium_live_month` in billing-webhook); `kh_is_premium` counts it, `kh_has_live` gates seats; front end
+  uses `khIsPremiumPlan()` / `khHasLive()` — never compare `getUserPlan() === 'premium'`. Seats are written only
+  by `billing` (`live_reserve` → atomic `kh_live_reserve_seat`, status 'comp'; `live_cancel`) — never from the
+  client. Legacy $5 'paid' seats still refund through `live_cancel`.
 - **Fake News** (ON HOLD since 2026-10-29: `KH_FAKE_NEWS_ON = false`, articles are drafts) (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
   openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —
   no crime, romance, health, death, politics or politicians, nobody in an active controversy; illustrations

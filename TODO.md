@@ -30,8 +30,12 @@ hand-written articles (#944, illustrations in /img/articles/).
 Fake News: built (#946) but ON HOLD (owner) — `KH_FAKE_NEWS_ON = false`, the
 one article (mwfkbieber29) is a draft. Re-enable both to bring it back.
 
-Proposed (waiting on owner): Premium Live plan $29/mo = Premium + one live
-class a week (8 seats), keep Premium $8.99; single class $5 as a trial.
+Premium Live shipped (owner, $27.99/mo): Premium no longer includes live class.
+After deploy, run billing **setup** once from the admin (creates the Stripe
+Premium Live product/price and adds it to the portal plan switcher).
+Open questions: should a lapsed Live member keep an already-booked seat
+(get_live_zoom_link only checks the seat)? Upgrade proration is billed on the
+next invoice (`create_prorations`), not immediately.
 
 Owner decisions still open:
 - **Anthropic credit is empty** — every AI feature fails until topped up.

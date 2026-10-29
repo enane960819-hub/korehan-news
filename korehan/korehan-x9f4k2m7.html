@@ -7782,7 +7782,7 @@ async function loadUsers(){
           var a = act[u.id] || {words:0,articles:0,quizzes:0,streak:0};
           var sub = subMap[u.id] || null;
           var planVal = sub ? sub.plan : 'free';
-          var planColors = {free:'#94a3b8',standard:'#2563eb',pro:'#7c3aed'};
+          var planColors = {free:'#94a3b8',standard:'#2563eb',pro:'#7c3aed',premium:'#7c3aed',premium_live:'#0e7490'};
           var planLabels = {free:'Free',standard:'Standard',pro:'Pro'};
           var email = u.email || u.user_metadata?.email || '(소셜 로그인)';
           var name  = u.user_metadata?.full_name || u.user_metadata?.name || '';
@@ -7801,6 +7801,7 @@ async function loadUsers(){
             +'<td style="padding:10px 12px"><select onchange="adminChangePlan(\''+u.id+'\',this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:11px;font-weight:700;color:'+planColors[planVal]+';background:#fff;cursor:pointer">'
             +'<option value="free"'+(planVal==='free'?' selected':'')+'>Free</option>'
             +'<option value="premium"'+((planVal==='premium'||planVal==='standard'||planVal==='pro')?' selected':'')+'>Premium</option>'
+            +'<option value="premium_live"'+(planVal==='premium_live'?' selected':'')+'>Premium Live</option>'
             +'</select></td>'
             +'<td style="padding:10px 12px">'+
               (suspMap[u.id] && suspMap[u.id].is_suspended
@@ -7876,7 +7877,7 @@ async function adminChangePlan(userId, plan) {
         var sel = document.querySelector('select[onchange*="adminChangePlan(\'' + userId + '\'"]');
         if (sel) {
           var p = cur.data.plan;
-          sel.value = (p === 'premium' || p === 'standard' || p === 'pro') ? 'premium' : 'free';
+          sel.value = p === 'premium_live' ? 'premium_live' : ((p === 'premium' || p === 'standard' || p === 'pro') ? 'premium' : 'free');
         }
         return;
       }

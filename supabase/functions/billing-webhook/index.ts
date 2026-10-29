@@ -1,4 +1,4 @@
-// billing-webhook — Stripe → user_subscriptions for KoreHani Premium.
+// billing-webhook — Stripe → user_subscriptions for KoreHani Premium / Premium Live.
 //
 // Registered automatically by `billing` (action: setup), which also stores
 // the signing secret in app_settings 'stripe_billing_webhook_secret'.
@@ -6,7 +6,11 @@
 // Stripe-Signature.
 //
 // Mapping (one row per user, UNIQUE user_id):
-//   trialing / active             → plan 'premium', status 'active',
+//   plan                          → 'premium_live' when any subscription item's
+//                                   price has lookup_key 'kh_premium_live_month'
+//                                   (Premium Live, $27.99/mo, owner 2026-10-29),
+//                                   otherwise 'premium'
+//   trialing / active             → status 'active',
 //                                   expires_at = current_period_end (+1 day grace)
 //   past_due                      → still 'active', but expires_at is capped at
 //                                   max(previous expires_at, now + 3 days)
@@ -16,7 +20,10 @@
 // A non-live event for a subscription other than the stored payment_id never
 // downgrades a currently live row. Deleted users (FK 23503) are acked with 200.
 //
-// Weekend Live Class seats (one-time payments, metadata.product 'kh-live-class'):
+// Legacy Weekend Live Class seats ($5 one-time payments, metadata.product
+// 'kh-live-class', sold until 2026-10-29 — Premium Live seats are included in
+// the plan and booked by billing 'live_reserve' without Stripe). Kept so
+// checkouts still open at the switch and later refunds resolve correctly:
 //   checkout.session.completed (paid) → weekly_live_registrations status 'paid'
 //   checkout.session.expired          → the pending seat hold is freed
 //   charge.refunded                   → status 'refunded' (refunds made in Stripe too)
@@ -26,6 +33,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const GRACE_MS = 24 * 3600 * 1000
 const PAST_DUE_GRACE_MS = 3 * 24 * 3600 * 1000
+const LIVE_PLAN_LOOKUP_KEY = 'kh_premium_live_month'   // = billing LIVE_PLAN_PRICE.lookup_key
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('method not allowed', { status: 405 })
@@ -80,7 +88,7 @@ Deno.serve(async (req) => {
       .select('plan,status,expires_at,payment_id,trial_used').eq('user_id', userId).maybeSingle()
     const now = Date.now()
     const prevExp = prev?.expires_at ? new Date(prev.expires_at).getTime() : null
-    const prevLive = !!prev && prev.status === 'active' && ['premium', 'standard', 'pro'].includes(prev.plan) &&
+    const prevLive = !!prev && prev.status === 'active' && ['premium', 'premium_live', 'standard', 'pro'].includes(prev.plan) &&
       prevExp !== null && prevExp > now
     // A different (stale) subscription ending must not downgrade a user whose
     // current access comes from another live subscription / grant.
@@ -95,9 +103,12 @@ Deno.serve(async (req) => {
       const cap = Math.max(prevExp ?? 0, now + PAST_DUE_GRACE_MS)
       expiresMs = Math.min(expiresMs, cap)
     }
+    // Subscription items carry the full Price object (lookup_key included).
+    const plan = sub.items.data.some((it: Stripe.SubscriptionItem) => it.price?.lookup_key === LIVE_PLAN_LOOKUP_KEY)
+      ? 'premium_live' : 'premium'
     const row = {
       user_id: userId,
-      plan: 'premium',
+      plan,
       status: live ? 'active' : 'expired',
       expires_at: new Date(expiresMs).toISOString(),
       payment_provider: 'stripe',
