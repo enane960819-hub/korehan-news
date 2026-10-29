@@ -332,6 +332,12 @@ supabase functions deploy claude-proxy
 - **Live class** is a paid add-on: Premium members only, $5 a seat, 8 seats, refund ≥24 h before, no recording.
   Seats are written only by `billing` (`live_checkout` / `live_cancel`, atomic `kh_live_hold_seat`) and
   `billing-webhook` — never from the client.
+- **Fake News** (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
+  openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —
+  no crime, romance, health, death, politics or politicians, nobody in an active controversy; illustrations
+  show props, never faces. Never in real-news lists (`published()` with no section, home News grid/hero,
+  next-article feed) — only the home Fake News rail and `korehan-section.html?s=fake`; every card carries
+  the yellow FAKE NEWS tag, every article the banner, shares get a "[Fake News]" prefix.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 

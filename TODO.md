@@ -28,11 +28,14 @@ Word Bank re-tag (210), rows marked qa_at so content-qa doesn't requeue them
 staging table `word_bank_candidates` can be dropped once checked). Three
 hand-written articles (#944, illustrations in /img/articles/).
 
-In progress: **Fake News section** (section key `fake`, `khIsFakeNews()`;
-never in real-news lists; own home rail + section page; banner on every
-article). Mockup A (red stamp) / B (yellow tabloid ribbon) sent — waiting
-for the owner's pick; code is written with B. Rules: obviously absurd,
-harmless; no crime/romance/health/death/politics, no politicians.
+Fake News section live (#946): section `fake`, yellow tabloid style (B), first
+article mwfkbieber29. Owner wants every Fake News story to be about a real
+person; 10 headline ideas sent (손흥민 김밥, 아이유 떡집, BTS 진 화성 잡채,
+페이커 vs 할머니, 키아누 리브스 자리 양보, 테일러 스위프트 노래방, 고든 램지 김치,
+봉준호 고양이 캐스팅, 유재석 엘리베이터…) — write the ones the owner picks.
+
+Proposed (waiting on owner): Premium Live plan $29/mo = Premium + one live
+class a week (8 seats), keep Premium $8.99; single class $5 as a trial.
 
 Owner decisions still open:
 - **Anthropic credit is empty** — every AI feature fails until topped up.
