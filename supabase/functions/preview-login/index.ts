@@ -2,7 +2,8 @@
 // typing credentials (2026-10-29: testing on a work computer where the
 // owner must not sign in to their own account).
 //
-// The link korehani.com/?kh_preview=<token> posts the token here. If its
+// The link korehani.com/?p=<token> (or ?kh_preview=) posts the token here.
+// The owner chose a short, typeable token and accepts the guessing risk. If its
 // SHA-256 matches app_settings.preview_login (server-only key, never in the
 // client allow-list) and it hasn't expired, we sign the browser in as a
 // dedicated preview account — not the owner, not an admin — with Premium
@@ -44,7 +45,7 @@ Deno.serve(async (req) => {
 
   let token = ''
   try { token = String((await req.json())?.token || '') } catch (_) { /* empty */ }
-  if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) return json({ error: 'invalid' }, 403)
+  if (!/^[A-Za-z0-9_-]{6,100}$/.test(token)) return json({ error: 'invalid' }, 403)
 
   const url = Deno.env.get('SUPABASE_URL')!
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
