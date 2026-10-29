@@ -138,7 +138,7 @@
   function icons() { try { if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons(); } catch (_) {} }
   function sb() { return (typeof getSupa === 'function') ? getSupa() : null; }
   function user() { return (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null; }
-  function premium() { return typeof getUserPlan === 'function' && getUserPlan() === 'premium'; }
+  function premium() { return typeof khIsPremiumPlan === 'function' && khIsPremiumPlan(); }
   function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (_) { return null; } }
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
   function weekIndex() { return Math.floor((Date.now() / 86400000 + 3) / 7); }   // changes every Monday (UTC)

@@ -14,10 +14,13 @@
    - KH_ICON_LOCK        — from js/core/icons.js
    ============================================================ */
 
-// Free / Premium (2026-10). Free keeps all reading open; Premium is the
-// study system, including Weekly Topic writing + its AI feedback (owner
-// decision 2026-10-28 — free users can do the learning steps, not write). Legacy 'standard' and
-// 'pro' rows (manual grants) are treated as Premium.
+// Free / Premium / Premium Live (2026-10). Free keeps all reading open;
+// Premium is the study system, including Weekly Topic writing + its AI
+// feedback (owner decision 2026-10-28 — free users can do the learning steps,
+// not write). Premium Live ($27.99/mo, owner decision 2026-10-29) is
+// everything in Premium + one live class every week with a seat included;
+// Premium itself no longer includes live classes (the $5 seat is gone).
+// Legacy 'standard' and 'pro' rows (manual grants) are treated as Premium.
 var _KH_PREMIUM_FEATURES = {
   content_read: true, korean_alphabet: true, daily_slang_3: true,
   daily_review: true, express_writing: true, word_book_basic: true,
@@ -25,7 +28,7 @@ var _KH_PREMIUM_FEATURES = {
   article_study: true, conversation_study: true,
   slang_full: true, weekly_monthly_review: true, listening_quiz: true,
   growth_lab: true, word_book_srs: true, monthly_report: true,
-  fast_track: true, phone_call: true, tutor_review: true, live_class: true,
+  fast_track: true, phone_call: true, tutor_review: true,
   personal_recommendation: true, topik_full: true,
   writing_feedback: true, speaking_feedback: true, priority_feedback: true
 };
@@ -48,18 +51,33 @@ var KH_PLANS = {
   premium: {
     name: 'Premium', price: 8.99, priceYear: 69, label: '$8.99/mo',
     features: _KH_PREMIUM_FEATURES
+  },
+  premium_live: {
+    name: 'Premium Live', price: 27.99, label: '$27.99/mo',   // monthly only
+    features: Object.assign({}, _KH_PREMIUM_FEATURES, { live_class: true })
   }
 };
 KH_PLANS.standard = KH_PLANS.premium; // legacy manual grants
 KH_PLANS.pro = KH_PLANS.premium;
 
 function khNormalizePlan(plan) {
+  if (plan === 'premium_live') return 'premium_live';
   return (plan === 'premium' || plan === 'standard' || plan === 'pro') ? 'premium' : 'free';
 }
 
+// Premium or Premium Live — every Premium feature. Use this instead of
+// comparing getUserPlan() with 'premium'.
+function khIsPremiumPlan(plan) {
+  if (plan === undefined) plan = _userPlan;
+  return plan === 'premium' || plan === 'premium_live';
+}
+// Live class seat included (Premium Live).
+function khHasLive() { return _userPlan === 'premium_live'; }
+
 // Which plan unlocks a given feature? Returns minimum plan name.
 function featureMinPlan(feature) {
-  return KH_PLANS.free.features[feature] ? 'free' : 'premium';
+  if (KH_PLANS.free.features[feature]) return 'free';
+  return KH_PLANS.premium.features[feature] ? 'premium' : 'premium_live';
 }
 
 // ── User plan state ──
@@ -166,16 +184,28 @@ var KH_FEATURE_COPY = {
   weekly_monthly_review: { t: 'Review the whole week', d: 'A timed review of everything you studied, every week and month.', steps: ['Words', 'Grammar', 'Score'] },
   slang_full:      { t: 'The full slang library', d: 'Every slang term with chats and a quiz — not just today’s three.' },
   tutor_review:    { t: 'A tutor reads your writing', d: 'Personal notes from a KoreHani tutor on your weekly writing.' },
-  live_class:      { t: 'Live class seats', d: 'Premium members can book a seat: $5 a class, Sunday 21:00 KST on Zoom.' },
+  live_class:      { t: 'A live class every week', d: 'Premium Live includes a seat in one live class every week: Sunday 21:00 KST on Zoom, 60 min, 8 learners. Book or cancel until 1 hour before.', steps: ['Read the week', 'Book a seat', 'Join on Zoom'] },
   monthly_report:  { t: 'Your monthly report', d: 'Your month in reading, words and grammar.' },
   topik_full:      { t: 'Every TOPIK practice test', d: 'Full timed tests in the TOPIK format with an estimated level and your weak question types. Test 1 and the weekly mini test stay free.', steps: ['Timed test', 'Level', 'Weak types'] }
 };
 var KH_PREMIUM_PERKS = ['Article & Conversation Study every day', 'Weekly writing with AI feedback + tutor review', 'Fast Track, listening quiz, weekly review'];
+var KH_LIVE_SWITCH_NOTE = 'Your Premium subscription switches to Premium Live ($27.99/month) right away. Stripe credits the unused part of your current plan and adjusts your next invoice.';
+var KH_LIVE_PERKS = ['Everything in Premium', 'A live class every week, seat included', 'Small group: 8 learners, Sunday 21:00 KST on Zoom'];
 
 // Straight to Stripe Checkout (signed-in), with a clear message otherwise.
-async function khStartCheckout(interval) {
+// plan 'live' = Premium Live (monthly only). A Premium subscriber asking for
+// Live is switched in place by billing (prorated) — no second checkout.
+async function khStartCheckout(interval, plan) {
   if (typeof supaUser === 'undefined' || !supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signup'); return; }
+  var live = plan === 'live';
+  var planName = live ? 'Premium Live' : 'Premium';
+  if (live && khIsPremiumPlan() && typeof khConfirm === 'function') {
+    var sheet = document.getElementById('kh-upgrade-modal'); if (sheet) sheet.remove();   // the confirm sits below the sheet
+    var go = await khConfirm('Switch to Premium Live?', KH_LIVE_SWITCH_NOTE, { okLabel: 'Switch · ' + KH_PLANS.premium_live.label, cancelLabel: 'Not now' });
+    if (!go) return;
+  }
   var btn = document.getElementById('kh-up-cta');
+  var btnLabel = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Opening secure checkout…'; }
   var msg = 'Checkout could not be started. Please try again in a moment.';
   try {
@@ -185,15 +215,34 @@ async function khStartCheckout(interval) {
     var r = await fetch(SUPA_URL + '/functions/v1/billing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY },
-      body: JSON.stringify({ action: 'checkout', interval: interval === 'year' ? 'year' : 'month' })
+      body: JSON.stringify({ action: 'checkout', plan: live ? 'live' : 'premium', interval: (!live && interval === 'year') ? 'year' : 'month' })
     });
     var res = await r.json().catch(function(){ return {}; });
     if (res && res.ok && res.url) { location.href = res.url; return; }
-    if (res && res.error === 'already_subscribed') msg = 'You already have Premium — it can take a few seconds to show up. Try reloading the page.';
+    if (res && res.ok && res.upgraded) {
+      var m = document.getElementById('kh-upgrade-modal'); if (m) m.remove();
+      if (typeof toast === 'function') toast('You are on Premium Live now. Your weekly seat is ready to book.', 'success');
+      khRefreshPlanSoon();
+      return;
+    }
+    if (res && res.error === 'already_subscribed') msg = 'You already have ' + planName + ' — it can take a few seconds to show up. Try reloading the page.';
     if (res && res.error === 'billing_not_configured') msg = 'Payments are being set up — please check back soon, or email han@korehani.com.';
   } catch (_) {}
-  if (btn) { btn.disabled = false; btn.textContent = 'Get Premium · ' + KH_PLANS.premium.label; }
-  if (typeof khAlert === 'function') khAlert('Premium', msg, { okLabel: 'OK' }); else alert(msg);
+  if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
+  if (typeof khAlert === 'function') khAlert(planName, msg, { okLabel: 'OK' }); else alert(msg);
+}
+
+// After a plan change the webhook may land a few seconds later: re-read the
+// plan every 2 s for up to 30 s (each load fires 'kh-plan-loaded').
+function khRefreshPlanSoon(want) {
+  var started = Date.now();
+  want = want || 'premium_live';
+  (function tick() {
+    _userPlanPromise = null;
+    loadUserPlan().then(function() {
+      if (_userPlan !== want && Date.now() - started < 30000) setTimeout(tick, 2000);
+    });
+  })();
 }
 
 function showUpgradeModal(feature, minPlan) {
@@ -207,8 +256,12 @@ function showUpgradeModal(feature, minPlan) {
     monthly_report: 'Monthly Report', speaking_feedback: 'Speaking Feedback', priority_feedback: 'Priority Feedback',
     personal_recommendation: 'Study Plan', writing_feedback: 'Writing Feedback', topik_full: 'TOPIK Practice'
   };
-  var c = KH_FEATURE_COPY[feature] || { t: (names[feature] || 'This feature') + ' is part of Premium', d: 'Premium is the full study system around the free reading.' };
+  var isLive = minPlan === 'premium_live';
+  var planName = isLive ? 'Premium Live' : 'Premium';
+  var c = KH_FEATURE_COPY[feature] || { t: (names[feature] || 'This feature') + ' is part of ' + planName, d: 'Premium is the full study system around the free reading.' };
   var price = (KH_PLANS[minPlan] || KH_PLANS.premium).label;
+  var perks = isLive ? KH_LIVE_PERKS : KH_PREMIUM_PERKS;
+  var ctaLabel = isLive ? (khIsPremiumPlan() ? 'Upgrade · ' : 'Get Premium Live · ') + price : 'Get Premium · ' + price;
   if (!document.getElementById('kh-up-style')) {
     var st = document.createElement('style');
     st.id = 'kh-up-style';
@@ -235,17 +288,17 @@ function showUpgradeModal(feature, minPlan) {
   var ov = document.createElement('div');
   ov.id = 'kh-upgrade-modal';
   ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
-  ov.innerHTML = '<div class="up" role="dialog" aria-modal="true" aria-label="Premium">'
+  ov.innerHTML = '<div class="up" role="dialog" aria-modal="true" aria-label="' + planName + '">'
     + '<div class="grab"></div>'
-    + '<div class="eb">Premium · ' + esc(names[feature] || 'Feature') + '</div>'
+    + '<div class="eb">' + planName + ' · ' + esc(names[feature] || 'Feature') + '</div>'
     + '<h3>' + esc(c.t) + '</h3><p class="d">' + esc(c.d) + '</p>'
     + ((c.steps || c.ko) ? '<div class="pv">'
         + (c.steps ? '<div class="steps">' + c.steps.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('') + '</div>' : '')
         + (c.ko ? '<div class="ex">' + c.ko + (c.en ? '<small>' + esc(c.en) + '</small>' : '') + '</div>' : '')   // c.ko is our own markup (<u>)
         + '</div>' : '')
-    + KH_PREMIUM_PERKS.map(function(p){ return '<div class="li">' + check + '<span>' + esc(p) + '</span></div>'; }).join('')
-    + '<button type="button" class="cta" id="kh-up-cta" onclick="khStartCheckout(\'month\')">Get Premium · ' + esc(price) + '</button>'
-    + '<div class="fine">Monthly or yearly · cancel anytime · <a href="korehan-courses.html">See all features</a></div>'
+    + perks.map(function(p){ return '<div class="li">' + check + '<span>' + esc(p) + '</span></div>'; }).join('')
+    + '<button type="button" class="cta" id="kh-up-cta" onclick="khStartCheckout(\'month\'' + (isLive ? ',\'live\'' : '') + ')">' + esc(ctaLabel) + '</button>'
+    + '<div class="fine">' + (isLive ? 'Monthly' : 'Monthly or yearly') + ' · cancel anytime · <a href="korehan-courses.html">See all features</a></div>'
     + '<button type="button" class="later" onclick="this.closest(\'#kh-upgrade-modal\').remove()">Maybe later</button>'
     + '</div>';
   document.body.appendChild(ov);

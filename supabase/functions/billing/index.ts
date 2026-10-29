@@ -1,18 +1,29 @@
-// billing — KoreHani Premium subscriptions (Stripe).
+// billing — KoreHani Premium / Premium Live subscriptions (Stripe).
+//
+// Plans (owner decision, 2026-10-29):
+//   Premium       $8.99/month or $69/year — every self-study feature, no live class.
+//   Premium Live  $27.99/month (monthly only) — everything in Premium + one live
+//                 class every week with a seat included (Sunday 21:00 KST on Zoom,
+//                 60 min, 8 seats). Book / cancel until booking closes (1 h before);
+//                 missed classes don't roll over. The $5 single-seat purchase is gone.
 //
 // Actions (POST JSON { action, ... }):
-//   checkout { interval: 'month'|'year' }  signed-in user → Stripe Checkout URL
-//                                          (no free trial — owner, 2026-10-28)
+//   checkout { plan: 'premium'|'live', interval: 'month'|'year' }
+//                                          signed-in user → Stripe Checkout URL
+//                                          ('live' is always monthly; no free trial —
+//                                          owner, 2026-10-28). A Premium subscriber
+//                                          asking for 'live' is switched in place
+//                                          (prorated) → { ok, upgraded: true }
 //   portal                                 signed-in user → Stripe Billing Portal URL
-//                                          (cancel, change card, invoices)
-//   setup                                  admin only → ensures the Premium product,
-//                                          both prices and the webhook endpoint exist;
-//                                          stores the webhook signing secret
+//                                          (cancel, change card, invoices, switch plan)
+//   setup                                  admin only → ensures both products, all
+//                                          prices, the portal config and the webhook
+//                                          endpoint exist; stores the webhook secret
 //   status                                 admin only → what is configured
-//   live_checkout { session_id }           Premium member → Stripe Checkout URL for one
-//                                          Weekend Live Class seat ($5, 8 seats; the seat
-//                                          is held as 'pending' while checkout is open)
-//   live_cancel { session_id }             paid seat, 24 h+ before class → full refund
+//   live_reserve { session_id }            Premium Live member → books the included
+//                                          seat (status 'comp') while booking is open
+//   live_cancel { session_id }             included seat → freed while booking is open;
+//                                          legacy $5 paid seat, 24 h+ before → refund
 //
 // The Stripe secret key comes from app_settings 'stripe_secret_key' (saved from
 // the admin CMS → Settings) or the STRIPE_SECRET_KEY function secret. Prices are
@@ -30,10 +41,11 @@ export const PRICES = {
   month: { lookup_key: 'kh_premium_month', unit_amount: 899, interval: 'month' as const, nickname: 'Premium monthly' },
   year:  { lookup_key: 'kh_premium_year',  unit_amount: 6900, interval: 'year' as const,  nickname: 'Premium annual' },
 }
-// Weekend Live Class seat — one-time payment (owner, 2026-10-28).
-export const LIVE_PRICE = { lookup_key: 'kh_live_class', unit_amount: 500, nickname: 'Live class seat' }
-const LIVE_HOLD_MS = 31 * 60 * 1000          // Stripe Checkout minimum lifetime is 30 min
-const LIVE_REFUND_MS = 24 * 3600 * 1000      // cancel up to 24 h before = full refund
+// Premium Live — monthly only, on its own product (owner, 2026-10-29).
+// billing-webhook maps this lookup_key to plan 'premium_live'.
+export const LIVE_PLAN_PRICE = { lookup_key: 'kh_premium_live_month', unit_amount: 2799, interval: 'month' as const, nickname: 'Premium Live monthly' }
+// Legacy $5 seats (sold until 2026-10-29): cancel up to 24 h before = full refund.
+const LIVE_REFUND_MS = 24 * 3600 * 1000
 const WEBHOOK_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] = [
   'checkout.session.completed',
   'checkout.session.expired',
@@ -79,7 +91,7 @@ async function ensurePrices(stripe: Stripe): Promise<Record<'month' | 'year', st
     if (!productId) {
       const prod = await stripe.products.create({
         name: 'KoreHani Premium',
-        description: 'Full Korean study program: Grammar Path, weekly writing with tutor review, reviews, live class.',
+        description: 'Full Korean self-study program: Grammar Path, weekly writing with tutor review, reviews.',
         metadata: { kh_product: 'premium' },
       })
       productId = prod.id
@@ -96,24 +108,28 @@ async function ensurePrices(stripe: Stripe): Promise<Record<'month' | 'year', st
   return { month: byKey[PRICES.month.lookup_key], year: byKey[PRICES.year.lookup_key] }
 }
 
-async function ensureLivePrice(stripe: Stripe): Promise<string> {
-  const found = await stripe.prices.list({ lookup_keys: [LIVE_PRICE.lookup_key], active: true, limit: 1 })
+async function ensureLivePlanPrice(stripe: Stripe): Promise<string> {
+  const found = await stripe.prices.list({ lookup_keys: [LIVE_PLAN_PRICE.lookup_key], active: true, limit: 1 })
   if (found.data[0]) return found.data[0].id
-  const existing = await stripe.products.search({ query: "metadata['kh_product']:'live_class'", limit: 1 }).catch(() => null)
+  const existing = await stripe.products.search({ query: "metadata['kh_product']:'premium_live'", limit: 1 }).catch(() => null)
   let productId = existing?.data?.[0]?.id || ''
   if (!productId) {
     const prod = await stripe.products.create({
-      name: 'KoreHani Weekend Live Class',
-      description: "One seat in this week's 60-minute live class on Zoom (this week's topic and articles).",
-      metadata: { kh_product: 'live_class' },
+      name: 'KoreHani Premium Live',
+      description: 'Everything in Premium, plus one live class every week with a seat included (Sunday 21:00 KST on Zoom, 60 min, 8 seats).',
+      metadata: { kh_product: 'premium_live' },
     })
     productId = prod.id
   }
   const price = await stripe.prices.create({
-    product: productId, currency: 'usd', unit_amount: LIVE_PRICE.unit_amount,
-    lookup_key: LIVE_PRICE.lookup_key, nickname: LIVE_PRICE.nickname,
+    product: productId, currency: 'usd', unit_amount: LIVE_PLAN_PRICE.unit_amount,
+    recurring: { interval: LIVE_PLAN_PRICE.interval }, lookup_key: LIVE_PLAN_PRICE.lookup_key, nickname: LIVE_PLAN_PRICE.nickname,
   })
   return price.id
+}
+
+function productOf(price: Stripe.Price): string {
+  return typeof price.product === 'string' ? price.product : price.product?.id
 }
 
 async function getUser(req: Request, supabaseUrl: string, anonKey: string) {
@@ -138,6 +154,53 @@ Deno.serve(async (req) => {
     if (!user?.id) return json({ ok: false, error: 'not_signed_in' }, 401)
     const isAdmin = user.email === ADMIN_EMAIL
 
+    // Weekend Live Class seats. Included seats need no Stripe call, so this
+    // runs before the Stripe client is required.
+    if (action === 'live_reserve' || action === 'live_cancel') {
+      const sessionId = String(body?.session_id || '')
+      if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return json({ ok: false, error: 'bad_session' }, 400)
+      const { data: ls } = await sb.from('weekly_live_sessions')
+        .select('id,title,scheduled_at,registration_deadline,max_attendees,is_cancelled').eq('id', sessionId).maybeSingle()
+      if (!ls || ls.is_cancelled) return json({ ok: false, error: 'no_session' }, 404)
+      const startMs = new Date(ls.scheduled_at).getTime()
+      const closeMs = Math.min(ls.registration_deadline ? new Date(ls.registration_deadline).getTime() : startMs, startMs)
+      const { data: mine } = await sb.from('weekly_live_registrations')
+        .select('id,status,stripe_payment_intent')
+        .eq('session_id', sessionId).eq('user_id', user.id).maybeSingle()
+
+      if (action === 'live_cancel') {
+        // Included (Premium Live) seat: free it while booking is still open.
+        if (mine && mine.status === 'comp') {
+          if (Date.now() >= closeMs) return json({ ok: false, error: 'too_late' }, 409)
+          const { error: delErr } = await sb.from('weekly_live_registrations').delete().eq('id', mine.id).eq('status', 'comp')
+          if (delErr) throw new Error('cancel: ' + delErr.message)
+          return json({ ok: true, cancelled: true })
+        }
+        // Legacy $5 seat: full refund up to 24 h before class.
+        if (!mine || mine.status !== 'paid' || !mine.stripe_payment_intent) return json({ ok: false, error: 'no_seat' }, 404)
+        if (startMs - Date.now() < LIVE_REFUND_MS) return json({ ok: false, error: 'too_late' }, 409)
+        const scRefund = await stripeClient(sb)
+        if (!scRefund) return json({ ok: false, error: 'billing_not_configured' }, 503)
+        await scRefund.stripe.refunds.create({ payment_intent: mine.stripe_payment_intent, metadata: { user_id: user.id, live_session_id: sessionId } })
+        await sb.from('weekly_live_registrations')
+          .update({ status: 'refunded', refunded_at: new Date().toISOString() }).eq('id', mine.id)
+        return json({ ok: true, refunded: true })
+      }
+
+      // live_reserve — Premium Live members only (seat included in the plan).
+      const { data: hasLive } = await sb.rpc('kh_has_live', { p_user: user.id })
+      if (!hasLive && !isAdmin) return json({ ok: false, error: 'live_only' }, 403)
+      if (Date.now() >= closeMs) return json({ ok: false, error: 'closed' }, 409)
+      if (mine && ['paid', 'comp'].includes(mine.status)) return json({ ok: false, error: 'already_booked' }, 409)
+      const { data: booked, error: bookErr } = await sb.rpc('kh_live_reserve_seat', { p_session: sessionId, p_user: user.id, p_email: user.email || null })
+      if (bookErr) throw new Error('reserve: ' + bookErr.message)
+      if (booked === 'full') return json({ ok: false, error: 'full' }, 409)
+      if (booked === 'booked') return json({ ok: false, error: 'already_booked' }, 409)
+      if (booked === 'no_session') return json({ ok: false, error: 'no_session' }, 404)
+      if (booked !== 'ok') return json({ ok: false, error: String(booked || 'reserve_failed') }, 409)
+      return json({ ok: true, booked: true })
+    }
+
     const sc = await stripeClient(sb)
     if (!sc) return json({ ok: false, error: 'billing_not_configured' }, 503)
     const stripe = sc.stripe
@@ -152,16 +215,21 @@ Deno.serve(async (req) => {
       }
       if (action === 'setup') {
         out.prices = await ensurePrices(stripe)
-        // Customer portal (cancel / card / invoices / switch monthly<->annual)
-        // needs a saved configuration. Its id is stored in app_settings
-        // 'stripe_portal_config_id' and passed to every portal session.
-        const priceObj = await stripe.prices.retrieve(out.prices.month)
-        const productId = typeof priceObj.product === 'string' ? priceObj.product : priceObj.product?.id
+        out.live_price = await ensureLivePlanPrice(stripe)
+        // Customer portal (cancel / card / invoices / switch monthly<->annual
+        // and Premium<->Premium Live) needs a saved configuration. Its id is
+        // stored in app_settings 'stripe_portal_config_id' and passed to every
+        // portal session.
+        const premiumProduct = productOf(await stripe.prices.retrieve(out.prices.month))
+        const liveProduct = productOf(await stripe.prices.retrieve(out.live_price))
         const subscriptionUpdate = {
           enabled: true,
           default_allowed_updates: ['price'],
           proration_behavior: 'create_prorations',
-          products: [{ product: productId, prices: [out.prices.month, out.prices.year] }],
+          products: [
+            { product: premiumProduct, prices: [out.prices.month, out.prices.year] },
+            { product: liveProduct, prices: [out.live_price] },
+          ],
         }
         const { data: storedConf } = await sb.from('app_settings').select('value').eq('key', 'stripe_portal_config_id').maybeSingle()
         let confId = String(storedConf?.value || '')
@@ -223,10 +291,15 @@ Deno.serve(async (req) => {
     const { data: sub } = await sb.from('user_subscriptions').select('*').eq('user_id', user.id).maybeSingle()
 
     if (action === 'checkout') {
-      const interval = body?.interval === 'year' ? 'year' : 'month'
-      const active = sub && sub.status === 'active' && ['premium', 'standard', 'pro'].includes(sub.plan) && (!sub.expires_at || new Date(sub.expires_at) > new Date())
-      if (active && sub.payment_provider === 'stripe') return json({ ok: false, error: 'already_subscribed' }, 409)
-      const prices = await ensurePrices(stripe)
+      // 'live' = Premium Live, monthly only (owner, 2026-10-29).
+      const wantLive = body?.plan === 'live'
+      const interval = wantLive ? 'month' : (body?.interval === 'year' ? 'year' : 'month')
+      const active = sub && sub.status === 'active' && ['premium', 'premium_live', 'standard', 'pro'].includes(sub.plan) && (!sub.expires_at || new Date(sub.expires_at) > new Date())
+      // A Stripe Premium member asking for Live is upgraded in place below;
+      // anything else on an active Stripe row is already subscribed.
+      if (active && sub.payment_provider === 'stripe' && !(wantLive && sub.plan !== 'premium_live')) {
+        return json({ ok: false, error: 'already_subscribed' }, 409)
+      }
       let customerId = sub?.stripe_customer_id || ''
       // Trial only on the user's first-ever subscription: our flag AND Stripe's history.
       let trialEligible = TRIAL_DAYS > 0 && !sub?.trial_used
@@ -234,11 +307,28 @@ Deno.serve(async (req) => {
         // Stripe is the source of truth: block a second live subscription even if
         // our row is stale (e.g. webhook lag or an admin manual plan change).
         const existing = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 })
-        if (existing.data.some((s: any) => ['trialing', 'active', 'past_due'].includes(s.status))) {
+        const current = existing.data.find((s: Stripe.Subscription) => ['trialing', 'active', 'past_due'].includes(s.status))
+        if (current) {
+          // Subscription items carry the full Price object, so lookup_key is here.
+          const onLive = current.items.data.some((it: Stripe.SubscriptionItem) => it.price?.lookup_key === LIVE_PLAN_PRICE.lookup_key)
+          if (wantLive && !onLive && current.items.data[0]) {
+            // Premium → Premium Live: switch the existing subscription's price
+            // (prorated) instead of opening a second checkout. billing-webhook
+            // picks up customer.subscription.updated and sets plan 'premium_live'.
+            const livePriceId = await ensureLivePlanPrice(stripe)
+            await stripe.subscriptions.update(current.id, {
+              items: [{ id: current.items.data[0].id, price: livePriceId }],
+              proration_behavior: 'create_prorations',
+              cancel_at_period_end: false,
+              metadata: { ...current.metadata, user_id: current.metadata?.user_id || user.id },
+            })
+            return json({ ok: true, upgraded: true })
+          }
           return json({ ok: false, error: 'already_subscribed' }, 409)
         }
         if (existing.data.length) trialEligible = false
       }
+      const priceId = wantLive ? await ensureLivePlanPrice(stripe) : (await ensurePrices(stripe))[interval]
       if (!customerId) {
         const c = await stripe.customers.create({ email: user.email || undefined, metadata: { user_id: user.id } })
         customerId = c.id
@@ -251,14 +341,14 @@ Deno.serve(async (req) => {
         mode: 'subscription',
         customer: customerId,
         client_reference_id: user.id,
-        line_items: [{ price: prices[interval], quantity: 1 }],
+        line_items: [{ price: priceId, quantity: 1 }],
         allow_promotion_codes: true,
         subscription_data: {
           metadata: { user_id: user.id },
           ...(trialEligible ? { trial_period_days: TRIAL_DAYS } : {}),
         },
-        metadata: { user_id: user.id, product: 'kh-premium' },
-        success_url: `${APP_BASE_URL}/korehan-courses.html?billing=ok&trial=${trialEligible ? 1 : 0}`,
+        metadata: { user_id: user.id, product: wantLive ? 'kh-premium-live' : 'kh-premium' },
+        success_url: `${APP_BASE_URL}/korehan-courses.html?billing=ok&plan=${wantLive ? 'live' : 'premium'}&trial=${trialEligible ? 1 : 0}`,
         cancel_url: `${APP_BASE_URL}/korehan-courses.html?billing=cancel`,
       })
       return json({ ok: true, url: session.url, trial: trialEligible })
@@ -273,77 +363,6 @@ Deno.serve(async (req) => {
         return_url: `${APP_BASE_URL}/korehan-courses.html`,
       })
       return json({ ok: true, url: portal.url })
-    }
-
-    if (action === 'live_checkout' || action === 'live_cancel') {
-      const sessionId = String(body?.session_id || '')
-      if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return json({ ok: false, error: 'bad_session' }, 400)
-      const { data: ls } = await sb.from('weekly_live_sessions')
-        .select('id,title,scheduled_at,registration_deadline,max_attendees,is_cancelled').eq('id', sessionId).maybeSingle()
-      if (!ls || ls.is_cancelled) return json({ ok: false, error: 'no_session' }, 404)
-      const startMs = new Date(ls.scheduled_at).getTime()
-      const { data: mine } = await sb.from('weekly_live_registrations')
-        .select('id,status,hold_until,stripe_session_id,stripe_payment_intent')
-        .eq('session_id', sessionId).eq('user_id', user.id).maybeSingle()
-
-      if (action === 'live_cancel') {
-        if (!mine || mine.status !== 'paid' || !mine.stripe_payment_intent) return json({ ok: false, error: 'no_paid_seat' }, 404)
-        if (startMs - Date.now() < LIVE_REFUND_MS) return json({ ok: false, error: 'too_late' }, 409)
-        await stripe.refunds.create({ payment_intent: mine.stripe_payment_intent, metadata: { user_id: user.id, live_session_id: sessionId } })
-        await sb.from('weekly_live_registrations')
-          .update({ status: 'refunded', refunded_at: new Date().toISOString() }).eq('id', mine.id)
-        return json({ ok: true, refunded: true })
-      }
-
-      // live_checkout — Premium members only.
-      const { data: premium } = await sb.rpc('kh_is_premium', { p_user: user.id })
-      if (!premium && !isAdmin) return json({ ok: false, error: 'premium_only' }, 403)
-      const closeMs = Math.min(ls.registration_deadline ? new Date(ls.registration_deadline).getTime() : startMs, startMs)
-      if (Date.now() >= closeMs) return json({ ok: false, error: 'closed' }, 409)
-      if (mine && ['paid', 'comp'].includes(mine.status)) return json({ ok: false, error: 'already_booked' }, 409)
-      const now = Date.now()
-      if (mine && mine.status === 'pending' && mine.hold_until && new Date(mine.hold_until).getTime() > now + 60_000 && mine.stripe_session_id) {
-        // Checkout already open for this seat — send them back to it.
-        const open = await stripe.checkout.sessions.retrieve(mine.stripe_session_id).catch(() => null) as any
-        if (open && open.status === 'open' && open.url) return json({ ok: true, url: open.url })
-      }
-      const holdUntil = new Date(now + LIVE_HOLD_MS).toISOString()
-      const { data: held, error: holdErr } = await sb.rpc('kh_live_hold_seat', { p_session: sessionId, p_user: user.id, p_email: user.email || null, p_hold_until: holdUntil })
-      if (holdErr) throw new Error('hold: ' + holdErr.message)
-      if (held === 'full') return json({ ok: false, error: 'full' }, 409)
-      if (held === 'booked') return json({ ok: false, error: 'already_booked' }, 409)
-      if (held !== 'ok') return json({ ok: false, error: String(held || 'hold_failed') }, 409)
-      const release = () => sb.from('weekly_live_registrations').delete()
-        .eq('session_id', sessionId).eq('user_id', user.id).eq('status', 'pending')
-
-      let session: Stripe.Checkout.Session
-      try {
-      const priceId = await ensureLivePrice(stripe)
-      let customerId = sub?.stripe_customer_id || ''
-      if (!customerId) {
-        const c = await stripe.customers.create({ email: user.email || undefined, metadata: { user_id: user.id } })
-        customerId = c.id
-        await sb.from('user_subscriptions').upsert({
-          user_id: user.id, stripe_customer_id: customerId,
-          plan: sub?.plan || 'free', status: sub?.status || 'active', updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' })
-      }
-      const meta = { user_id: user.id, product: 'kh-live-class', live_session_id: sessionId }
-      session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        customer: customerId,
-        client_reference_id: user.id,
-        line_items: [{ price: priceId, quantity: 1 }],
-        metadata: meta,
-        payment_intent_data: { metadata: meta, description: 'Live class seat — ' + new Date(ls.scheduled_at).toISOString().slice(0, 10) },
-        expires_at: Math.floor((now + LIVE_HOLD_MS) / 1000),
-        success_url: `${APP_BASE_URL}/korehan-courses.html?live=ok#live`,
-        cancel_url: `${APP_BASE_URL}/korehan-courses.html?live=cancel#live`,
-      })
-      } catch (e) { await release(); throw e }
-      await sb.from('weekly_live_registrations').update({ stripe_session_id: session.id })
-        .eq('session_id', sessionId).eq('user_id', user.id)
-      return json({ ok: true, url: session.url })
     }
 
     return json({ ok: false, error: 'unknown_action' }, 400)

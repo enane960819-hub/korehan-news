@@ -1347,7 +1347,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-<script src="js/core/plans.js?v=20261029s"></script>
+<script src="js/core/plans.js?v=20261029pl"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/phrases.js?v=20261029a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
@@ -2652,11 +2652,12 @@ async function _mpRenderPlanCard() {
   if (!sec || !body || !sb || !supaUser) return;
   var r = await sb.from('user_subscriptions').select('plan,status,expires_at,payment_provider,cancel_at_period_end').eq('user_id', supaUser.id).maybeSingle();
   var row = r && r.data;
-  var live = row && row.status === 'active' && ['premium','standard','pro'].indexOf(row.plan) >= 0 && (!row.expires_at || new Date(row.expires_at) > new Date());
+  var live = row && row.status === 'active' && ['premium','premium_live','standard','pro'].indexOf(row.plan) >= 0 && (!row.expires_at || new Date(row.expires_at) > new Date());
+  var planName = live && row.plan === 'premium_live' ? 'Premium Live' : 'Premium';
   var esc = function(x){ return String(x).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
   var until = live && row.expires_at ? new Date(row.expires_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }) : '';
   var left = live
-    ? '<i data-lucide="crown" aria-hidden="true"></i><span class="mp-li-t">Premium<small>'
+    ? '<i data-lucide="crown" aria-hidden="true"></i><span class="mp-li-t">' + planName + '<small>'
       + (row.cancel_at_period_end ? 'Cancelled — access until ' + esc(until) : (until ? 'Renews ' + esc(until) : 'Active')) + '</small></span>'
     : '<i data-lucide="crown" aria-hidden="true"></i><span class="mp-li-t">Free plan<small>Upgrade for unlimited lessons &amp; feedback</small></span>';
   var right = live && row.payment_provider === 'stripe'

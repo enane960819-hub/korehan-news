@@ -8021,9 +8021,9 @@ async function loadWeakGrammarBanner() {
   }
 }
 
-// ── Weekend Live Class card (Premium benefit) ──
-// Shows the next Sunday class with a countdown; Premium members see
-// "Register / Join", free members see the Premium hook. The Zoom link
+// ── Weekend Live Class card (Premium Live benefit) ──
+// Shows the next Sunday class with a countdown; Premium Live members see
+// "Reserve my seat / Join", everyone else sees the Premium Live hook. The Zoom link
 // itself is never loaded here (courses page → get_live_zoom_link()).
 // Re-render plan-dependent cards once the plan is known (Premium users saw
 // "Try Premium" when the plan loaded after the card).
@@ -8041,10 +8041,11 @@ async function _srRenderLiveClassCard() {
     var live = now >= start && now < start + 90 * 60000;
     var mins = Math.max(0, Math.round((start - now) / 60000));
     var when = live ? 'Live now' : (mins < 60 ? 'Starts in ' + mins + ' min' : (mins < 1440 ? 'In ' + Math.round(mins / 60) + ' h' : new Date(start).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })));
-    var premium = typeof getUserPlan === 'function' && getUserPlan() === 'premium';
+    // Seat included in Premium Live only (owner, 2026-10-29).
+    var hasLive = typeof khHasLive === 'function' && khHasLive();
     document.getElementById('sr-notif-live-title').textContent = (live ? '🔴 ' : '') + (s.title || 'Weekend Live Class');
-    document.getElementById('sr-notif-live-sub').textContent = when + ' · Zoom · 60 min · $5' + (premium ? '' : ' · Premium members');
-    document.getElementById('sr-notif-live-cta').textContent = premium ? (live ? 'Join →' : 'Book a seat →') : 'Try Premium →';
+    document.getElementById('sr-notif-live-sub').textContent = when + ' · Zoom · 60 min' + (hasLive ? ' · seat included' : ' · Premium Live');
+    document.getElementById('sr-notif-live-cta').textContent = hasLive ? (live ? 'Join →' : 'Reserve my seat →') : 'See Premium Live →';
     card.style.display = '';
   } catch (_) {}
 }
@@ -9663,7 +9664,7 @@ async function submitAllWritingsToday() {
     if (_submitLabel) _submitLabel.textContent = 'Submitting…';
     var res = await _submitWeeklyPackage();
     if (res.id) _triggerPackageFeedback(res.id, res.items);
-    showToast((typeof getUserPlan === 'function' && getUserPlan() === 'premium')
+    showToast((typeof khIsPremiumPlan === 'function' && khIsPremiumPlan())
       ? 'Submitted! AI feedback in about a minute — your tutor review follows within 48h.'
       : 'Submitted! Your AI feedback will be ready in about a minute.');
     if (typeof _startFeedbackArrivalPoll === 'function') setTimeout(_startFeedbackArrivalPoll, 800);
@@ -10246,7 +10247,7 @@ function _wmRenderFeedback(fb, state) {
     box.innerHTML = '<div style="' + card + ';font-size:13px;color:#86efac">✅ Submitted! Your AI tutor is reading your writing… (about 20 seconds)</div>';
     return;
   }
-  var premium = typeof getUserPlan === 'function' && getUserPlan() === 'premium';
+  var premium = typeof khIsPremiumPlan === 'function' && khIsPremiumPlan();
   var tutorLine = premium
     ? '<div style="margin-top:10px;font-size:12px;color:#fcd34d">⭐ Premium · a human tutor review will arrive within 48h.</div>'
     : '<div style="margin-top:10px;font-size:12px;color:#94a3b8">Want a real tutor to review your writing? <a href="korehan-courses.html" style="color:#fcd34d;font-weight:700">Premium →</a></div>';

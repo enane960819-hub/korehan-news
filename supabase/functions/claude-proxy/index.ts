@@ -41,7 +41,7 @@ const ADMIN_EMAILS = ['enane960819@gmail.com']
 // `supabase/migrations/20260428_tutor_dashboard.sql#is_tutor_user`.
 const TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com']
 
-// AI features only Premium (and legacy standard / pro) accounts may call.
+// AI features only Premium (Premium Live, and legacy standard / pro) accounts may call.
 const PREMIUM_ONLY_FEATURES = new Set(['daily_package_feedback'])
 
 // Tutor-only feature prefix that's allowed to bypass MAX_INPUT_BYTES.
@@ -172,8 +172,9 @@ Deno.serve(async (req) => {
     let userPlan = 'free'
     if (!isAdmin) {
       // Plan resolution. Source of truth is user_subscriptions (written by
-      // billing-webhook): an active, unexpired premium row gets the Premium
-      // limits; legacy standard / pro rows keep their own. Override row in
+      // billing-webhook): an active, unexpired premium or premium_live row gets
+      // the Premium limits (Premium Live = Premium + live class, same AI
+      // access); legacy standard / pro rows keep their own. Override row in
       // user_quota_overrides wins over plan defaults if set.
       let dailyCallLimit  = FREE_DAILY_CALLS
       let monthlyUsdLimit = FREE_MONTHLY_USD
@@ -186,7 +187,7 @@ Deno.serve(async (req) => {
         const live = sub && sub.status === 'active' && (!sub.expires_at || new Date(sub.expires_at) > new Date())
         const plan = live ? String(sub.plan || 'free') : 'free'
         userPlan = plan
-        if (plan === 'premium' || plan === 'standard') {
+        if (plan === 'premium' || plan === 'premium_live' || plan === 'standard') {
           dailyCallLimit  = STANDARD_DAILY_CALLS
           monthlyUsdLimit = STANDARD_MONTHLY_USD
         } else if (plan === 'pro') {
