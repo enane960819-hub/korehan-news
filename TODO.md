@@ -22,10 +22,11 @@ emoji-icons observer loop fix. Owner preview login: `korehani.com/?p=…`
 
 Owner decisions still open:
 - **Anthropic credit is empty** — every AI feature fails until topped up.
-- **Re-review stored AI content** (needs credit): article_cache 446 rows,
-  vocabulary_bank ~4.2k unreviewed, grammar_examples_cache 92,
-  conversations 52 (`qa_at is null`). Estimate given: Haiku ≈ $6 /
-  Sonnet ≈ $18 for article analyses alone. Ask before running.
+- Stored AI content: article analyses (261 articles + 180 Grammar tabs) and
+  Seed/Sprout Word Bank meanings (270 fixes) were hand-reviewed and applied
+  2026-10-29 (PRs #937, #938). Still unreviewed: Tree/Forest vocabulary_bank
+  meanings, grammar_examples_cache (92), conversations (52). Word Bank 'daily'
+  tag is a catch-all (Seed: 189 of 340) — re-tag if topics matter.
 - Azure TTS key (tts-proxy returns 503 → device voice).
 - Word Bank examples from 한국어기초사전 are often too hard for Seed/Sprout.
 
