@@ -3925,6 +3925,12 @@ async function renderAllPage() {
   // it used to start from the full list and drop the search.
   window._allArticlesCache = articles;
   // A background refresh re-runs this; keep the learner's chosen level.
+  // ?level=Starter|Beginner|Intermediate|Advanced (Beginner's Guide links)
+  // picks the level on first paint.
+  if (window._allLevel === undefined) {
+    var _qlv = (location.search.match(/[?&]level=(Starter|Beginner|Intermediate|Advanced)\b/) || [])[1];
+    if (_qlv) window._allLevel = _qlv;
+  }
   var _lv = window._allLevel;
   if (_lv && _lv !== 'All') {
     var _pill = document.querySelector('#all-level-filter [data-level="' + _lv + '"]');

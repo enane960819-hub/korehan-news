@@ -85,7 +85,12 @@ function _khEmoTextNode(tn) {
 function _khEmoAttrs(el) {
   ['title', 'placeholder', 'aria-label', 'alt'].forEach(function(a) {
     var v = el.getAttribute && el.getAttribute(a);
-    if (v && KH_EMOJI_RE.test(v)) el.setAttribute(a, khStripEmoji(v));
+    if (v && KH_EMOJI_RE.test(v)) {
+      // Kept symbols (✓ ★ …) still match the regex; writing an unchanged
+      // value re-fired the attribute observer forever and froze the tab.
+      var nv = khStripEmoji(v);
+      if (nv !== v) el.setAttribute(a, nv);
+    }
     KH_EMOJI_RE.lastIndex = 0;
   });
 }

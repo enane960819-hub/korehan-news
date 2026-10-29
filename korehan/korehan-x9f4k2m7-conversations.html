@@ -83,6 +83,44 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:'DM Sans','Noto Sans 
 .gate{max-width:420px;margin:80px auto;text-align:center;color:#334155}
 #kh-daily-mission,.mobile-bottom-nav,.mobile-sticky-study,#kh-header,#kh-footer{display:none!important}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:9px 14px;border-radius:10px;font-size:12.5px;z-index:99;display:none}
+.ca-back{display:none}
+/* Tablet: drop the preview column under the form. */
+@media (max-width:1100px){
+  .list{width:320px}
+  .eb{flex-direction:column}
+  .form{overflow:visible}
+  .prev{width:auto;border-left:0;border-top:1px solid #e5e9f0}
+  .ed{overflow-y:auto}
+}
+/* Phone: one pane at a time — the list, or the open conversation with a
+   back button. Panes grow with the page instead of fixed 100vh boxes. */
+@media (max-width:820px){
+  .top{height:auto;min-height:54px;flex-wrap:wrap;gap:4px 10px;padding:10px 16px}
+  .top a{margin:0 12px 0 0}
+  .app{display:block;height:auto}
+  .list{width:auto;border-right:0}
+  .app.has-cur .list{display:none}
+  .app:not(.has-cur) .ed{display:none}
+  .rows{overflow:visible}
+  .lr{padding:10px 16px}
+  .ed{overflow:visible}
+  .ca-back{display:inline-block}
+  .eh{flex-wrap:wrap;padding:12px 16px}
+  .form{padding:12px 16px}
+  .grid{grid-template-columns:1fr 1fr!important}
+  .ln{grid-template-columns:1fr auto auto;grid-template-areas:"who opt mv" "ko ko ko" "en en en";padding:8px 0;border-bottom:1px solid #eef1f5}
+  .ln select{grid-area:who}
+  .ln input.ko{grid-area:ko}
+  .ln input:not(.ko){grid-area:en}
+  .ln .opt{grid-area:opt;padding:6px 8px}
+  .ln .mv{grid-area:mv}
+  .ln .mv button{min-width:30px}
+  .ow,.kx{grid-template-columns:1fr 28px}
+  .ow input:nth-child(2),.kx input:nth-child(2){grid-column:1}
+  .prev{padding:12px 16px}
+  .foot{flex-wrap:wrap;padding:10px 16px;position:sticky;bottom:0}
+  .foot .hint{flex-basis:100%}
+}
 </style>
 </head>
 <body>
@@ -98,7 +136,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:'DM Sans','Noto Sans 
 <script src="js/core/plans.js?v=20261029s"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
 <script src="js/features/sidebar.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029s"></script>
+<script src="korehan-shared.js?v=20261029t"></script>
 <script src="js/features/conv-page.js?v=20261029s"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -164,6 +202,7 @@ function caRender(){
   var n = { published: CA.rows.filter(function(r){ return r.status==='published'; }).length, draft: CA.rows.filter(function(r){ return r.status==='draft'; }).length, flagged: CA.rows.filter(function(r){ return flagsOf(r).length; }).length };
   var list = caVisible();
   var app = document.getElementById('app');
+  app.className = 'app' + (CA.cur ? ' has-cur' : '');
   app.innerHTML = '<div class="list"><div class="lh"><div class="lh-t"><b>Conversations</b><span><button class="btn g" onclick="caReviewAll()" title="AI review of drafts not reviewed yet">Review drafts</button> <button class="btn" onclick="caNew()">+ New</button></span></div>'
     + '<div class="tabs">' + [['draft','Drafts'],['flagged','Flagged'],['published','Published']].map(function(t){ return '<button class="' + (CA.tab===t[0]?'on':'') + '" onclick="CA.tab=\'' + t[0] + '\';caRender()">' + t[1] + '<i>' + n[t[0]] + '</i></button>'; }).join('') + '</div>'
     + '<div class="tabs">' + [['','All levels'],['s','Seed'],['b','Sprout'],['i','Tree'],['a','Forest']].map(function(t){ return '<button class="' + (CA.lvl===t[0]?'on':'') + '" onclick="CA.lvl=\'' + t[0] + '\';caRender()">' + t[1] + '</button>'; }).join('') + '</div>'
@@ -202,6 +241,13 @@ function caOpen(id){
   try { history.replaceState(null, '', '?id=' + id); } catch(_) {}
   caRender();
 }
+// Phone layout shows one pane at a time: back from the editor to the list.
+function caBack(){
+  if (CA.dirty && !confirm('Discard unsaved changes?')) return;
+  CA.cur = null; CA.dirty = false; CA.openOpt = -1;
+  try { history.replaceState(null, '', location.pathname); } catch(_) {}
+  caRender();
+}
 function caNew(){
   if (CA.dirty && !confirm('Discard unsaved changes?')) return;
   CA.cur = { id:null, row:null, d:{}, status:'draft', lvl:'b', cat:'everyday', title:'', ctx:'', a:'', b:'', speech:{}, msgs:[{ s:'l', who:'', txt:'', en:'' },{ s:'r', who:'', txt:'', en:'' }], kx:[], flags:[] };
@@ -225,7 +271,7 @@ function caRenderEditor(){
   var flagByLine = {}; (c.flags||[]).forEach(function(f){ (flagByLine[f.line] = flagByLine[f.line] || []).push(f); });
   var speakers = [c.a, c.b].filter(Boolean);
   var castOpts = CA.cast.map(function(n){ return '<option value="' + e(n) + '">'; }).join('');
-  ed.innerHTML = '<div class="eh"><div><b>' + e(c.title || 'New conversation') + '</b><small>' + (c.id ? (c.status==='draft' ? 'Draft' : 'Published') + ' · #' + c.id : 'Not saved yet') + (c.flags.length ? ' · reviewer flagged ' + c.flags.length : (c.row && c.row.qa_report ? ' · reviewed' : '')) + '</small></div>'
+  ed.innerHTML = '<div class="eh"><button class="btn g ca-back" onclick="caBack()">← List</button><div><b>' + e(c.title || 'New conversation') + '</b><small>' + (c.id ? (c.status==='draft' ? 'Draft' : 'Published') + ' · #' + c.id : 'Not saved yet') + (c.flags.length ? ' · reviewer flagged ' + c.flags.length : (c.row && c.row.qa_report ? ' · reviewed' : '')) + '</small></div>'
     + '<span><button class="btn g" onclick="caReview()" id="ca-rv">Review with AI</button> ' + (c.id ? '<button class="btn r" onclick="caDelete()">Delete</button>' : '') + '</span></div>'
     + '<div class="eb"><div class="form">'
     + '<div class="grid">'
