@@ -118,8 +118,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (!list.length) { grid.innerHTML = '<div class="rpl-loading">No reporter info.</div>'; return; }
 
+  // Random stock photos (picsum.photos) and the 1x1 seed placeholder are not
+  // the reporter — use the initials tile instead.
+  function realImg(u) { u = String(u || ''); return (/picsum\.photos/i.test(u) || /^data:image\/gif;base64,R0lGODlhAQABA/.test(u)) ? '' : u; }
   grid.innerHTML = list.map(function(r) {
     var color = r.color || '#2563eb';
+    r.image = realImg(r.image);
     var imgHtml = r.image
       ? '<img class="rpl-img" src="' + r.image + '" alt="' + r.name + '" onerror="this.parentNode.innerHTML=\'<div class=rpl-ph style=background:' + color + '>' + r.name.charAt(0) + '</div>\'">'
       : '<div class="rpl-ph" style="background:' + color + '">' + r.name.charAt(0) + '</div>';
