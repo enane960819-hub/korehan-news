@@ -10,30 +10,36 @@ Sheet 2: beret, sakura-pin, earmuffs, black-bow, bear-clip, bunny-clip, flower-c
 heart-glasses, headband, bucket-hat (all kept; the crown's inner background hole was cleared).
 Not used by the site yet — the editor is being built.
 
-Accessory anchors tested on base-long (352x736): centre x, y, drawn width, y mode
+Accessory anchors tested on base-long (176x368): centre x, y, drawn width, y mode
 (bottom = sprite bottom sits at y, centre = sprite centre at y).
 
 | item | x | y | width | mode |
 |------|---|---|-------|------|
-| cap | 180 | 138 | 300 | bottom |
-| beanie | 180 | 132 | 290 | bottom |
-| crown | 180 | 72 | 170 | bottom |
-| catears | 180 | 98 | 280 | bottom |
-| bow | 270 | 70 | 110 | centre |
-| sunglasses | 178 | 210 | 215 | centre |
-| beret | 185 | 122 | 290 | bottom |
-| sakura-pin | 272 | 100 | 120 | centre |
-| earmuffs | 180 | 242 | 345 | bottom |
-| black-bow | 180 | 40 | 150 | centre |
-| bear-clip | 98 | 102 | 88 | centre |
-| bunny-clip | 262 | 102 | 88 | centre |
-| flower-crown | 180 | 78 | 290 | centre |
-| heart-glasses | 178 | 212 | 220 | centre |
-| headband | 180 | 190 | 300 | bottom |
-| bucket-hat | 180 | 142 | 320 | bottom |
+| cap | 90 | 69 | 150 | bottom |
+| beanie | 90 | 66 | 145 | bottom |
+| crown | 90 | 36 | 85 | bottom |
+| catears | 90 | 49 | 140 | bottom |
+| bow | 135 | 35 | 55 | centre |
+| sunglasses | 89 | 105 | 108 | centre |
+| beret | 92 | 61 | 145 | bottom |
+| sakura-pin | 136 | 50 | 60 | centre |
+| earmuffs | 90 | 121 | 172 | bottom |
+| black-bow | 90 | 20 | 75 | centre |
+| bear-clip | 49 | 51 | 44 | centre |
+| bunny-clip | 131 | 51 | 44 | centre |
+| flower-crown | 90 | 39 | 145 | centre |
+| heart-glasses | 89 | 106 | 110 | centre |
+| headband | 90 | 95 | 150 | bottom |
+| bucket-hat | 90 | 71 | 160 | bottom |
 
-Outfits done: long-*, short-* (hanbok, uniform, knit, barista).
+Outfits (all four hair bases): hanbok, uniform, knit, barista, street, cute, summer,
+pajamas, halloween = 9 per base, 36 total. long/short hanbok-barista come from the large
+per-character sheets; everything else from the 36-figure sheet (cut along seams, upscaled
+from ~280 px, so slightly softer). Some looks have headwear drawn in (street cap/beret,
+cute cat ears/beret, hanbok flower pin, summer hat/heart glasses, pajama headbands,
+witch hat, red hood): the editor should hide head accessories on those.
+All body sprites are stored at half the original scale (base-long 176x368).
 Room: korehan/assets/room/theme-default.png is the new default room (square, baseboard
 60-64% down, floor below); every room theme copies its layout. Not wired yet.
 
-Next: outfits for bob/curly, green-hair mask sheet.
+Next: green-hair mask sheet (optional), editor.
