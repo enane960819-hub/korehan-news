@@ -4,6 +4,9 @@
 // Production writes are blocked (see lib.mjs). Checks the RESULT of each action,
 // not just "page loads".
 import * as Q from './lib.mjs';
+// Live serves / and extensionless paths (korehani.com 308s .html away); local serves .html.
+const isHome = (u) => /\/(index(\.html)?)?([?#].*)?$/.test(new URL(u).pathname + new URL(u).search);
+const artId = (u) => new URL(u).searchParams.get('id');
 const { check, info } = Q;
 
 // Article with a full AI cache (translation, vocab, fill-in-the-blank), since
@@ -24,7 +27,7 @@ for (const mobile of [true, false]) {
 
   // ── Home ────────────────────────────────────────────────────
   await Q.go(page, 'index.html', { wait: 4000 });
-  check(/index/.test(page.url()), tag + ' home: signed-in user stays on index');
+  check(isHome(page.url()), tag + ' home: signed-in user stays on index');
   const plan = () => page.evaluate(() => Array.from(document.querySelectorAll('.kt-st')).map((a) => a.classList.contains('done')));
   check((await plan()).length === 3, tag + ' home: Today card shows 3 plan steps');
   await page.evaluate(() => { Object.keys(localStorage).filter((k) => /kh_phrase_seen_/.test(k)).forEach((k) => localStorage.removeItem(k)); if (window._khTodayRepaint) window._khTodayRepaint(); });
@@ -33,7 +36,7 @@ for (const mobile of [true, false]) {
   if (await play.count()) {
     await play.click(); await page.waitForTimeout(800);
     check((await plan())[2] === true, tag + ' home: Listen to today\'s phrase ticks the phrase step');
-    check(/index/.test(page.url()), tag + ' home: Listen does not navigate away');
+    check(isHome(page.url()), tag + ' home: Listen does not navigate away');
     await page.reload(); await page.waitForTimeout(3000);
     check((await plan())[2] === true, tag + ' home: phrase step still ticked after reload');
   } else Q.fail(tag + ' home: no phrase Listen button');
@@ -112,7 +115,7 @@ for (const mobile of [true, false]) {
     const lq0 = await page.evaluate(() => document.getElementById('art-listening-quiz').innerText.match(/\((\d+)\/(\d+)\)/));
     // two clicks on the same option in one go (a coordinate dblclick could land on Play
     // while the step was still smooth-scrolling)
-    await page.locator('#art-listening-quiz button').nth(1).evaluate((el) => { el.click(); el.click(); }); await page.waitForTimeout(1300);
+    await page.locator('#art-listening-quiz button').nth(1).evaluate((el) => { el.click(); el.click(); }); await page.waitForTimeout(2000);
     const lqt = await page.evaluate(() => document.getElementById('art-listening-quiz').innerText);
     check(lq0 && new RegExp('\\(2/' + lq0[2] + '\\)').test(lqt), tag + ' article: double tap in listening quiz advances one question only', lqt.slice(0, 60));
     for (let i = 0; i < 6; i++) { const b = page.locator('#art-listening-quiz button').nth(1); if (!(await b.count())) break; await b.click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(1000); }
@@ -146,13 +149,13 @@ for (const mobile of [true, false]) {
   await page.waitForTimeout(4000);
   check(page.url() !== id0, tag + ' article: Next article loads another article');
   check(await page.evaluate(() => (document.querySelector('.art-tab.on') || {}).textContent === 'Read'), tag + ' article: next article opens on the Read tab');
-  if (!mobile) { await page.waitForTimeout(1500); await page.evaluate(() => document.getElementById('kh-feed-prev-pill').click()); await page.waitForTimeout(4000); check(page.url() === id0, tag + ' article: Prev returns to the first article'); }
+  if (!mobile) { await page.waitForTimeout(1500); await page.evaluate(() => document.getElementById('kh-feed-prev-pill').click()); await page.waitForTimeout(4000); check(artId(page.url()) === artId(id0), tag + ' article: Prev returns to the first article'); }
   // empty comment never posts
   const nb = Q.blocked.length;
   await page.click('.comment-submit-btn').catch(() => {}); await page.waitForTimeout(800);
   check(!Q.blocked.slice(nb).some((x) => /comment/.test(x)), tag + ' article: empty comment is not posted');
   await page.click('#kh-reading-back'); await page.waitForTimeout(2500);
-  check(/index/.test(page.url()), tag + ' article: back arrow returns home');
+  check(isHome(page.url()), tag + ' article: back arrow returns home');
   Q.reportErrs(page, tag + ' article');
 
   // ── Conversations (Free) ────────────────────────────────────
