@@ -374,6 +374,11 @@ supabase functions deploy claude-proxy
   replace calls to `foo` made inside an earlier file that also declares it — raw local serving hides this (My
   Words drew the old Word Book list, 2026-10-30). To override a function, delete the old declaration. Run the
   click-through QA (`scripts/qa/*.mjs`) against `node scripts/qa/prodlike.mjs` output, not raw `korehan/`.
+- **Large Korean-text migrations can arrive with broken characters (U+FFFD).** The Supabase query API
+  mangled multi-byte characters in big payloads (2026-10-30/31: article_cache, grammar_examples_cache),
+  even with `jq -Rsa` escapes. For big seeds / repairs send the text as base64 and let Postgres decode
+  it (`convert_from(decode('<b64>', 'base64'), 'UTF8')`, see `20261031_fix_broken_chars_article_cache_b64.sql`),
+  and scan the table for U+FFFD after it applies.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 
