@@ -9938,6 +9938,26 @@ function _khBadgeViewsRefresh() {
   }, 0);
 }
 
+// The streak every page shows: consecutive KST days with daily_missions activity (the same
+// rule as Home's Today card). user_stats.streak is browser-written and can be stale — never
+// show it for the signed-in learner. Other learners: kh_user_streak RPC
+// (20261030_kh_user_streak.sql). One fetch per page load.
+var _khActStreakP = null;
+function khActivityStreak(userId) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  var me = window.supaUser && window.supaUser.id;
+  if (!sb || !(userId || me)) return Promise.resolve(null);
+  if (userId && userId !== me) {
+    return sb.rpc('kh_user_streak', { p_user: userId }).then(function (r) { return (r && !r.error && typeof r.data === 'number') ? r.data : null; }, function () { return null; });
+  }
+  if (!_khActStreakP) {
+    _khActStreakP = (typeof fetchActivityStreakFromDB === 'function')
+      ? Promise.resolve(fetchActivityStreakFromDB(sb, me)).then(function (n) { return typeof n === 'number' ? n : null; }, function () { return null; })
+      : Promise.resolve(null);
+  }
+  return _khActStreakP;
+}
+
 function getCurrentStreak() {
   var log = lsGet('kh_study_log', {});
   var days = lsGet('kh_study_days', {});
@@ -12850,10 +12870,13 @@ function _fjShowResumeBtn() {
   if (_fjAllDone()) return;
   if (document.getElementById('fj-resume')) return;
   if (pageName() === 'index' || pageName() === 'korehan-article') return;
+  // Not over the full-screen games (it covered Word Drop's START button).
+  if (pageName().indexOf('korehan-fun-') === 0) return;
   var btn = document.createElement('button');
   btn.id = 'fj-resume';
   btn.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:1000;width:44px;height:44px;border-radius:50%;background:#0f1a2e;border:1px solid rgba(56,189,248,.25);color:#38bdf8;font-size:18px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;transition:transform .15s';
-  btn.innerHTML = '<i data-lucide="target" class="kh-ui-icon" aria-hidden="true"></i>';
+  // Compass, not target: the Daily Mission chip right next to it already uses the target icon.
+  btn.innerHTML = '<i data-lucide="compass" class="kh-ui-icon" aria-hidden="true"></i>';
   btn.title = 'Resume First Journey';
   btn.setAttribute('aria-label', 'Resume First Journey');
   btn.onclick = function() {

@@ -49,7 +49,7 @@ Also reporters cr6/cr9/cr10, cigar + fennec + hedgehog portraits.
 Character editor: sprites (korehan/assets/avatar/, 4 hair bases x 9 outfits + 16
 accessories) and room themes (korehan/assets/room/themes/, 7 of 10) are in, not wired;
 mockup sent, waiting for the owner's OK on the editor + unlock prices. Follow-ups: block_user doesn't remove room likes;
-user_stats.streak is browser-written (unlock streak uses the server ledger).
+user_stats.streak is browser-written and can be stale: every streak display now uses the daily_missions activity streak (khActivityStreak / kh_user_streak, 2026-10-30); room unlocks use the server ledger.
 
 Owner decisions still open:
 - **Anthropic credit is empty** — every AI feature fails until topped up.

@@ -86,7 +86,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 
 /* Screens — gradient backdrop matching the game backdrop so the
    start / end overlays feel part of the same world. */
-.start-screen,.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 60% at 50% 30%,rgba(124,58,237,.25),transparent 70%),rgba(4,6,15,.95);z-index:10;border-radius:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.start-screen,.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 60% at 50% 30%,rgba(124,58,237,.25),transparent 70%),#04060f;z-index:10;border-radius:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .big-btn{padding:16px 42px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed,#ec4899);background-size:200% 200%;color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:20px;box-shadow:0 8px 32px rgba(124,58,237,.45),0 0 28px rgba(125,211,252,.3);transition:transform .15s,background-position .6s ease;text-shadow:0 0 14px rgba(255,255,255,.45);letter-spacing:.02em;animation:bigBtnShimmer 4s ease-in-out infinite}
 .big-btn:hover{transform:scale(1.05);background-position:100% 0}
 @keyframes bigBtnShimmer{0%,100%{background-position:0% 0}50%{background-position:100% 0}}
@@ -200,7 +200,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029rc"></script>
+<script src="korehan-shared.js?v=20261030a"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>
