@@ -29,14 +29,16 @@ function json(body: unknown, status = 200, cors: Record<string, string>) {
   })
 }
 
-// Pronunciation scoring is part of speaking feedback, a Premium feature in
-// js/core/plans.js (speaking_feedback is not in the Free plan). Free
-// accounts get 403 and the Study Room falls back to the browser's own
-// speech recognition (_speakAnalyzeAzure returns null on any non-200).
-// Per-user daily cap (2026-10-30): 60 assessments a KST day — a long
-// speaking session is ~10–20 recordings; the cap stops a script from
-// draining the Azure Speech budget. Counted in edge_usage_daily via
-// kh_edge_usage_take() (20261030_ai_quota_reserve.sql). Admin is uncapped.
+// Pronunciation scoring backs the free Speaking Practice step as well as
+// Premium speaking feedback, so Free accounts keep it with a smaller daily
+// cap; past the cap the Study Room falls back to the browser's own speech
+// recognition (_speakAnalyzeAzure returns null on any non-200).
+// Per-user daily caps (2026-10-30), KST day: Free 15 (one Speaking Practice
+// set plus retries), Premium 60 (a long session is ~10–20 recordings). The
+// caps stop a script from draining the Azure Speech budget. Counted in
+// edge_usage_daily via kh_edge_usage_take() (20261030_ai_quota_reserve.sql).
+// Admin is uncapped.
+const SPEECH_DAILY_LIMIT_FREE = 15
 const SPEECH_DAILY_LIMIT = 60
 const ADMIN_EMAILS = ['enane960819@gmail.com']
 // Azure locale allow-list (the app only sends ko-KR); anything else → ko-KR.
@@ -104,13 +106,11 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Please verify your email first.', code: 'email_unverified' }, 403, cors)
     }
     const sbAdmin = createClient(supabaseUrl, supabaseServiceKey)
+    let dailyLimit = SPEECH_DAILY_LIMIT_FREE
     if (!isAdmin) {
       const { data: prem, error: premErr } = await sbAdmin.rpc('kh_is_premium', { p_user: user.id })
-      if (premErr) {
-        console.error('[speech-proxy] kh_is_premium failed:', premErr.message)
-        return json({ error: 'Plan check failed' }, 503, cors)
-      }
-      if (prem !== true) return json({ error: 'Premium feature', code: 'premium_required' }, 403, cors)
+      if (premErr) console.error('[speech-proxy] kh_is_premium failed:', premErr.message)
+      if (prem === true) dailyLimit = SPEECH_DAILY_LIMIT
     }
 
     // ── 2. Parse multipart form ──────────────────────────────────
@@ -144,7 +144,7 @@ Deno.serve(async (req: Request) => {
     // only while the counter function isn't deployed (migration pending).
     if (!isAdmin) {
       const { data: take, error: takeErr } = await sbAdmin.rpc('kh_edge_usage_take', {
-        p_user: user.id, p_service: 'speech', p_limit: SPEECH_DAILY_LIMIT,
+        p_user: user.id, p_service: 'speech', p_limit: dailyLimit,
       })
       const missingFn = !!takeErr && (takeErr.code === 'PGRST202' || takeErr.code === '42883')
       if (takeErr && !missingFn) {
