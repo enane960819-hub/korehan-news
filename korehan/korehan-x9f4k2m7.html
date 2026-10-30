@@ -3280,9 +3280,17 @@ function goTopics() {
 async function loadTopics() {
   try {
     const sb = getSb();
-    const res = await sb.from('writing_topics').select('*').order('sort_order').order('created_at');
+    const res = await sb.from('writing_topics').select('*').order('sort_order').order('created_at').order('id');
     if (res.error) throw res.error;
     window._topicsAll = res.data || [];
+    // This week's real topic per level (daily-content-gen keeps a week's topic
+    // once its row exists and skips recently used topics, so the rotation
+    // index alone can point at the wrong row).
+    window._topicsThisWeek = Object.create(null);
+    try {
+      const wk = await sb.from('study_daily_content').select('level,topic_ko').eq('scheduled_date', khWeekKey());
+      (wk.data || []).forEach(function(r){ if (r.topic_ko) window._topicsThisWeek[r.level] = r.topic_ko; });
+    } catch(_) {}
     renderTopicsTable(window._topicsAll);
   } catch(e) {
     document.getElementById('topics-wrap').innerHTML = '<div class="infobox" style="color:#c33">⚠️ ' + (e.message||e) + '</div>';
@@ -3475,8 +3483,8 @@ function renderTopicsTable(list) {
     // from loadTopics; preserve that order here.
     var arr = byLevelActive[lvl];
     if (!arr.length) return;
-    var pickIdx = daysSince % arr.length;
-    var picked = arr[pickIdx];
+    var real = window._topicsThisWeek && window._topicsThisWeek[lvl];
+    var picked = real ? arr.filter(function(t){ return t.topic_ko === real; })[0] : arr[daysSince % arr.length];
     if (picked) pinnedTopicIds[picked.id] = true;
   });
   let rows = '';

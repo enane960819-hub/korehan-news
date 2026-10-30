@@ -1812,7 +1812,8 @@ async function _generateAndSaveDailyContent(date, opts) {
         .eq('level', _currentLevel)
         .eq('active', true)
         .order('sort_order')
-        .order('created_at');
+        .order('created_at')
+        .order('id');   // every row shares sort_order/created_at — id breaks the tie
       var allTopics = topicRes.data || [];
       if (allTopics.length) {
         assignedTopic = allTopics[khTopicWeekIndex(kstWeekKey(date), allTopics.length)];
