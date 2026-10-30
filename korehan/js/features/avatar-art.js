@@ -51,7 +51,16 @@
     { id: 'pajamas', name: 'Pajamas', price: 400 },
     { id: 'hanbok', name: 'Hanbok', price: 0, goal: { key: 'streak_days', target: 7, label: 'Study 7 days in a row', short: 'Streak 7' } },
     { id: 'barista', name: 'Barista', price: 0, goal: { key: 'saved_words', target: 100, label: 'Save 100 words', short: '100 words' } },
-    { id: 'halloween', name: 'Halloween', price: 350, months: [10], season: 'October' }
+    { id: 'halloween', name: 'Halloween', price: 350, months: [10], season: 'October' },
+    { id: 'hijab', name: 'Hijab', price: 0 },
+    { id: 'hijab-sport', name: 'Sport hijab', price: 0 },
+    { id: 'cowboy', name: 'Cowboy', price: 400 },
+    { id: 'aodai', name: 'Ao dai', price: 400 },
+    { id: 'chef', name: 'Chef', price: 350 },
+    { id: 'taekwondo', name: 'Taekwondo', price: 0, goal: { key: 'games_played', target: 20, label: 'Finish 20 games', short: '20 games' } },
+    { id: 'graduation', name: 'Graduation', price: 0, goal: { key: 'articles_read', target: 30, label: 'Read 30 articles', short: '30 articles' } },
+    { id: 'padding', name: 'Winter padding', price: 350, months: [11, 12, 1, 2], season: 'Nov–Feb' },
+    { id: 'christmas', name: 'Christmas', price: 350, months: [12], season: 'December' }
   ];
   // slot: one item per slot. top = band / crown on top of the head,
   // pinr / pinl = clip on the right / left side, face = glasses.
@@ -161,7 +170,44 @@
     'short-pajamas': [156, 372, 77.1, 111.9, 0.94, 0, 11, 146],
     'short-street': [156, 376, 77.1, 114.7, 0.94, 0, 9, 144],
     'short-summer': [156, 372, 76.1, 111.9, 0.94, 0, 11, 145],
-    'short-uniform': [157, 378, 75.0, 112.0, 1.00, 0, 10, 151]
+    'short-uniform': [157, 378, 75.0, 112.0, 1.00, 0, 10, 151],
+    // 2026-10-31 sheets A / B / D (cut by template matching, face scale 1.0)
+    'bob-aodai': [182, 362, 90.0, 110.0, 1.00, 0, 26, 160],
+    'bob-chef': [183, 367, 90.0, 158.0, 1.00, 0, 7, 178],
+    'bob-christmas': [231, 378, 106.0, 136.0, 1.00, 0, 43, 184],
+    'bob-cowboy': [202, 372, 98.0, 128.0, 1.00, 0, 4, 197],
+    'bob-graduation': [196, 365, 88.0, 144.0, 1.00, 0, 12, 187],
+    'bob-hijab': [181, 359, 88.0, 102.0, 1.00, 0, 22, 156],
+    'bob-hijab-sport': [184, 366, 92.0, 98.0, 1.00, 0, 26, 158],
+    'bob-padding': [187, 359, 90.0, 110.0, 1.00, 0, 25, 162],
+    'bob-taekwondo': [183, 357, 90.0, 110.0, 1.00, 0, 25, 160],
+    'curly-aodai': [193, 374, 94.0, 120.0, 1.00, 0, 16, 180],
+    'curly-chef': [190, 363, 92.0, 156.0, 1.00, 0, 12, 182],
+    'curly-christmas': [226, 382, 100.0, 140.0, 1.00, 0, 37, 182],
+    'curly-cowboy': [204, 369, 98.0, 126.0, 1.00, 0, 4, 199],
+    'curly-graduation': [200, 369, 92.0, 148.0, 1.00, 0, 14, 192],
+    'curly-hijab': [182, 366, 90.0, 106.0, 1.00, 0, 25, 157],
+    'curly-hijab-sport': [182, 366, 90.0, 98.0, 1.00, 0, 25, 156],
+    'curly-padding': [195, 369, 94.0, 118.0, 1.00, 0, 17, 183],
+    'curly-taekwondo': [191, 361, 94.0, 118.0, 1.00, 0, 17, 178],
+    'long-aodai': [188, 365, 94.0, 110.0, 1.00, 0, 28, 162],
+    'long-chef': [185, 363, 92.0, 154.0, 1.00, 0, 10, 178],
+    'long-christmas': [217, 375, 100.0, 130.0, 1.00, 0, 34, 172],
+    'long-cowboy': [194, 369, 94.0, 124.0, 1.00, 0, 3, 191],
+    'long-graduation': [196, 365, 94.0, 142.0, 1.00, 0, 12, 189],
+    'long-hijab': [182, 362, 90.0, 104.0, 1.00, 0, 24, 157],
+    'long-hijab-sport': [182, 365, 90.0, 98.0, 1.00, 0, 25, 157],
+    'long-padding': [193, 362, 94.0, 112.0, 1.00, 0, 30, 162],
+    'long-taekwondo': [187, 358, 94.0, 110.0, 1.00, 0, 27, 163],
+    'short-aodai': [173, 371, 82.0, 118.0, 1.00, 0, 12, 161],
+    'short-chef': [173, 363, 82.0, 156.0, 1.00, 0, 2, 171],
+    'short-christmas': [225, 382, 100.0, 140.0, 1.00, 0, 36, 177],
+    'short-cowboy': [197, 369, 96.0, 126.0, 1.00, 0, 2, 194],
+    'short-graduation': [196, 365, 90.0, 146.0, 1.00, 0, 12, 187],
+    'short-hijab': [182, 360, 90.0, 102.0, 1.00, 0, 24, 157],
+    'short-hijab-sport': [182, 366, 92.0, 98.0, 1.00, 0, 26, 159],
+    'short-padding': [189, 366, 94.0, 118.0, 1.00, 0, 24, 174],
+    'short-taekwondo': [175, 360, 82.0, 116.0, 1.00, 0, 12, 161]
   };
   // Sprites with headwear drawn in (cap, beret, cat ears, flower pin, straw
   // hat, heart glasses on the head, pajama headband, witch hat, red hood):
@@ -169,6 +215,10 @@
   // face accessories. (Checked by eye on every sprite, 2026-10-30.)
   var HEADWEAR = { 'long-street': 1, 'bob-street': 1, 'long-cute': 1, 'bob-cute': 1, 'bob-hanbok': 1, 'long-summer': 1,
     'bob-summer': 1, 'long-pajamas': 1, 'bob-pajamas': 1, 'long-halloween': 1, 'bob-halloween': 1 };
+  // Hats / hijabs / hood drawn on every hair of these outfits.
+  ['cowboy', 'hijab', 'hijab-sport', 'chef', 'christmas', 'graduation'].forEach(function (o) {
+    HAIRS.forEach(function (h) { HEADWEAR[h.id + '-' + o] = 1; });
+  });
   var GLASSES = { 'bob-summer': 1, 'curly-uniform': 1 };
   // Accessory anchors on base-long: centre x, y, drawn width, y mode
   // (bottom = sprite bottom at y, centre = sprite centre at y), reference
