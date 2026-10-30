@@ -313,6 +313,11 @@
   padding-bottom: 10px; margin-bottom: 16px; scrollbar-width: none;
   -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 .khn-rail::-webkit-scrollbar { display: none; }
+/* Tablets use the same rail with bigger cards. */
+@media (min-width: 641px) {
+  .khn-rail .khn-card { flex: 0 0 260px; min-width: 260px; height: 240px; }
+  .khn-rail .khn-title { font-size: 15px; }
+}
 .khn-card { flex: 0 0 210px; min-width: 210px; height: 210px; position: relative; display: block;
   overflow: hidden; border-radius: 18px; background: #0b1626; text-decoration: none; color: #fff;
   box-shadow: 0 14px 28px rgba(13,27,46,.12); }
@@ -1792,11 +1797,15 @@ document.addEventListener('DOMContentLoaded', async function() {
       return { a: a, i: i, score: score };
     }).sort(function(x, y){ return (y.score - x.score) || (x.i - y.i); }).map(function(x){ return x.a; });
   }
+  // Phones AND tablets (any touch-first screen) get the scroll-safe khn-rail: the old
+  // .home-news-grid overlay rail froze both axes when a swipe started on a photo, and
+  // tablets (wider than 640px) were still getting it (owner report 2026-10-30).
+  var KH_NEWS_RAIL_MQ = '(max-width:640px), (hover: none) and (pointer: coarse)';
   function _khNewsIsMobile() {
-    return (window.matchMedia && window.matchMedia('(max-width:640px)').matches) || window.innerWidth <= 640;
+    return (window.matchMedia && window.matchMedia(KH_NEWS_RAIL_MQ).matches) || window.innerWidth <= 640;
   }
   if (window.matchMedia) {
-    try { window.matchMedia('(max-width:640px)').addEventListener('change', function(){ renderNewsGrid(); applyGlobalDiffFilter(); }); } catch (_) {}
+    try { window.matchMedia(KH_NEWS_RAIL_MQ).addEventListener('change', function(){ renderNewsGrid(); applyGlobalDiffFilter(); }); } catch (_) {}
   }
   function _khIsBuzz(a) { return ((typeof getSectionKey === 'function') ? getSectionKey(a.section) : String(a.section || '').toLowerCase()) === 'buzz'; }
   // News and Korea Buzz each get their own rail (Buzz used to be mixed into News).
