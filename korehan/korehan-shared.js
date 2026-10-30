@@ -1706,29 +1706,40 @@ async function signOut(options) {
   var path = (window.location.pathname || '').split('/').pop() || '';
   var isGated = AUTH_GATED_PAGES.indexOf(path) >= 0;
 
+  // The network sign-out must run BEFORE local state is cleared: supabase-js
+  // reads the stored session (sb-*-auth-token) to know which refresh tokens
+  // to revoke. Clearing storage first left nothing to revoke, so "Sign out on
+  // all devices" only signed out this browser. Wait up to 4 s for it, then
+  // clear locally either way.
+  var sb = getSupa();
+  async function _khNetworkSignOut() {
+    if (!sb) return;
+    try {
+      await Promise.race([
+        Promise.resolve(sb.auth.signOut({ scope: scope })).catch(function(){}),
+        new Promise(function(r){ setTimeout(r, 4000); })
+      ]);
+    } catch(_) {}
+  }
+
   if (isGated) {
+    // Hide the signed-in view right away (no stale-data flash) while the
+    // revoke request runs, then clear and leave.
+    try { document.body.style.visibility = 'hidden'; } catch(_) {}
+    await _khNetworkSignOut();
     supaUser = null;
     try { window._savedWordsSet = null; } catch(_) {}
     try { window._isAdmin = false; window._isTutor = false; _khRoles = null; _khRolesUid = null; _khRolesLoading = null; sessionStorage.removeItem('kh_roles'); } catch(_) {}
-    // Fire the network signOut without awaiting — index.html will pick up
-    // the cleared session on its own load.
-    var sb = getSupa();
-    if (sb) { try { sb.auth.signOut({ scope: scope }); } catch(_) {} }
     _khClearUserState();
     window.location.replace('index.html');
     return;
   }
 
-  // Optimistic: flip the UI to signed-out immediately, THEN do the network
-  // sign-out. Awaiting the revoke round-trip first made the header sit on
-  // the old (signed-in) state until the request returned — "logout doesn't
-  // show until I refresh". The local session is cleared either way.
-  var sb = getSupa();
+  await _khNetworkSignOut();
   supaUser = null;
   _khClearUserState();
   updateAuthUI();
   toast(message);
-  if (sb) { try { sb.auth.signOut({ scope: scope }).catch(function(){}); } catch(_) {} }
 }
 
 // Cross-tab data sync. When the same user has My Page open in tab A and
@@ -2070,7 +2081,7 @@ function updateAuthUI() {
       userDrop.innerHTML =
         '<div class="kh-user-dropdown-head">'
         + '<div class="kh-user-dropdown-name">' + escapeHtml(name || 'User') + '</div>'
-        + '<div class="kh-user-dropdown-email">' + escapeHtml(supaUser.email || '') + '</div>'
+        + '<div class="kh-user-dropdown-email" title="' + escapeHtml(supaUser.email || '') + '">' + escapeHtml(supaUser.email || '') + '</div>'
         + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>0 Nyang</span></div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
@@ -7795,18 +7806,8 @@ async function awardXP(actionKey, meta) {
     }
   } catch(e) {}
 
-  // Fallback (RPC unreachable): local XP only. coin_balance is server-only
-  // (20261026_coin_server_only.sql), so no nyang is granted here.
-  try {
-    await _insertXPLog(sb, supaUser.id, actionKey, amount, reason, contentId);
-    var { data: statsRow } = await sb.from('user_stats').select('xp').eq('user_id', supaUser.id).maybeSingle();
-    var currentXP = (statsRow && statsRow.xp) || 0;
-    await sb.from('user_stats').upsert({ user_id: supaUser.id, xp: currentXP + amount }, { onConflict: 'user_id' });
-    showXPToast(amount);
-    _recordXPGrant(actionKey, contentId);
-    return { ok: true, xp_gained: amount };
-  } catch(e) {}
-
+  // No browser fallback: XP is server-only (award_xp writes xp_log and
+  // user_stats.xp). If the RPC failed, nothing is granted.
   return null;
 }
 
@@ -8441,7 +8442,7 @@ function renderSharedSidebar() {
     + '<a href="korehan-learn.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
     + '<div style="display:flex;justify-content:center;margin-bottom:8px">' + khIcon('languages', '', 'kh-ui-icon-lg') + '</div>'
     + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Word Bank</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">10,000+ words · Quiz · Listening</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">15,000+ words · Quiz · Listening</div>'
     + '</a></div>'
     + '</div>';
 }
@@ -9574,13 +9575,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   //      safe to call on every load.
   //   2. Auto-apply: if yesterday was missed and the user has a
   //      freeze, silently spend it to save the streak.
-  _deferPost(function(){
-    try {
-      var s = (typeof getCurrentStreak === 'function') ? getCurrentStreak() : 0;
-      if (s >= 3 && typeof khClaimStreakAward === 'function') khClaimStreakAward(s);
-    } catch(_) {}
-  });
-  _deferPost(function(){ if (typeof khMaybeAutoFreezeYesterday === 'function') khMaybeAutoFreezeYesterday(); });
+  // Both wait for the session (khStreakChores) and re-run on sign-in.
+  _deferPost(function(){ if (typeof khStreakChores === 'function') khStreakChores(); });
   _deferPost(function(){ startClock(); });
   // conversations/stories 등 tooltip 불필요 페이지에서는 2000행 vocabulary_bank 쿼리 스킵
   var _skipVocabPages = ['index','','korehan-news','korehan-conversations','korehan-stories','korehan-mypage','korehan-learn','korehan-courses','korehan-onboarding','korehan-learning-overview'];
@@ -9938,26 +9934,67 @@ function _khBadgeViewsRefresh() {
   }, 0);
 }
 
-// The streak every page shows: consecutive KST days with daily_missions activity (the same
-// rule as Home's Today card). user_stats.streak is browser-written and can be stale — never
-// show it for the signed-in learner. Other learners: kh_user_streak RPC
-// (20261030_kh_user_streak.sql). One fetch per page load.
-var _khActStreakP = null;
+// The streak every page shows: the server's kh_user_streak RPC — consecutive KST days with
+// daily_missions activity, plus days covered by a spent Streak Freeze
+// (20261030_kh_user_streak.sql). user_stats.streak is not shown for anyone. For the signed-in
+// learner: RPC → direct daily_missions walk (fetchActivityStreakFromDB) → local walk
+// (getCurrentStreak) only when both server reads fail (offline). Cached ~60 s per user.
+var _khActStreakP = null, _khActStreakUid = null, _khActStreakAt = 0;
+var _khSrvStreak = null; // { uid, n } — last server answer, for sync readers (badges)
+function _khKstDay(ms) { return new Date((ms == null ? Date.now() : ms) + 9 * 3600000).toISOString().slice(0, 10); }
 function khActivityStreak(userId) {
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
-  var me = window.supaUser && window.supaUser.id;
+  var me = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : null;
   if (!sb || !(userId || me)) return Promise.resolve(null);
   if (userId && userId !== me) {
     return sb.rpc('kh_user_streak', { p_user: userId }).then(function (r) { return (r && !r.error && typeof r.data === 'number') ? r.data : null; }, function () { return null; });
   }
-  if (!_khActStreakP) {
-    _khActStreakP = (typeof fetchActivityStreakFromDB === 'function')
-      ? Promise.resolve(fetchActivityStreakFromDB(sb, me)).then(function (n) { return typeof n === 'number' ? n : null; }, function () { return null; })
-      : Promise.resolve(null);
-  }
-  return _khActStreakP;
+  if (_khActStreakP && _khActStreakUid === me && (Date.now() - _khActStreakAt) < 60000) return _khActStreakP;
+  _khActStreakUid = me; _khActStreakAt = Date.now();
+  var p = sb.rpc('kh_user_streak', { p_user: me })
+    .then(function (r) { return (r && !r.error && typeof r.data === 'number') ? r.data : null; }, function () { return null; })
+    .then(function (n) {
+      if (typeof n === 'number' || typeof fetchActivityStreakFromDB !== 'function') return n;
+      return Promise.resolve(fetchActivityStreakFromDB(sb, me)).then(function (m) { return typeof m === 'number' ? m : null; }, function () { return null; });
+    })
+    .then(function (n) {
+      if (typeof n === 'number') {
+        var prev = _khSrvStreak && _khSrvStreak.uid === me ? _khSrvStreak.n : null;
+        _khSrvStreak = { uid: me, n: n };
+        lsSet('kh_srv_streak', { uid: me, n: n, day: _khKstDay() });
+        // Streak badges read khStreakNow() synchronously — re-check once the
+        // server number lands or changes.
+        if (prev !== n) { try { if (typeof checkBadges === 'function') checkBadges('streak_sync'); } catch (_) {} }
+        return n;
+      }
+      // Both server reads failed (offline): local walk, and retry next call.
+      if (_khActStreakP === p) _khActStreakP = null;
+      return getCurrentStreak();
+    });
+  _khActStreakP = p;
+  return p;
 }
+function khActivityStreakRefresh() { _khActStreakP = null; return khActivityStreak(); }
+// Sync streak for code that can't await (badge checks, snapshots): the
+// server answer from this page (or from earlier today on this device),
+// else the local walk.
+function khStreakNow() {
+  var me = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : null;
+  if (me) {
+    if (_khSrvStreak && _khSrvStreak.uid === me) return _khSrvStreak.n;
+    var c = lsGet('kh_srv_streak', null);
+    if (c && c.uid === me && c.day === _khKstDay() && typeof c.n === 'number') return c.n;
+  }
+  return getCurrentStreak();
+}
+window.khActivityStreak = khActivityStreak;
+window.khStreakNow = khStreakNow;
+try {
+  window.addEventListener('kh-auth-signed-out', function () { _khActStreakP = null; _khSrvStreak = null; });
+} catch (_) {}
 
+// Local-only streak walk (this browser's study log + the freeze day cached
+// from the server). Offline fallback — pages show khActivityStreak().
 function getCurrentStreak() {
   var log = lsGet('kh_study_log', {});
   var days = lsGet('kh_study_days', {});
@@ -9988,9 +10025,9 @@ function getCurrentStreak() {
     else if (i === 0) { d = new Date(d.getTime() - 86400000); } // 오늘 아직 안 했어도 어제부터
     else break;
   }
-  // Server-side streaks (synced at sign-in) win on a fresh device whose
-  // localStorage log is empty.
-  return Math.max(streak, lsGet('kh_synced_activity_streak', 0) || 0, lsGet('kh_synced_mission_streak', 0) || 0);
+  // Pure local walk. Cached server values (the old never-decreasing
+  // kh_synced_* keys) are no longer mixed in — they inflated the streak.
+  return streak;
 }
 
 // ── Streak freeze: shop inventory + auto-apply ──────────────────
@@ -10019,11 +10056,12 @@ async function khFreezeUse(forDate) {
   // Manual call kept for back-compat; routes through the RPC now.
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb || typeof supaUser === 'undefined' || !supaUser) return false;
-  var d = forDate || new Date();
+  var day = _khKstDay(forDate ? forDate.getTime() : Date.now());
   try {
-    var r = await sb.rpc('consume_streak_freeze', { p_for_date: d.toISOString().slice(0,10) });
+    var r = await sb.rpc('consume_streak_freeze', { p_for_date: day });
     if (r && r.data && r.data.ok) {
-      try { lsSet('kh_streak_freeze_day', d.toISOString().slice(0, 10)); } catch (_) {}
+      try { lsSet('kh_streak_freeze_day', day); } catch (_) {}
+      _khActStreakP = null;
       return true;
     }
   } catch (_) {}
@@ -10052,42 +10090,72 @@ async function khClaimStreakAward(currentStreak) {
 // has one. Designed to be called once per page load on home / mypage
 // / any signed-in entry. Idempotent: if yesterday is already covered
 // (real activity OR earlier freeze), it no-ops.
+// Decided from server data only: daily_missions rows (activity, any device)
+// and kh_user_streak (which counts freeze-covered days). The local
+// kh_streak_freeze_day is just a display cache for the offline walk.
+var _khFreezeRanFor = '';
 async function khMaybeAutoFreezeYesterday() {
   if (typeof supaUser === 'undefined' || !supaUser) return;
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb) return;
-  // KST yesterday (the streak walk uses UTC-ISH dates with KST tilt
-  // already, so we mirror that here).
-  var now = new Date();
-  var y = new Date(now.getTime() - 86400000);
-  var ykey = y.toISOString().slice(0, 10);
-  // Already covered? skip.
-  var log = lsGet('kh_study_log', {});
-  var days = lsGet('kh_study_days', {});
-  var fzd = lsGet('kh_streak_freeze_day', '');
-  var hadActivity = !!days[ykey] || ((log[ykey] || {}).articles || (log[ykey] || {}).words || (log[ykey] || {}).quiz);
-  if (hadActivity || fzd === ykey) return;
-  // Only spend a freeze if the user actually had a streak going —
-  // otherwise we'd burn freezes on brand-new accounts that haven't
-  // built one up yet.
-  var prevStreak = lsGet('kh_synced_activity_streak', 0) || 0;
-  if (prevStreak < 1) return;
-  // Inventory check.
+  var uid = supaUser.id;
+  var tkey = _khKstDay(), ykey = _khKstDay(Date.now() - 86400000), y2key = _khKstDay(Date.now() - 2 * 86400000);
+  // Once per user per KST day per page.
+  if (_khFreezeRanFor === uid + ':' + tkey) return;
+  _khFreezeRanFor = uid + ':' + tkey;
+  if (lsGet('kh_streak_freeze_day', '') === ykey) return;
+  var res;
+  try {
+    res = await sb.from('daily_missions').select('date, articles, words, quizzes, fill')
+      .eq('user_id', uid).gte('date', y2key).lte('date', tkey);
+  } catch (_) { res = null; }
+  if (!res || res.error) { _khFreezeRanFor = ''; return; }
+  var act = {};
+  (res.data || []).forEach(function (r) {
+    if (((r.articles || 0) + (r.words || 0) + (r.quizzes || 0) + (r.fill || 0)) > 0) act[String(r.date).slice(0, 10)] = true;
+  });
+  if (act[ykey]) return;              // studied yesterday
+  // Only spend a freeze when there was a streak going into yesterday —
+  // never on a brand-new or already-broken streak.
+  if (!act[y2key]) return;
+  // Already covered by a freeze on the server? kh_user_streak counts it.
+  var s = await khActivityStreakRefresh();
+  if (typeof s === 'number' && s >= (act[tkey] ? 2 : 1)) { try { lsSet('kh_streak_freeze_day', ykey); } catch (_) {} return; }
   var inv = await khFreezeStatus();
   if (!inv.signed_in || inv.count <= 0) return;
-  // Spend.
   try {
     var r = await sb.rpc('consume_streak_freeze', { p_for_date: ykey });
     if (r && r.data && r.data.ok) {
       try { lsSet('kh_streak_freeze_day', ykey); } catch (_) {}
-      // Also bump in-memory days so this session's streak walk picks
-      // it up without a reload.
-      days[ykey] = true; lsSet('kh_study_days', days);
-      // Refresh the bell so the new notification surfaces immediately.
+      _khActStreakP = null;
+      try { window.dispatchEvent(new Event('kh-streak-changed')); } catch (_) {}
+      // The server inserts the "streak freeze used" notification — refresh the bell.
       if (typeof khLoadNotifications === 'function') khLoadNotifications();
     }
   } catch (_) {}
 }
+
+// Streak chores for the signed-in learner, once the session is known:
+// auto-apply a freeze for a missed yesterday, then claim the 3-day
+// attendance award with the server streak. Re-runs on sign-in.
+var _khStreakChoresFor = '';
+async function khStreakChores() {
+  for (var i = 0; i < 50 && !window._sessionChecked && !(typeof supaUser !== 'undefined' && supaUser); i++) {
+    await new Promise(function (r) { setTimeout(r, 100); });
+  }
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var key = supaUser.id + ':' + _khKstDay();
+  if (_khStreakChoresFor === key) return;
+  _khStreakChoresFor = key;
+  try { await khMaybeAutoFreezeYesterday(); } catch (_) {}
+  try {
+    var s = await khActivityStreak();
+    if (typeof s === 'number' && s >= 3) khClaimStreakAward(s);
+  } catch (_) {}
+}
+try { window.addEventListener('kh-auth-signed-in', function () { khStreakChores(); }); } catch (_) {}
+// The old never-decreasing streak mirrors are no longer read anywhere.
+try { localStorage.removeItem('kh_synced_activity_streak'); localStorage.removeItem('kh_synced_mission_streak'); } catch (_) {}
 
 // Sync the localStorage mirror from profiles on sign-in / page load.
 // Called from page-init code that already has the user available.
@@ -10186,17 +10254,17 @@ var BADGE_DEFS = [
 
   // 🔥 STREAK
   { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:pxBadge('fire'), name:'First Spark',      desc:'3-day study streak',
-    check: function(s){ return getCurrentStreak() >= 3; } },
+    check: function(s){ return khStreakNow() >= 3; } },
   { id:'streak_7',   cat:'streak',    tier:'silver',   icon:pxBadge('fire'), name:'Week Warrior',    desc:'7-day study streak',
-    check: function(s){ return getCurrentStreak() >= 7; } },
+    check: function(s){ return khStreakNow() >= 7; } },
   { id:'streak_30',  cat:'streak',    tier:'gold',     icon:pxBadge('trophy'), name:'30-Day Power',    desc:'30-day study streak',
-    check: function(s){ return getCurrentStreak() >= 30; } },
+    check: function(s){ return khStreakNow() >= 30; } },
   { id:'streak_50',  cat:'streak',    tier:'gold',     icon:pxBadge('zap'), name:'50-Day Milestone', desc:'50-day study streak',
-    check: function(s){ return getCurrentStreak() >= 50; } },
+    check: function(s){ return khStreakNow() >= 50; } },
   { id:'streak_100', cat:'streak',    tier:'diamond',  icon:pxBadge('diamond'), name:'100-Day Champion', desc:'100-day study streak',
-    check: function(s){ return getCurrentStreak() >= 100; } },
+    check: function(s){ return khStreakNow() >= 100; } },
   { id:'streak_365', cat:'streak',    tier:'legendary',icon:pxBadge('crown'), name:'365 Legend',       desc:'1-year study streak',
-    check: function(s){ return getCurrentStreak() >= 365; } },
+    check: function(s){ return khStreakNow() >= 365; } },
 
   // 📰 READING
   { id:'read_1',     cat:'reading',   tier:'bronze',   icon:pxBadge('book'), name:'First Article',    desc:'Read your first article',
@@ -10515,7 +10583,7 @@ function getBadgeStats() {
     total: total,
     pct: Math.round(earnedCount / total * 100),
     xp: khBadgeXP(),
-    streak: getCurrentStreak()
+    streak: khStreakNow()
   };
 }
 
@@ -10604,8 +10672,10 @@ function renderBadgePage(container) {
 }
 
 function statBox(val, label, color) {
-  return '<div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.08);padding:0 12px">'
-    + '<div style="font-size:26px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:3px">' + val + '</div>'
+  // nowrap + fluid size: "11 / 84" wrapped into a vertical stack in the
+  // All Badges modal on phones.
+  return '<div style="flex:1;min-width:0;text-align:center;border-right:1px solid rgba(255,255,255,.08);padding:0 6px">'
+    + '<div style="font-size:clamp(18px,5.6vw,26px);font-weight:900;color:' + color + ';line-height:1;margin-bottom:3px;white-space:nowrap">' + val + '</div>'
     + '<div style="font-size:9px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:1px">' + label + '</div>'
     + '</div>';
 }
@@ -10613,12 +10683,12 @@ function statBox(val, label, color) {
 function getBadgeProgress(b) {
   try {
     var map = {
-      'streak_3':    { cur: getCurrentStreak,          max: 3 },
-      'streak_7':    { cur: getCurrentStreak,          max: 7 },
-      'streak_30':   { cur: getCurrentStreak,          max: 30 },
-      'streak_50':   { cur: getCurrentStreak,          max: 50 },
-      'streak_100':  { cur: getCurrentStreak,          max: 100 },
-      'streak_365':  { cur: getCurrentStreak,          max: 365 },
+      'streak_3':    { cur: khStreakNow,              max: 3 },
+      'streak_7':    { cur: khStreakNow,              max: 7 },
+      'streak_30':   { cur: khStreakNow,              max: 30 },
+      'streak_50':   { cur: khStreakNow,              max: 50 },
+      'streak_100':  { cur: khStreakNow,              max: 100 },
+      'streak_365':  { cur: khStreakNow,              max: 365 },
       'read_10':     { cur: getTotalArticlesRead,       max: 10 },
       'read_50':     { cur: getTotalArticlesRead,       max: 50 },
       'read_100':    { cur: getTotalArticlesRead,       max: 100 },
@@ -10652,7 +10722,7 @@ function getBadgeProgress(b) {
       // Derive the rest from the id (read_1, xp_7500, …) — same counters as the checks.
       var mm = /^(read|word|xp|streak)_(\d+)$/.exec(b.id);
       if (!mm) return null;
-      var fn = { read: getTotalArticlesRead, word: khBadgeSavedCount, xp: khBadgeXP, streak: getCurrentStreak }[mm[1]];
+      var fn = { read: getTotalArticlesRead, word: khBadgeSavedCount, xp: khBadgeXP, streak: khStreakNow }[mm[1]];
       var c = fn(), mx = +mm[2];
       return { pct: c/mx*100, label: Math.min(c, mx) + ' / ' + mx };
     }
@@ -11023,25 +11093,22 @@ async function syncUserStats(patch) {
     // — this sync failed with "permission denied" until it was dropped.
     // New rows also never default display_name to the email's local part.
     var cur = res.data || {
-      user_id: supaUser.id,
-      display_name: localStorage.getItem('kh_display_name') || (supaUser.user_metadata && (supaUser.user_metadata.full_name || supaUser.user_metadata.name)) || null,
-      xp:0, streak:0, articles_read:0, words_saved:0,
-      quizzes_done:0, fill_done:0, mission_streak:0,
-      last_mission_date:'', writing_tickets:0
+      display_name: (supaUser.user_metadata && (supaUser.user_metadata.full_name || supaUser.user_metadata.name)) || null
     };
-    var updated = Object.assign({}, cur, {
+    // Only the activity counters (+ name) are written from the browser.
+    // xp / total_xp / level / streak / mission_streak / writing_tickets /
+    // coin_balance are server-only — naming them in the upsert (even with
+    // the value just read) makes the whole write fail, and could undo a
+    // reward that landed in between.
+    var updated = {
       user_id: supaUser.id,
-      display_name: localStorage.getItem('kh_display_name') || cur.display_name,
+      display_name: localStorage.getItem('kh_display_name') || cur.display_name || null,
       updated_at: new Date().toISOString()
-    });
+    };
     if (patch.articles_read) updated.articles_read = (cur.articles_read||0) + 1;
     if (patch.words_saved)   updated.words_saved   = (cur.words_saved||0) + 1;
     if (patch.quizzes_done)  updated.quizzes_done  = (cur.quizzes_done||0) + 1;
     if (patch.fill_done)     updated.fill_done     = (cur.fill_done||0) + 1;
-    if (patch.xp)            updated.xp            = (cur.xp||0) + patch.xp;
-    // coin_balance is server-only; writing back the value read above could
-    // also undo a purchase/reward that landed in between.
-    delete updated.coin_balance;
     // Explicit error check + retry-stripping-the-bad-column. Silent
     // fire-and-forget was hiding column-missing failures (fill_done /
     // last_mission_date / writing_tickets / preferences were
@@ -11074,7 +11141,6 @@ async function syncDailyMission(field) {
     };
     cur[field] = (cur[field]||0) + 1;
 
-    var wasCompleted = cur.completed;
     cur.completed = cur.articles >= 3 && cur.words >= 20 && cur.quizzes >= 3 && cur.fill >= 1;
 
     var dmRes = await sb.from('daily_missions').upsert(cur, { onConflict: 'user_id,date' });
@@ -11084,50 +11150,11 @@ async function syncDailyMission(field) {
       return;
     }
 
-    // 처음으로 완료된 순간 → 미션 스트릭 + 첨삭권 체크
-    if (!wasCompleted && cur.completed) {
-      await onDailyMissionComplete();
-    }
+    // The first completion of the day is celebrated by
+    // checkDailyMissionComplete() (server award_xp bonus + toast). The old
+    // client-side mission streak / "writing review ticket" reward wrote
+    // server-only user_stats columns and promised a ticket nothing used.
   } catch(e) { console.warn('syncDailyMission', e); }
-}
-
-async function onDailyMissionComplete() {
-  if (!supaUser) return;
-  var sb = getSupa(); if (!sb) return;
-  try {
-    var res = await sb.from('user_stats').select(KH_USER_STATS_COLS).eq('user_id', supaUser.id).maybeSingle();
-    var cur = res.data || { mission_streak:0, last_mission_date:'', writing_tickets:0 };
-    var today = dmToday();
-    var yesterday = new Date(Date.now() + 9*60*60*1000 - 86400000).toISOString().slice(0,10); // KST
-
-    // 연속 완료 계산
-    var newStreak = (cur.last_mission_date === yesterday) ? (cur.mission_streak||0) + 1 : 1;
-    var newTickets = cur.writing_tickets || 0;
-
-    // 5회 연속마다 첨삭권 1개
-    var prevStreak = cur.mission_streak || 0;
-    if (Math.floor(newStreak / 5) > Math.floor(prevStreak / 5)) {
-      newTickets += 1;
-      setTimeout(function() {
-        toast('🎉 Daily mission ' + newStreak + '-day streak! Writing review ticket earned!');
-      }, 800);
-    } else {
-      setTimeout(function() {
-        toast('🎯 Daily mission complete! ' + newStreak + '-day streak 🔥');
-      }, 800);
-    }
-    // Milestone cosmic celebration
-    try { maybeShowStreakMilestone(newStreak, prevStreak); } catch(e) {}
-
-    await sb.from('user_stats').upsert({
-      user_id: supaUser.id,
-      mission_streak: newStreak,
-      last_mission_date: today,
-      writing_tickets: newTickets,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
-
-  } catch(e) { console.warn('onDailyMissionComplete', e); }
 }
 
 async function syncArticleView(articleId, title, section) {
@@ -11301,7 +11328,7 @@ function getHomeLearningSnapshot() {
     weakCount: 8
   };
   try {
-    stats.streak = getCurrentStreak ? getCurrentStreak() : 0;
+    stats.streak = khStreakNow();
   } catch(e) {}
   try {
     var dm = dmGet ? dmGet() : { words:0, articles:0, quizzes:0 };
@@ -11412,7 +11439,7 @@ async function renderHomeLearningPreview() {
   // localStorage 기반 즉시 표시 (빠른 렌더)
   var dm = dmGet ? dmGet() : {};
   var xp = dmXPFromData(dm);
-  var streak = getCurrentStreak ? getCurrentStreak() : 0;
+  var streak = khStreakNow();
 
   // weak grammar — DB 우선, localStorage fallback
   var weakGrammar = '-아/어서 vs -고';
@@ -11440,12 +11467,8 @@ async function renderHomeLearningPreview() {
         xp = dmXPFromData(dm);
         dmSet(dm);
       }
-      // user_stats
-      var statsRes = await sb.from('user_stats').select('xp,mission_streak,streak,articles_read,words_saved,quizzes_done').eq('user_id', supaUser.id).maybeSingle();
-      if (statsRes.data) {
-        lsSet('kh_synced_mission_streak', Math.max(statsRes.data.mission_streak || 0, statsRes.data.streak || 0));
-      }
-      streak = Math.max(streak, await fetchActivityStreakFromDB(sb, supaUser.id));
+      var actStreak = await khActivityStreak();
+      if (typeof actStreak === 'number') streak = actStreak;
     } catch(e) {}
   }
 
@@ -12870,6 +12893,9 @@ function _fjShowResumeBtn() {
   if (_fjAllDone()) return;
   if (document.getElementById('fj-resume')) return;
   if (pageName() === 'index' || pageName() === 'korehan-article') return;
+  // Not on pages with their own fixed bottom controls: Word Bank's drill
+  // dock and Study Room's lists (it sat on My Words' speaker buttons).
+  if (pageName() === 'korehan-learn' || pageName() === 'korehan-study-room') return;
   // Not over the full-screen games (it covered Word Drop's START button).
   if (pageName().indexOf('korehan-fun-') === 0) return;
   var btn = document.createElement('button');

@@ -183,6 +183,8 @@ function khSbOpen() {
   document.getElementById('kh-mobile-sidebar').classList.add('on');
   document.getElementById('kh-sb-overlay').classList.add('on');
   document.body.style.overflow = 'hidden';
+  // Hides the mobile tab bar (z-index 1600) that sat on top of the drawer.
+  document.body.classList.add('kh-sb-open');
 }
 function khSbClose() {
   var sb = document.getElementById('kh-mobile-sidebar');
@@ -190,6 +192,7 @@ function khSbClose() {
   if (sb) sb.classList.remove('on');
   if (ov) ov.classList.remove('on');
   document.body.style.overflow = '';
+  document.body.classList.remove('kh-sb-open');
 }
 function khSbToggle(subId, arrId) {
   var s = document.getElementById(subId);

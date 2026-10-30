@@ -109,7 +109,7 @@ function _svRender() {
   var listEl = document.getElementById('sv-list');
   var more = document.getElementById('sv-more');
   var all = _sv[_sv.tab];
-  if (!all) { listEl.innerHTML = '<div class="sv-empty">Loading…</div>'; more.hidden = true; bar.innerHTML = ''; return; }
+  if (!all) { listEl.innerHTML = '<div class="sv-empty">Loading…</div>'; more.hidden = true; bar.innerHTML = ''; var h0 = document.querySelector('.sv-hint'); if (h0) h0.hidden = true; return; }
 
   var chips = { articles: [['all', 'All'], ['news', 'News'], ['buzz', 'Korea Buzz']],
                 phrases: [['all', 'All'], ['phrase', "Today's phrase"], ['conversation', 'Conversations']] }[_sv.tab] || [];
@@ -124,6 +124,9 @@ function _svRender() {
   }).join('') + act;
 
   var list = _svFiltered();
+  // The swipe-to-remove hint only makes sense when there is a row to swipe.
+  var hint = document.querySelector('.sv-hint');
+  if (hint) hint.hidden = !list.length;
   if (!list.length) {
     var empty = {
       words: 'No saved words yet. Tap any word while reading to save it.',
@@ -167,7 +170,17 @@ async function _svDelete(tab, key) {
   var sb = getSupa();
   if (tab === 'words') {
     var w = _sv.words.find(function (x) { return String(x.id) === key; });
-    await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('id', key);
+    var del = await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('id', key);
+    if (del && del.error) throw del.error;
+    // Drop it from the local mirror too, or it would look saved elsewhere
+    // (hover tooltips, Word Bank) until the next sync.
+    if (w && w.ko) {
+      if (typeof khForgetSavedWordLocal === 'function') khForgetSavedWordLocal(w.ko);
+      else try {
+        var lw = JSON.parse(localStorage.getItem('korehan_saved_words') || '[]') || [];
+        localStorage.setItem('korehan_saved_words', JSON.stringify(lw.filter(function (x) { return x && x.ko !== w.ko; })));
+      } catch (_) {}
+    }
     _sv.words = _sv.words.filter(function (x) { return x !== w; });
   } else if (tab === 'articles') {
     await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', key);

@@ -29,6 +29,26 @@ function json(body: unknown, status = 200, cors: Record<string, string>) {
   })
 }
 
+// Pronunciation scoring backs the free Speaking Practice step as well as
+// Premium speaking feedback, so Free accounts keep it with a smaller daily
+// cap; past the cap the Study Room falls back to the browser's own speech
+// recognition (_speakAnalyzeAzure returns null on any non-200).
+// Per-user daily caps (2026-10-30), KST day: Free 15 (one Speaking Practice
+// set plus retries), Premium 60 (a long session is ~10–20 recordings). The
+// caps stop a script from draining the Azure Speech budget. Counted in
+// edge_usage_daily via kh_edge_usage_take() (20261030_ai_quota_reserve.sql).
+// Admin is uncapped.
+const SPEECH_DAILY_LIMIT_FREE = 15
+const SPEECH_DAILY_LIMIT = 60
+const ADMIN_EMAILS = ['enane960819@gmail.com']
+// Azure locale allow-list (the app only sends ko-KR); anything else → ko-KR.
+const LANGUAGES = new Set(['ko-KR'])
+// Azure's short-audio REST endpoint takes ≤60 s; 60 s of webm/m4a is well
+// under 2 MB, so 8 MB leaves room for other codecs without allowing huge uploads.
+const MAX_AUDIO_BYTES = 8 * 1024 * 1024
+const MAX_REFERENCE_CHARS = 1000
+const AUDIO_TYPE_RE = /^audio\/[a-z0-9.+-]+(;\s*codecs=[a-z0-9.,=" -]+)?$/i
+
 // Warm-instance cache for Azure Speech credentials so we don't hit
 // app_settings on every pronunciation request. The Azure key + region
 // only change when an admin rotates them via the admin CMS; a 5-minute
@@ -81,6 +101,17 @@ Deno.serve(async (req: Request) => {
     })
     const { data: { user }, error: userErr } = await userClient.auth.getUser()
     if (userErr || !user) return json({ error: 'Unauthorized' }, 401, cors)
+    const isAdmin = !!(user.email && ADMIN_EMAILS.includes(user.email))
+    if (!isAdmin && !user.email_confirmed_at) {
+      return json({ error: 'Please verify your email first.', code: 'email_unverified' }, 403, cors)
+    }
+    const sbAdmin = createClient(supabaseUrl, supabaseServiceKey)
+    let dailyLimit = SPEECH_DAILY_LIMIT_FREE
+    if (!isAdmin) {
+      const { data: prem, error: premErr } = await sbAdmin.rpc('kh_is_premium', { p_user: user.id })
+      if (premErr) console.error('[speech-proxy] kh_is_premium failed:', premErr.message)
+      if (prem === true) dailyLimit = SPEECH_DAILY_LIMIT
+    }
 
     // ── 2. Parse multipart form ──────────────────────────────────
     let formData: FormData
@@ -90,13 +121,39 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Expected multipart/form-data' }, 400, cors)
     }
 
-    const audioFile = formData.get('audio') as File | null
-    const referenceText = (formData.get('referenceText') as string | null)?.trim()
-    const language = (formData.get('language') as string | null) || 'ko-KR'
-    const audioContentType = (formData.get('contentType') as string | null) || 'audio/webm'
+    const audioEntry = formData.get('audio')
+    const audioFile = (audioEntry && typeof audioEntry !== 'string') ? audioEntry as File : null
+    const refEntry = formData.get('referenceText')
+    const referenceText = typeof refEntry === 'string' ? refEntry.trim() : ''
+    const langEntry = formData.get('language')
+    const language = (typeof langEntry === 'string' && LANGUAGES.has(langEntry)) ? langEntry : 'ko-KR'
+    const ctEntry = formData.get('contentType')
+    const audioContentType = (typeof ctEntry === 'string' && AUDIO_TYPE_RE.test(ctEntry)) ? ctEntry : 'audio/webm'
 
     if (!audioFile || !referenceText) {
       return json({ error: 'Missing audio or referenceText' }, 400, cors)
+    }
+    if (referenceText.length > MAX_REFERENCE_CHARS) {
+      return json({ error: 'referenceText too long' }, 413, cors)
+    }
+    if (audioFile.size > MAX_AUDIO_BYTES) {
+      return json({ error: 'Audio too large' }, 413, cors)
+    }
+
+    // Daily cap — reserve one assessment before calling Azure. Fails open
+    // only while the counter function isn't deployed (migration pending).
+    if (!isAdmin) {
+      const { data: take, error: takeErr } = await sbAdmin.rpc('kh_edge_usage_take', {
+        p_user: user.id, p_service: 'speech', p_limit: dailyLimit,
+      })
+      const missingFn = !!takeErr && (takeErr.code === 'PGRST202' || takeErr.code === '42883')
+      if (takeErr && !missingFn) {
+        console.error('[speech-proxy] usage counter failed:', takeErr.message)
+        return json({ error: 'Usage check failed' }, 503, cors)
+      }
+      if (!takeErr && (!take || take.ok !== true)) {
+        return json({ error: 'Daily speaking limit reached', code: 'speech_daily_limit' }, 429, cors)
+      }
     }
 
     // ── 3. Azure credentials from app_settings (cached 5 min) ────
@@ -106,6 +163,9 @@ Deno.serve(async (req: Request) => {
     }
     const azureKey = creds.key
     const azureRegion = creds.region
+    if (!/^[a-z0-9-]+$/i.test(azureRegion)) {
+      return json({ error: 'Azure Speech not configured' }, 503, cors)
+    }
 
     // ── 4. Build Pronunciation Assessment header ─────────────────
     const pronConfig = btoa(JSON.stringify({
@@ -118,7 +178,7 @@ Deno.serve(async (req: Request) => {
     // ── 5. Call Azure Speech REST API ────────────────────────────
     const azureUrl =
       `https://${azureRegion}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1` +
-      `?language=${language}&format=detailed`
+      `?language=${encodeURIComponent(language)}&format=detailed`
 
     const audioBuffer = await audioFile.arrayBuffer()
 

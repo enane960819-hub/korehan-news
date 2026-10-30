@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
+<link rel="stylesheet" href="korehan-shared.css?v=20261030fx">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -1183,22 +1183,22 @@ window._khLoaderClearAuto = function() {};
 <script src="js/core/plans.js?v=20261029pl"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/phrases.js?v=20261029a"></script>
-<script src="js/core/saved-words.js?v=20261013a"></script>
-<script src="js/features/review-queue.js?v=20261028c"></script>
+<script src="js/core/saved-words.js?v=20261030fx"></script>
+<script src="js/features/review-queue.js?v=20261030fx"></script>
 <script src="js/core/hangul-jamo-input.js?v=20261028a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261029x"></script>
 <script src="js/core/reporters.js?v=20261029ng"></script>
 <script src="js/features/streak.js?v=20260525r" defer></script>
-<script src="js/features/daily-mission.js?v=20261029s" defer></script>
+<script src="js/features/daily-mission.js?v=20261030fx" defer></script>
 <script src="js/features/reading-tracker.js?v=20260525r" defer></script>
 <script src="js/features/bookmarks.js?v=20261029s" defer></script>
 <script src="js/features/comments.js?v=20261016a" defer></script>
-<script src="js/features/sidebar.js?v=20261029s" defer></script>
+<script src="js/features/sidebar.js?v=20261030fx" defer></script>
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261030b"></script>
+<script src="korehan-shared.js?v=20261030c"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 var HOME_CONVS = [
@@ -1460,7 +1460,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       var fn = (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '';
       name = String(fn).split(/[\s.]/)[0] || '';
     } catch (_) {}
-    try { streak = (typeof getCurrentStreak === 'function') ? (getCurrentStreak() || 0) : 0; } catch (_) {}
+    try { streak = (typeof khStreakNow === 'function') ? (khStreakNow() || 0) : 0; } catch (_) {}
     var esc = function(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
     var ic = function(n){ return '<i data-lucide="' + n + '" aria-hidden="true"></i>'; };
     var kstKey = function(ms){ return new Date(ms + 9 * 3600000).toISOString().slice(0, 10); };
@@ -1531,7 +1531,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           + '<div class="kt-prog"><i style="width:' + Math.max(3, Math.round(doneN / 3 * 100)) + '%"></i></div>' + stepHtml
           + (doneN === 0 && streak > 0 ? '<div class="kt-keep">' + ic('flame') + 'Do one step to keep your ' + streak + '-day streak</div>' : '')
         : '<div class="kt-cele"><div class="big">' + ic('check') + '</div><b>Today’s plan is done</b><small>Streak safe · +' + (typeof dmXPFromData === 'function' ? dmXPFromData(dm) : 0) + ' XP today · see you tomorrow</small></div>'
-          + '<div class="kt-more"><a href="korehan-conversations.html">A conversation</a><a href="korehan-stories.html">A story</a><a href="korehan-mypage.html#mp-miniroom-section">My Room</a></div>';
+          + '<div class="kt-more"><a href="korehan-conversations.html">A conversation</a><a href="korehan-section.html?s=buzz">Korea Buzz</a><a href="korehan-mypage.html#mp-miniroom-section">My Room</a></div>';
       box.innerHTML =
           '<div class="kt">'
         +   '<div class="kt-main">'
@@ -1572,7 +1572,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       // This week's activity (other devices included); today's row feeds the bonus row.
       sb.from('daily_missions').select('date, articles, words, quizzes, fill').eq('user_id', u.id).gte('date', weekSince),
       window.khReviewQueue ? khReviewQueue.summary() : null,
-      typeof fetchActivityStreakFromDB === 'function' ? fetchActivityStreakFromDB(sb, u.id) : 0,
+      typeof khActivityStreak === 'function' ? khActivityStreak() : null,
       typeof getUnifiedWeakGrammarItems === 'function' ? getUnifiedWeakGrammarItems(1) : []
     ].map(function(q){ return Promise.resolve(q).then(function(r){ return r; }, function(){ return null; }); }));
     var st = res[0] && res[0].data, rows = (res[1] && res[1].data) || [], rq = res[2], wk = res[4];
@@ -1586,13 +1586,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     weekSum.xp = typeof dmXPFromData === 'function' ? dmXPFromData(weekSum) : 0;
     if (rq) { gotRq = true; if (rq.items) due = rq.items.length; }
-    if (typeof res[3] === 'number') streak = Math.max(streak, res[3]);
+    if (typeof res[3] === 'number') streak = res[3];
     // Only a real weak spot (missed at least once) — never a placeholder.
     if (wk && wk[0] && (wk[0].wrong_count || 0) > 0) weak = wk[0].grammar_point;
     paint();
   }
   renderTodayCard();
   window.addEventListener('kh-auth-signed-in', renderTodayCard);
+  // A Streak Freeze spent on this load changes the streak — repaint.
+  window.addEventListener('kh-streak-changed', renderTodayCard);
   window._khRenderTodayCard = renderTodayCard;
 
   // Unread-feedback pill — surfaces reviewed submissions the user

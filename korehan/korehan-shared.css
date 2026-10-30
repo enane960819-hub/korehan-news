@@ -278,7 +278,7 @@ body.kh-neon-on .kh-diff-sel option { color:var(--dark); background:#fff; }
 .kh-user-dropdown.on { display: block; }
 .kh-user-dropdown-head { padding: 6px 8px 10px; border-bottom: 1px solid #edf2f7; margin-bottom: 6px; }
 .kh-user-dropdown-name { font-size: 13px; font-weight: 800; color: var(--dark); }
-.kh-user-dropdown-email { margin-top: 4px; font-size: 11px; color: var(--gray); word-break: break-all; }
+.kh-user-dropdown-email { margin-top: 4px; font-size: 11px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; min-width: 0; }
 .kh-user-dropdown-link {
   display:flex; width:100%; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; color:var(--dark);
   font-size:13px; font-weight:700; text-decoration:none; background:none; border:none; text-align:left; cursor:pointer; font-family:inherit;
@@ -5808,6 +5808,34 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
 #fj-resume { z-index: 1000 !important; }
 @media (max-width: 900px) {
   body.mobile-redesign #fj-resume { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+
+/* Hamburger drawer open: the mobile tab bar (z-index 1600) and the
+   floating chips sat on top of the drawer's last links. */
+body.kh-sb-open .mobile-bottom-nav,
+body:has(#kh-mobile-sidebar.on) .mobile-bottom-nav,
+body.kh-sb-open #kh-daily-mission,
+body.kh-sb-open #fj-resume { display: none !important; }
+
+/* Bottom safe area. The mobile tab bar and the floating Daily Mission /
+   First Journey chips sit over the end of every page, so the last content
+   and the footer's newsletter field + Subscribe were unreachable. Pad the
+   footer (or the body on pages without one) by the height they cover. */
+@media (max-width: 900px) {
+  body.mobile-redesign:not(.kh-reading-page):has(.mobile-bottom-nav) #kh-footer > footer,
+  body.mobile-redesign:not(.kh-reading-page):has(.mobile-bottom-nav):not(:has(#kh-footer > footer)) {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  body.mobile-redesign:not(.kh-reading-page):has(.mobile-bottom-nav):has(#fj-resume, #kh-daily-mission[style*="block"]) #kh-footer > footer,
+  body.mobile-redesign:not(.kh-reading-page):has(.mobile-bottom-nav):has(#fj-resume, #kh-daily-mission[style*="block"]):not(:has(#kh-footer > footer)) {
+    padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+@media (min-width: 901px) {
+  body:not(.kh-reading-page):has(#kh-daily-mission[style*="block"]) #kh-footer > footer,
+  body:not(.kh-reading-page):has(#kh-daily-mission[style*="block"]):not(:has(#kh-footer > footer)) { padding-bottom: 80px !important; }
+  body:not(.kh-reading-page):has(#fj-resume) #kh-footer > footer,
+  body:not(.kh-reading-page):has(#fj-resume):not(:has(#kh-footer > footer)) { padding-bottom: 136px !important; }
 }
 
 body[style*="overflow: hidden"] #kh-daily-mission,

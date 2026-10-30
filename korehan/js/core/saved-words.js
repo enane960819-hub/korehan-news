@@ -16,22 +16,78 @@
 var K_SAVED = 'korehan_saved_words';
 var _savedWordsSet = null; // Set of ko strings, populated from DB on auth
 
-// Push localStorage saved-words into Supabase right after first SIGNED_IN.
-// Anonymous users accumulate words in K_SAVED while logged-out; without this
-// migration those rows would never reach the DB and the user would see an
-// empty Notes/Saved list after signup. Safe to call repeatedly — uses upsert
-// on the (user_id, word_key) unique index so it's a no-op for already-synced
-// rows. Returns the number of rows pushed (mainly for debugging/telemetry).
+// Words saved while signed OUT are listed (by ko) under K_SAVED_PENDING.
+// Only those are pushed to the account on the next sign-in, once — the
+// full K_SAVED list is just the local mirror of the DB for a signed-in
+// learner. Pushing the whole mirror on every SIGNED_IN (which supabase-js
+// re-emits on each load / tab focus) brought deleted words back.
+var K_SAVED_PENDING = 'korehan_saved_words_pending';
+function _khPendingGet() {
+  var v = lsGet(K_SAVED_PENDING, null);
+  return Array.isArray(v) ? v : [];
+}
+function _khPendingSet(list) {
+  try { if (list && list.length) lsSet(K_SAVED_PENDING, list); else localStorage.removeItem(K_SAVED_PENDING); } catch (_) {}
+}
+function khMarkAnonSaved(ko) {
+  if (!ko) return;
+  var p = _khPendingGet();
+  if (p.indexOf(ko) < 0) { p.push(ko); _khPendingSet(p); }
+}
+function _khUnmarkAnonSaved(ko) {
+  var p = _khPendingGet();
+  var i = p.indexOf(ko);
+  if (i >= 0) { p.splice(i, 1); _khPendingSet(p); }
+}
+// Remove a word from the local mirror (+ pending list + in-memory set)
+// without touching the DB — for delete paths that already removed the row.
+function khForgetSavedWordLocal(ko) {
+  if (!ko) return;
+  try { if (_savedWordsSet) _savedWordsSet.delete(ko); } catch (_) {}
+  lsSet(K_SAVED, (lsGet(K_SAVED, []) || []).filter(function (w) { return w && (w.ko || w.word_ko) !== ko; }));
+  _khUnmarkAnonSaved(ko);
+}
+// One-time upgrade for devices that saved words before the pending list
+// existed: with no Supabase session on this device, every local word was
+// saved as a guest. With a session, the local list is a DB mirror.
+(function _khSeedPendingOnce() {
+  try {
+    if (localStorage.getItem('kh_saved_pending_v1')) return;
+    localStorage.setItem('kh_saved_pending_v1', '1');
+    var hasSession = Object.keys(localStorage).some(function (k) { return k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0; });
+    if (hasSession) return;
+    var local = lsGet(K_SAVED, []) || [];
+    local.forEach(function (w) { var ko = w && (w.ko || w.word_ko || w.word); if (ko) khMarkAnonSaved(ko); });
+  } catch (_) {}
+})();
+// Merge the DB rows with words still waiting to be pushed, so a sync never
+// drops a guest save that hasn't reached the account yet.
+function _khMirrorWithPending(normalized) {
+  var pending = _khPendingGet();
+  if (!pending.length) return normalized;
+  var have = {};
+  normalized.forEach(function (w) { have[w.ko] = 1; });
+  (lsGet(K_SAVED, []) || []).forEach(function (w) {
+    var ko = w && (w.ko || w.word_ko || '');
+    if (ko && !have[ko] && pending.indexOf(ko) >= 0) { have[ko] = 1; normalized.push(normalizeSavedWord(w)); }
+  });
+  return normalized;
+}
+
+// Push words saved as a guest into Supabase after a real sign-in. Runs on
+// every SIGNED_IN but only does work while the pending list has entries;
+// it is emptied once the upsert succeeds. Returns the number of rows pushed.
 async function migrateAnonSavedWords() {
   if (!supaUser) return 0;
   var sb = getSupa();
   if (!sb) return 0;
-  var local = lsGet(K_SAVED, []);
-  if (!local || !local.length) return 0;
+  var pending = _khPendingGet();
+  if (!pending.length) return 0;
+  var local = lsGet(K_SAVED, []) || [];
   var rows = local
     .map(function(w){
       var ko = w && (w.ko || w.word_ko || w.word) || '';
-      if (!ko) return null;
+      if (!ko || pending.indexOf(ko) < 0) return null;
       return {
         user_id: supaUser.id,
         word_key: ko,
@@ -41,13 +97,14 @@ async function migrateAnonSavedWords() {
       };
     })
     .filter(Boolean);
-  if (!rows.length) return 0;
+  if (!rows.length) { _khPendingSet([]); return 0; }
   try {
     var res = await sb.from('user_saved_words').upsert(rows, { onConflict: 'user_id,word_key' });
     if (res.error) {
       console.warn('[migrateAnonSavedWords]', res.error.message);
       return 0;
     }
+    _khPendingSet([]);
     // Refresh in-memory mirror so hover tooltips & Save buttons reflect the
     // merged set without waiting for the next DB sync tick.
     await _syncSavedWordsFromDB();
@@ -65,18 +122,12 @@ async function _syncSavedWordsFromDB() {
   if (!sb) return;
   try {
     var res = await sb.from('user_saved_words').select('*').eq('user_id', supaUser.id);
-    if (res.data && res.data.length) {
-      _savedWordsSet = new Set();
-      res.data.forEach(function(row) {
-        var k = row.word_ko || row.ko || '';
-        if (k) _savedWordsSet.add(k);
-      });
-      // Also sync to localStorage for offline/fallback
-      var normalized = res.data.map(normalizeSavedWord).filter(function(w){ return w && w.ko; });
-      lsSet(K_SAVED, normalized);
-    } else {
-      _savedWordsSet = new Set();
-    }
+    if (res.error) throw res.error;
+    var normalized = _khMirrorWithPending((res.data || []).map(normalizeSavedWord).filter(function(w){ return w && w.ko; }));
+    _savedWordsSet = new Set(normalized.map(function (w) { return w.ko; }));
+    // The local list mirrors the account (plus unsynced guest saves), so a
+    // word deleted on another device disappears here too.
+    lsSet(K_SAVED, normalized);
   } catch(e) {
     // If DB fetch fails, build set from localStorage
     if (!_savedWordsSet) {
@@ -100,8 +151,8 @@ async function dbGetSavedWords() {
   if (!sb) return localSaved;
   try {
     var res = await sb.from('user_saved_words').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
-    if (res.data && res.data.length) {
-      var normalized = res.data.map(normalizeSavedWord).filter(function(w){ return w && w.ko; });
+    if (!res.error && res.data) {
+      var normalized = _khMirrorWithPending(res.data.map(normalizeSavedWord).filter(function(w){ return w && w.ko; }));
       lsSet(K_SAVED, normalized);
       return normalized;
     }
@@ -136,7 +187,8 @@ async function dbSaveWord(ko, rom, en) {
   }
 
   if (!supaUser) {
-    // 비로그인: localStorage만, 새 단어일 때만 XP
+    // Signed out: keep it locally and remember it for the next sign-in.
+    khMarkAnonSaved(ko);
     if (!alreadyLocal) {
       if (typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
     }
@@ -168,7 +220,9 @@ async function dbSaveWord(ko, rom, en) {
       return { ok: false, source: 'local', error: res.error };
     }
   } catch(e) {
-    // DB 예외 — localStorage엔 이미 추가됐으므로 카운터만 증가
+    // DB 예외 — localStorage엔 이미 추가됐으므로 카운터만 증가. Offline:
+    // push it on the next sign-in instead of losing it at the next sync.
+    khMarkAnonSaved(ko);
     if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
     return { ok: false, source: 'local', error: e };
   }
@@ -178,6 +232,7 @@ async function dbRemoveWord(ko) {
   if (_savedWordsSet) _savedWordsSet.delete(ko);
   var saved = lsGet(K_SAVED, []).filter(function(w){ return w.ko !== ko; });
   lsSet(K_SAVED, saved);
+  _khUnmarkAnonSaved(ko);
   if (!supaUser) return { ok: true, source: 'local' };
   var sb = getSupa();
   if (!sb) return { ok: true, source: 'local' };

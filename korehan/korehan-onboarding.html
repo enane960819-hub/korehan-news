@@ -794,6 +794,12 @@ async function obSaveWord(btn) {
   try {
     var list = JSON.parse(localStorage.getItem('korehan_saved_words') || '[]') || [];
     if (!list.some(function(w){ return w && w.ko === ko; })) { list.push({ ko:ko, rom:rom, en:en }); localStorage.setItem('korehan_saved_words', JSON.stringify(list)); }
+    // Guest save: listed so the next sign-in moves it to the account
+    // (js/core/saved-words.js migrateAnonSavedWords only pushes listed words).
+    if (!_user) {
+      var pend = JSON.parse(localStorage.getItem('korehan_saved_words_pending') || '[]') || [];
+      if (pend.indexOf(ko) < 0) { pend.push(ko); localStorage.setItem('korehan_saved_words_pending', JSON.stringify(pend)); }
+    }
   } catch (_) {}
   var sb = getSb();
   if (_user && sb) {
