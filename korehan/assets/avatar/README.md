@@ -48,3 +48,9 @@ floated above the hair), sakura-pin x 132. Head accessories are hidden only on s
 really have headwear drawn in (long/bob street, long/bob cute, bob hanbok, long/bob summer,
 long/bob pajamas, long/bob halloween); glasses are hidden on bob-summer (heart glasses on the
 head) and curly-uniform (round glasses drawn in). New art: bump KH_ROOM_ART_V.
+
+More outfits (2026-10-31, owner sheets A / B / D, cut by `template matching` against each
+base so the face sits at scale 1.0): cowboy, hijab, hijab-sport, aodai, taekwondo, chef,
+christmas, padding, graduation (x4 hairs = 36). Headwear drawn in (head accessories hidden):
+cowboy, hijab, hijab-sport, chef, christmas, graduation on every hair. Sheet C (doctor,
+astronaut, kpop) not drawn yet.
