@@ -396,7 +396,7 @@
   }
 
   // ── The character as a room piece ──────────────────────────────────
-  var AV_ID = 'kh_avatar', AV_SIZE = 170;
+  var AV_ID = 'kh_avatar', AV_SIZE = 150;
   // Default spot: centre of the room, feet on the floor (floor starts at 62 %).
   var AV_DEFAULT_PLACE = { id: AV_ID, x: 115, y: 140, scale: 100 };
   var AV_DEF = { id: AV_ID, name: 'My character', price: 0, img: '', size: AV_SIZE, effect: 'none', thumbnail: '', category: 'avatar' };
