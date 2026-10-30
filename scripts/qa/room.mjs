@@ -416,13 +416,15 @@ try {
       check(!posDiff(s7.view, s8.view).length && !domDiff(s7.dom, s8.dom).length, T('Front/Back right after a drag: nothing moves'), posDiff(s7.view, s8.view).concat(domDiff(s7.dom, s8.dom)));
 
       // ── Reset positions: Cancel keeps everything; OK brings all into view ──
-      page._onDialog = (d) => d.dismiss();
+      // (khConfirm sheet, not a native dialog)
+      const modalBtn = async (label) => { await page.locator('.kh-modal-backdrop button', { hasText: label }).last().click(); await sleep(400); };
       await tapEl(page, 'button[onclick="resetRoomPositions()"]', mobile); await sleep(300);
+      check(await page.locator('.kh-modal-backdrop').count() > 0, T('Reset positions asks in the site sheet'));
+      await modalBtn('Cancel');
       let s9 = await roomState(page);
       check(!posDiff(s8.view, s9.view).length, T('Reset positions → Cancel: nothing changes'), posDiff(s8.view, s9.view));
-      page._onDialog = (d) => d.accept();
-      await tapEl(page, 'button[onclick="resetRoomPositions()"]', mobile); await sleep(500);
-      page._onDialog = null;
+      await tapEl(page, 'button[onclick="resetRoomPositions()"]', mobile); await sleep(300);
+      await modalBtn('Reset'); await sleep(200);
       s9 = await roomState(page);
       check(!allInside(s9.dom).length, T('Reset positions → OK: every item inside the room'), allInside(s9.dom));
       const overlapping = await page.evaluate(() => { var n = 0, els = Array.prototype.slice.call(document.querySelectorAll('.room-placed-item')); for (var i = 0; i < els.length; i++) for (var j = i + 1; j < els.length; j++) { var a = els[i].getBoundingClientRect(), b = els[j].getBoundingClientRect(); if (Math.abs(a.left - b.left) < 2 && Math.abs(a.top - b.top) < 2) n++; } return n; });
@@ -563,6 +565,9 @@ try {
         }
         check(okToggle, T('wallpaper button: open/close x6 (icon and edge taps) always toggles'));
         await page.evaluate(() => document.getElementById('room-theme-drawer').classList.remove('open'));
+        await tapEl(page, '#room-theme-btn', mobile); await sleep(200);
+        await page.keyboard.press('Escape'); await sleep(150);
+        check(await page.evaluate(() => !document.getElementById('room-theme-drawer').classList.contains('open')), T('wallpaper drawer: Esc closes'));
         // lights off / on → wallpaper comes back (Brick), not the default
         await tapEl(page, '#room-light-switch', mobile); await sleep(150);
         check(await page.evaluate(() => document.getElementById('miniroom-container').classList.contains('room-lights-off')), T('light switch: lights off'));
@@ -771,6 +776,12 @@ try {
       // the paid sheet says "Room 3 of 3 · 1,000 nyang"
       await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
       check(/1,000 nyang/.test(await page.textContent('.rt-sheet')) && /Room 3 of 3/.test(await page.textContent('.rt-sheet')), T('+ New with 2 rooms: Room 3 of 3, 1,000 nyang'), (await page.textContent('.rt-sheet')).slice(0, 160));
+      // locked background in the Add-a-room sheet: stays in the sheet and points at the hint
+      const lockedNew = await page.$('.rt-sheet .rt-th1[data-locked]');
+      if (lockedNew) {
+        await tapEl(page, lockedNew, mobile); await sleep(300);
+        check(!!(await page.$('.rt-ov')) && !(await page.$('.kav-ov')) && !!(await page.$('.rt-hint.rt-hint-on')), T('+ New: locked background keeps the sheet open and shows the hint'));
+      }
       await page.keyboard.press('Escape');
       fake.slots = null;
       await noEmoji(page, '#mp-miniroom-section', T('room section with tabs'));

@@ -1322,7 +1322,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/room-view.js?v=20261030qa"></script>
 <script src="js/features/avatar-art.js?v=20261030sz"></script>
 <script src="js/features/avatar-editor.js?v=20261030sz"></script>
-<script src="js/features/room-tabs.js?v=20261030rs"></script>
+<script src="js/features/room-tabs.js?v=20261030rt"></script>
 <script src="js/features/room-learn.js?v=20261029rl"></script>
 <script>
 
@@ -3837,6 +3837,15 @@ function _bgmRenderDrawer() {
   if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
 }
 
+// Esc closes the wallpaper / music drawers like the other room sheets.
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  ['room-theme-drawer', 'room-bgm-drawer'].forEach(function(id) {
+    var d = document.getElementById(id);
+    if (d && d.classList.contains('open')) d.classList.remove('open');
+  });
+});
+
 function toggleRoomBGMDrawer(ev) {
   if (ev) { ev.stopPropagation(); }
   var d = document.getElementById('room-bgm-drawer');
@@ -4135,6 +4144,9 @@ function roomDragMove(e) {
   var dx = Math.abs(clientX - _dragStartPos.x);
   var dy = Math.abs(clientY - _dragStartPos.y);
   if (dx > 5 || dy > 5) _dragMoved = true;
+  // Dead zone: a tap that wobbles a few px must not shift the item (the
+  // shifted spot was saved by the next Front / Back / Done).
+  if (!_dragMoved) return;
 
   var x = clientX - rect.left - _dragOffset.x;
   var y = clientY - rect.top - _dragOffset.y;
@@ -4228,7 +4240,10 @@ function flipSelectedItem() {
 
 // Lay every item in this room out in rows on the floor, same size and layer order.
 function resetRoomPositions() {
-  if (!confirm('Put every item in this room back in view? Their sizes and layers stay the same.')) return;
+  khConfirm('Reset positions?', 'Put every item in this room back in view? Their sizes and layers stay the same.', { okLabel: 'Reset' })
+    .then(function(ok) { if (ok) _resetRoomPositionsNow(); });
+}
+function _resetRoomPositionsNow() {
   var layout = getRoomLayout();
   var n = layout.length, cols = Math.max(1, Math.min(4, n)), rows = Math.ceil(n / cols);
   layout.forEach(function(it, i) {

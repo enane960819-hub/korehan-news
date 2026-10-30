@@ -191,7 +191,7 @@
   }
   // Every background is listed; ones you don't have yet show their price / study goal and
   // open Customize → Room, where they can be tried on and bought.
-  function themeGrid(sel) {
+  function themeGrid(sel, forNew) {
     var c = (typeof _getRoomTheme === 'function') ? (_getRoomTheme() || {}) : {};
     var rv = window.khRoomView, wall = '#e8dcc6';
     if (rv) { var wp = rv.WALLPAPERS.filter(function (w) { return w.id === (c.wallpaper || 'default'); })[0] || rv.WALLPAPERS[0]; wall = wp.bg; }
@@ -201,7 +201,9 @@
       var tag = have ? '' : '<span class="rt-thl">' + ic(r.goal ? 'graduation-cap' : 'lock') + esc(r.goal ? r.goal.short : (nf(r.price) + (r.season ? ' · ' + r.season : ''))) + '</span>';
       return '<button type="button" class="rt-th1' + (r.id === sel ? ' on' : '') + (have ? '' : ' rt-lock') + '" data-pick="' + r.id + '"' + (have ? '' : ' data-locked="1"') + ' aria-pressed="' + (r.id === sel) + '">'
         + '<span class="rt-thb" style="' + bg + '"></span>' + tag + '<span class="rt-thn">' + esc(r.name) + '</span></button>';
-    }).join('') + '</div><p class="rt-hint">Locked backgrounds open in Customize, where you can try them on.</p>';
+    }).join('') + '</div><p class="rt-hint">' + (forNew
+      ? 'Locked backgrounds are bought in Customize → Room. Add the room now and change its background later.'
+      : 'Locked backgrounds open in Customize, where you can try them on.') + '</p>';
   }
   function openSheet(html, onAct) {
     closeSheet();
@@ -216,6 +218,13 @@
       var th = e.target.closest('.rt-th1');
       if (th) {
         if (th.dataset.locked) {
+          // Add-a-room sheet: Customize would dress the CURRENT room, not the new one —
+          // point at the hint instead of leaving the sheet.
+          if (ov.dataset.newroom) {
+            var h = ov.querySelector('.rt-hint');
+            if (h) { h.classList.remove('rt-hint-on'); void h.offsetWidth; h.classList.add('rt-hint-on'); }
+            return;
+          }
           closeSheet();
           if (window.khAvatarEditor) khAvatarEditor.open('room');
           return;
@@ -298,7 +307,7 @@
     } else {
       html = '<h3>Add a room</h3><p>Pick a name and a background. You can change both later. Move items in from your other rooms or buy new ones.</p>'
         + '<label class="rt-lab">Name<input class="rt-in" maxlength="40" placeholder="Study corner" aria-label="Room name"></label>'
-        + themeGrid('default')
+        + themeGrid('default', true)
         + '<div class="rt-cost"><span>Room ' + roomNo + ' of ' + maxN + '</span><b>' + costRight + '</b></div>'
         + (short ? '<p class="rt-short">You have ' + nf(coin()) + ' nyang — ' + nf(short) + ' more to go.</p>' : '')
         + '<div class="rt-acts"><button type="button" class="rt-b" data-sact="cancel">Cancel</button>'
@@ -309,6 +318,7 @@
       if (act === 'add') addRoom(ov, { price: price, slot: next && next.slot, freeSlot: freeSlot, hidden: hidden });
     });
     ov.dataset.sel = 'default';
+    ov.dataset.newroom = '1';
   }
 
   async function addRoom(ov, o) {
@@ -401,6 +411,8 @@
       '.rt-thb{position:absolute;inset:0;background-size:cover;background-position:center}',
       '.rt-thn{position:absolute;left:0;right:0;bottom:0;padding:14px 7px 5px;text-align:left;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(transparent,rgba(2,6,23,.75))}',
       '.rt-hint{font-size:11.5px!important;margin:8px 0 12px!important}',
+      '.rt-hint-on{color:#fbbf24!important;animation:rtHint .6s ease}',
+      '@keyframes rtHint{0%,100%{transform:none}30%{transform:translateX(-3px)}60%{transform:translateX(3px)}}',
       '.rt-cost{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;background:#16223b;color:#fbbf24;font-weight:800;font-size:14px;margin-bottom:12px}',
       '.rt-short{color:#fca5a5!important;font-size:12.5px!important}',
       '.rt-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}',
