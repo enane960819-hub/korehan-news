@@ -557,37 +557,64 @@ Deno.serve(async (req) => {
       existingMap[`${r.scheduled_date}_${r.level}`] = { hasVocab: !!hasVocab, topic_ko: r.topic_ko || '', enriched, attempts: Number(r.enrich_attempts) || 0 }
     }
 
-    // Pre-fetch expected topics per level to check correctness
-    const expectedTopics: Record<string, string> = {}
+    // Topic per (week, level). A week that already has a row keeps its topic —
+    // the old "wrong topic → regenerate" rule re-billed and changed topics
+    // whenever the rotation list shifted. A new week takes the rotation pick,
+    // skipping any topic that level used in the last 12 weeks.
+    //
+    // Why: every writing_topics row has sort_order 0 and the same created_at
+    // (bulk insert), so `order(sort_order, created_at)` was a tie and Postgres
+    // could return the list in a different order on each run. Weeks then
+    // mapped to arbitrary topics and Starter got "내 가족" on both 10-19 and
+    // 10-26. `id` breaks the tie; the recent-use check guards against the
+    // index shifting when topics are (de)activated or reordered.
+    const pickedTopics: Record<string, { ko: string; en: string; category: string }> = {}
+    const firstWeek = dates[0]
     for (const level of GEN_LEVELS) {
       const { data: topics } = await sb
         .from('writing_topics')
-        .select('topic_ko')
+        .select('id,topic_ko,topic_en,category')
         .eq('level', level)
         .eq('active', true)
         .order('sort_order')
         .order('created_at')
+        .order('id')
       const allTopics = topics || []
+      const { data: recent } = await sb
+        .from('study_daily_content')
+        .select('topic_ko')
+        .eq('level', level)
+        .gte('scheduled_date', addDays(firstWeek, -84))
+        .lt('scheduled_date', firstWeek)
+      const used = new Set((recent || []).map((r: { topic_ko: string }) => r.topic_ko).filter(Boolean))
       for (const date of dates) {
-        if (allTopics.length) {
-          expectedTopics[`${date}_${level}`] = allTopics[topicWeekIndex(date, allTopics.length)].topic_ko
+        const ex = existingMap[`${date}_${level}`]
+        if (ex && ex.topic_ko) {
+          const t = allTopics.find((x: { topic_ko: string }) => x.topic_ko === ex.topic_ko)
+          pickedTopics[`${date}_${level}`] = { ko: ex.topic_ko, en: t?.topic_en || '', category: t?.category || '' }
+          used.add(ex.topic_ko)
+          continue
         }
+        if (!allTopics.length) continue
+        const start = topicWeekIndex(date, allTopics.length)
+        let t = allTopics[start]
+        for (let k = 0; k < allTopics.length; k++) {
+          const c = allTopics[(start + k) % allTopics.length]
+          if (!used.has(c.topic_ko)) { t = c; break }
+        }
+        pickedTopics[`${date}_${level}`] = { ko: t.topic_ko, en: t.topic_en, category: t.category || '' }
+        used.add(t.topic_ko)
       }
     }
 
-    // Filter: skip only if content exists with correct topic AND has vocab
+    // Filter: generate rows that are missing or have no vocab, plus old-schema
+    // rows (thin helpers / no grammar examples) up to MAX_ENRICH_ATTEMPTS times
+    // so a row that never reaches the enriched bar isn't re-billed every night.
     const missing = toGenerate.filter(item => {
-      const key = `${item.date}_${item.level}`
-      const ex = existingMap[key]
-      const expected = expectedTopics[key]
-      if (!ex || !ex.hasVocab) return true // no content or no vocab → generate
-      if (expected && ex.topic_ko !== expected) return true // wrong topic → regenerate
-      // Old-schema row (thin helpers / no grammar examples) → regenerate with
-      // richer pools, but only up to MAX_ENRICH_ATTEMPTS times so a row that
-      // never reaches the enriched bar can't be re-generated (and re-billed)
-      // every night forever.
+      const ex = existingMap[`${item.date}_${item.level}`]
+      if (!ex || !ex.hasVocab) return true
       if (!ex.enriched && (ex.attempts || 0) < 2) return true
-      return false // enriched, or attempt-capped, or correct-topic-with-vocab → skip
+      return false
     })
 
     // NOTE: we intentionally do NOT early-return when `missing` is empty.
@@ -604,28 +631,14 @@ Deno.serve(async (req) => {
     // runtime killed it. Anthropic Haiku tolerates this many concurrent
     // calls fine, and the worst-case wall time drops from O(n) to O(1).
     const settled = await Promise.allSettled(missing.map(async (item) => {
-      let topicHint = ''
-      let forceTopic: { ko: string; en: string } | null = null
-      const { data: topics } = await sb
-        .from('writing_topics')
-        .select('topic_ko,topic_en,category')
-        .eq('level', item.level)
-        .eq('active', true)
-        .order('sort_order')
-        .order('created_at')
-
       // 22차 audit: refuse to generate content if writing_topics is empty
-      // for this level. Previously this fell back to a hardcoded category
-      // hint ("daily life", "food & cooking", …) and Claude generated
-      // generic content the admin never curated. Better to fail loud so
-      // the operator notices and seeds the topics table.
-      const allTopics = topics || []
-      if (!allTopics.length) {
+      // for this level — fail loud so the operator seeds the topics table.
+      const t = pickedTopics[`${item.date}_${item.level}`]
+      if (!t || !t.ko) {
         throw new Error(`writing_topics table is empty for level ${item.level} — seed topics before running daily-content-gen`)
       }
-      const t = allTopics[topicWeekIndex(item.date, allTopics.length)]
-      topicHint = `Use EXACTLY this topic: "${t.topic_ko}" (${t.topic_en}). Category: ${t.category || ''}.`
-      forceTopic = { ko: t.topic_ko, en: t.topic_en }
+      const topicHint = `Use EXACTLY this topic: "${t.ko}" (${t.en}). Category: ${t.category || ''}.`
+      const forceTopic: { ko: string; en: string } | null = { ko: t.ko, en: t.en }
 
       const prompt = buildPrompt(item.level, topicHint)
       const parsed = await callAnthropic(sb, apiKey, prompt, item.level)
