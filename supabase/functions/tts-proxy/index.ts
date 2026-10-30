@@ -13,6 +13,15 @@
  * word is synthesized once for everyone, not on every tap.
  */
 
+// Per-user daily cap on synthesized clips (2026-10-30). Clients read the
+// shared tts-cache bucket first, so only cache misses reach this function;
+// 300 new clips a KST day is far above a heavy study day (a full Study Room
+// day is ~60–120 taps, most of them cached) and stops a script from burning
+// the Azure character budget. Counted in edge_usage_daily via
+// kh_edge_usage_take() (20261030_ai_quota_reserve.sql). Admin is uncapped.
+const TTS_DAILY_LIMIT = 300
+const ADMIN_EMAILS = ['enane960819@gmail.com']
+
 const VOICE_MAP: Record<string, string> = {
   female: 'ko-KR-SunHiNeural',
   male: 'ko-KR-InJoonNeural',
@@ -108,9 +117,23 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...cors, 'Content-Type': 'application/json' }
       })
     }
+    const userData = await authCheck.json().catch(() => null)
+    if (!userData?.id) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...cors, 'Content-Type': 'application/json' }
+      })
+    }
+    const isAdmin = !!(userData.email && ADMIN_EMAILS.includes(userData.email))
+    // Same gate as claude-proxy: an account that never confirmed its inbox
+    // can't spend paid synthesis. The client falls back to the device voice.
+    if (!isAdmin && !userData.email_confirmed_at) {
+      return new Response(JSON.stringify({ error: 'Please verify your email first.', code: 'email_unverified' }), {
+        status: 403, headers: { ...cors, 'Content-Type': 'application/json' }
+      })
+    }
 
-    const body = await req.json()
-    const text = String(body.text || '').slice(0, 500)
+    const body = await req.json().catch(() => ({}))
+    const text = String(body?.text || '').slice(0, 500)
     if (!text) {
       return new Response(JSON.stringify({ error: 'no text' }), {
         status: 400, headers: { ...cors, 'Content-Type': 'application/json' }
@@ -125,11 +148,38 @@ Deno.serve(async (req) => {
       })
     }
 
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    // Daily cap (reserve one clip before synthesizing). Fails open only when
+    // the counter function isn't deployed yet (migration pending).
+    if (!isAdmin && serviceKey) {
+      const r = await fetch(`${supabaseUrl}/rest/v1/rpc/kh_edge_usage_take`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_user: userData.id, p_service: 'tts', p_limit: TTS_DAILY_LIMIT }),
+      })
+      if (r.ok) {
+        const take = await r.json().catch(() => null)
+        if (!take || take.ok !== true) {
+          return new Response(JSON.stringify({ error: 'Daily voice limit reached', code: 'tts_daily_limit' }), {
+            status: 429, headers: { ...cors, 'Content-Type': 'application/json' }
+          })
+        }
+      } else if (r.status !== 404) {
+        console.error('[tts-proxy] usage counter failed', r.status)
+        return new Response(JSON.stringify({ error: 'Usage check failed' }), {
+          status: 503, headers: { ...cors, 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
     const voiceKey = VOICE_MAP[body.voice] ? body.voice : 'female'
     const audio = await synthesize(text, VOICE_MAP[voiceKey], azureKey, azureRegion)
 
     // Best effort — a failed cache upload never blocks playback.
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (serviceKey && audio.length > 100) {
       try {
         const path = `${voiceKey}/${await sha256Hex(voiceKey + '|' + text)}.mp3`
