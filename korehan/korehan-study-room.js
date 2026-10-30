@@ -878,7 +878,12 @@ function renderStudyChecklist() {
     { k:'sentence',    label:'Dictation',          sub:'Listen & type' },
     { k:'expressions', label:'Key Expressions',    sub:'Expressions in context' }
   ];
-  var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
+  // Speaking Practice is Premium: Free learners see it tagged and their week
+  // counts the other four steps.
+  var canSpeak = typeof canAccess !== 'function' || canAccess('speaking_practice');
+  items.forEach(function(i){ if (i.k === 'picture' && !canSpeak) i.locked = true; });
+  var counted = items.filter(function(i){ return !i.locked; });
+  var doneCnt = counted.filter(function(i){ return !!_studyDone[i.k]; }).length;
   var pd = document.getElementById('sr-done-picture');
   var sd = document.getElementById('sr-done-sentence');
   if (pd) pd.innerHTML = _studyDone.picture ? '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span>' : '';
@@ -892,14 +897,14 @@ function renderStudyChecklist() {
       + '<span class="sr-mission-item-sub" style="' + nameStyle + '">' + i.sub + '</span>'
       + '</div>'
       + '<div class="sr-mission-right">'
-      + '<span class="' + (done ? 'sr-mission-status-done' : 'sr-mission-status-todo') + '">' + (done ? 'DONE' : 'TODO') + '</span>'
+      + '<span class="' + (done ? 'sr-mission-status-done' : 'sr-mission-status-todo') + '">' + (done ? 'DONE' : (i.locked ? 'PREMIUM' : 'TODO')) + '</span>'
       + '</div>'
       + '</div>';
   }).join('');
   // Update quest ring
-  _drawQuestRing(doneCnt, items.length);
+  _drawQuestRing(doneCnt, counted.length);
   var qSub = document.getElementById('sr-quest-sub');
-  if (qSub) qSub.textContent = doneCnt + '/' + items.length + ' steps · writing opens at 4';
+  if (qSub) qSub.textContent = doneCnt + '/' + counted.length + ' steps' + (canSpeak ? ' · writing opens at 4' : '');
   // Keep learning selector badges in sync if modal is open
   var lsModal = document.getElementById('ls-modal');
   if (lsModal && !lsModal.classList.contains('hidden')) _updateLSSelectorBadges();
@@ -918,6 +923,7 @@ function renderTodayPlan() {
     { k:'picture', label:'Speaking Practice' }, { k:'sentence', label:'Dictation' },
     { k:'expressions', label:'Key Expressions' }
   ];
+  if (typeof canAccess === 'function' && !canAccess('speaking_practice')) stages = stages.filter(function(x){ return x.k !== 'picture'; });
   var lessonDone = stages.filter(function(x){ return !!_studyDone[x.k]; }).length;
   var nextStage = stages.filter(function(x){ return !_studyDone[x.k]; })[0];
   var reviewDone = false;
@@ -927,8 +933,8 @@ function renderTodayPlan() {
     { done: reviewDone, label: 'Daily review',
       sub: reviewDone ? 'Done today' : due === -1 ? 'Checking your words…' : (due ? due + ' to review · ~' + Math.max(1, Math.ceil(due / 4)) + ' min' : 'Nothing due yet'),
       fn: 'openDailyReview()' },
-    { done: lessonDone >= 5, label: 'This week’s lesson',
-      sub: lessonDone >= 5 ? 'All 5 steps done' : (lessonDone + '/5 · ' + (nextStage ? nextStage.label : '')),
+    { done: lessonDone >= stages.length, label: 'This week’s lesson',
+      sub: lessonDone >= stages.length ? 'All ' + stages.length + ' steps done' : (lessonDone + '/' + stages.length + ' · ' + (nextStage ? nextStage.label : '')),
       fn: 'openLearningSelector()' },
     { done: (typeof _wmWeekSubmitted === 'function') && !!_wmWeekSubmitted(), label: 'Write & get feedback',
       sub: ((typeof _wmWeekSubmitted === 'function') && _wmWeekSubmitted()) ? 'Submitted this week'
@@ -8018,7 +8024,7 @@ async function loadWeakGrammarBanner() {
 // itself is never loaded here (courses page → get_live_zoom_link()).
 // Re-render plan-dependent cards once the plan is known (Premium users saw
 // "Try Premium" when the plan loaded after the card).
-window.addEventListener('kh-plan-loaded', function() { try { _srRenderLiveClassCard(); } catch(_) {} });
+window.addEventListener('kh-plan-loaded', function() { try { _srRenderLiveClassCard(); } catch(_) {} try { renderStudyChecklist(); } catch(_) {} });
 async function _srRenderLiveClassCard() {
   var card = document.getElementById('sr-notif-live'); if (!card) return;
   var sb = (typeof getSupa === 'function') ? getSupa() : null; if (!sb) return;
@@ -12461,6 +12467,8 @@ var _spRecStartedAt = 0;
 
 function openSpeakingPractice() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  // Speaking (recording + pronunciation scoring) is Premium — owner 2026-10-30.
+  if (!requirePlan('speaking_practice')) return;
   if (!ensureStudyUnlocked()) return;
   _spIdx = 0; _spChunks = []; _spBlob = null;
   // Rebuild from current content every open — otherwise a list built for a
