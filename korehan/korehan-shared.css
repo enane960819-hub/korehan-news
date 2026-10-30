@@ -5810,6 +5810,27 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
   body.mobile-redesign #fj-resume { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 
+/* Bottom safe area. The mobile tab bar and the floating Daily Mission /
+   First Journey chips sit over the end of every page, so the last content
+   and the footer's newsletter field + Subscribe were unreachable. Pad the
+   footer (or the body on pages without one) by the height they cover. */
+@media (max-width: 900px) {
+  body.mobile-redesign:not(.kh-reading-page):has(.mobile-bottom-nav) #kh-footer > footer,
+  body.mobile-redesign:not(.kh-reading-page):has(.mobile-bottom-nav):not(:has(#kh-footer > footer)) {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  body.mobile-redesign:not(.kh-reading-page):has(.mobile-bottom-nav):has(#fj-resume, #kh-daily-mission[style*="block"]) #kh-footer > footer,
+  body.mobile-redesign:not(.kh-reading-page):has(.mobile-bottom-nav):has(#fj-resume, #kh-daily-mission[style*="block"]):not(:has(#kh-footer > footer)) {
+    padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+@media (min-width: 901px) {
+  body:not(.kh-reading-page):has(#kh-daily-mission[style*="block"]) #kh-footer > footer,
+  body:not(.kh-reading-page):has(#kh-daily-mission[style*="block"]):not(:has(#kh-footer > footer)) { padding-bottom: 80px !important; }
+  body:not(.kh-reading-page):has(#fj-resume) #kh-footer > footer,
+  body:not(.kh-reading-page):has(#fj-resume):not(:has(#kh-footer > footer)) { padding-bottom: 136px !important; }
+}
+
 body[style*="overflow: hidden"] #kh-daily-mission,
 body[style*="overflow:hidden"]  #kh-daily-mission,
 body[style*="overflow: hidden"] #fj-resume,

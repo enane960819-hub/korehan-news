@@ -1460,7 +1460,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       var fn = (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '';
       name = String(fn).split(/[\s.]/)[0] || '';
     } catch (_) {}
-    try { streak = (typeof getCurrentStreak === 'function') ? (getCurrentStreak() || 0) : 0; } catch (_) {}
+    try { streak = (typeof khStreakNow === 'function') ? (khStreakNow() || 0) : 0; } catch (_) {}
     var esc = function(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
     var ic = function(n){ return '<i data-lucide="' + n + '" aria-hidden="true"></i>'; };
     var kstKey = function(ms){ return new Date(ms + 9 * 3600000).toISOString().slice(0, 10); };
@@ -1572,7 +1572,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       // This week's activity (other devices included); today's row feeds the bonus row.
       sb.from('daily_missions').select('date, articles, words, quizzes, fill').eq('user_id', u.id).gte('date', weekSince),
       window.khReviewQueue ? khReviewQueue.summary() : null,
-      typeof fetchActivityStreakFromDB === 'function' ? fetchActivityStreakFromDB(sb, u.id) : 0,
+      typeof khActivityStreak === 'function' ? khActivityStreak() : null,
       typeof getUnifiedWeakGrammarItems === 'function' ? getUnifiedWeakGrammarItems(1) : []
     ].map(function(q){ return Promise.resolve(q).then(function(r){ return r; }, function(){ return null; }); }));
     var st = res[0] && res[0].data, rows = (res[1] && res[1].data) || [], rq = res[2], wk = res[4];
@@ -1586,13 +1586,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     weekSum.xp = typeof dmXPFromData === 'function' ? dmXPFromData(weekSum) : 0;
     if (rq) { gotRq = true; if (rq.items) due = rq.items.length; }
-    if (typeof res[3] === 'number') streak = Math.max(streak, res[3]);
+    if (typeof res[3] === 'number') streak = res[3];
     // Only a real weak spot (missed at least once) — never a placeholder.
     if (wk && wk[0] && (wk[0].wrong_count || 0) > 0) weak = wk[0].grammar_point;
     paint();
   }
   renderTodayCard();
   window.addEventListener('kh-auth-signed-in', renderTodayCard);
+  // A Streak Freeze spent on this load changes the streak — repaint.
+  window.addEventListener('kh-streak-changed', renderTodayCard);
   window._khRenderTodayCard = renderTodayCard;
 
   // Unread-feedback pill — surfaces reviewed submissions the user

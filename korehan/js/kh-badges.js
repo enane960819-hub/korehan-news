@@ -162,31 +162,22 @@ async function awardXP(actionKey, meta) {
     }
     if (res.data && res.data.ok) {
       if (res.data.leveled_up) {
-        showToast('🎉 Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
+        showToast('Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
       var gained = Number(res.data.xp_gained || 0);
       if (gained > 0) showXPToast(gained);
       // Coins are granted (and logged) by award_xp itself — the client
-      // no longer writes coin_balance or coin_transactions.
+      // no longer writes coin_balance or coin_transactions. award_xp also
+      // writes the xp_log row (a second client row halved daily caps).
       var coinGained = Number(res.data.coin_gained || 0);
       if (coinGained > 0) showCoinToast(coinGained);
-      await _insertXPLog(sb, supaUser.id, actionKey, gained, reason, contentId);
+      if (typeof _recordXPGrant === 'function') _recordXPGrant(actionKey, contentId);
       return res.data;
     }
   } catch(e) {}
 
-  // Fallback (RPC unreachable): local XP only. coin_balance is server-only
-  // (20261026_coin_server_only.sql), so no nyang is granted here.
-  try {
-    await _insertXPLog(sb, supaUser.id, actionKey, amount, reason, contentId);
-    var { data: statsRow } = await sb.from('user_stats').select('xp').eq('user_id', supaUser.id).maybeSingle();
-    var currentXP = (statsRow && statsRow.xp) || 0;
-    await sb.from('user_stats').upsert({ user_id: supaUser.id, xp: currentXP + amount }, { onConflict: 'user_id' });
-    showXPToast(amount);
-    _recordXPGrant(actionKey, contentId);
-    return { ok: true, xp_gained: amount };
-  } catch(e) {}
-
+  // No browser fallback: XP is server-only (award_xp writes xp_log and
+  // user_stats.xp). If the RPC failed, nothing is granted.
   return null;
 }
 
@@ -335,14 +326,18 @@ function getUsedFreezes() { return lsGet('kh_used_freezes', {}); }
 function getCurrentStreak() {
   var log = lsGet('kh_study_log', {});
   var days = lsGet('kh_study_days', {});
-  var usedFreezes = getUsedFreezes();
   var allDays = Object.assign({}, days);
   Object.keys(log).forEach(function(k){
     var d = log[k];
     if ((d.articles||0) + (d.words||0) + (d.quiz||0) > 0) allDays[k] = true;
   });
+  // Real Streak Freezes are spent on the server (consume_streak_freeze);
+  // the day is cached in kh_streak_freeze_day. The old free local freeze
+  // (auto-used here) and the never-decreasing kh_synced_* mirrors inflated
+  // the streak — this is now the same pure local walk as korehan-shared.js.
+  var fzd = lsGet('kh_streak_freeze_day', '');
+  if (fzd) allDays[fzd] = true;
   var streak = 0;
-  var freezesUsed = 0;
   // Walk KST days, like korehan-shared.js — activity is keyed in KST.
   var d = new Date(Date.now() + 9 * 3600000);
   function back() { d = new Date(d.getTime() - 86400000); }
@@ -350,21 +345,11 @@ function getCurrentStreak() {
     var key = d.toISOString().slice(0,10);
     if (allDays[key]) { streak++; back(); }
     else if (i === 0) { back(); } // 오늘 아직 안 했어도 어제부터
-    else if (usedFreezes[key]) { streak++; back(); } // 프리즈 사용된 날
-    else {
-      // Try auto-use freeze for yesterday gap
-      var avail = getStreakFreezes();
-      if (avail > 0 && i <= 2 && streak > 0) {
-        useStreakFreeze();
-        var uf = getUsedFreezes(); uf[key] = true; lsSet('kh_used_freezes', uf);
-        streak++; back();
-      } else { break; }
-    }
+    else break;
   }
-  // Server-side streaks (synced at sign-in) win on a fresh device whose
-  // localStorage log is empty.
-  return Math.max(streak, lsGet('kh_synced_activity_streak', 0) || 0, lsGet('kh_synced_mission_streak', 0) || 0);
+  return streak;
 }
+if (typeof khStreakNow !== 'function') { var khStreakNow = function(){ return getCurrentStreak(); }; }
 
 function getSectionReadCounts() {
   // Supabase 없으면 localStorage 기반으로 섹션별 카운트
@@ -389,17 +374,17 @@ var BADGE_DEFS = [
 
   // 🔥 STREAK
   { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:pxBadge('fire'), name:'First Spark',      desc:'3-day study streak',
-    check: function(s){ return getCurrentStreak() >= 3; } },
+    check: function(s){ return khStreakNow() >= 3; } },
   { id:'streak_7',   cat:'streak',    tier:'silver',   icon:pxBadge('runner'), name:'Week Warrior',    desc:'7-day study streak',
-    check: function(s){ return getCurrentStreak() >= 7; } },
+    check: function(s){ return khStreakNow() >= 7; } },
   { id:'streak_30',  cat:'streak',    tier:'gold',     icon:pxBadge('trophy'), name:'30-Day Power',    desc:'30-day study streak',
-    check: function(s){ return getCurrentStreak() >= 30; } },
+    check: function(s){ return khStreakNow() >= 30; } },
   { id:'streak_50',  cat:'streak',    tier:'gold',     icon:pxBadge('castle'), name:'50-Day Milestone', desc:'50-day study streak',
-    check: function(s){ return getCurrentStreak() >= 50; } },
+    check: function(s){ return khStreakNow() >= 50; } },
   { id:'streak_100', cat:'streak',    tier:'diamond',  icon:pxBadge('diamond'), name:'100-Day Champion', desc:'100-day study streak',
-    check: function(s){ return getCurrentStreak() >= 100; } },
+    check: function(s){ return khStreakNow() >= 100; } },
   { id:'streak_365', cat:'streak',    tier:'legendary',icon:pxBadge('crown'), name:'365 Legend',       desc:'1-year study streak',
-    check: function(s){ return getCurrentStreak() >= 365; } },
+    check: function(s){ return khStreakNow() >= 365; } },
 
   // 📰 READING
   { id:'read_1',     cat:'reading',   tier:'bronze',   icon:pxBadge('book'), name:'First Article',    desc:'Read your first article',
@@ -547,9 +532,9 @@ var BADGE_DEFS = [
 
   // 🔁 STREAK ladder fill-ins
   { id:'streak_14',  cat:'streak', tier:'silver',  icon:pxBadge('runner'), name:'Two-Week Tempo',  desc:'14-day study streak',
-    check: function(){ return getCurrentStreak() >= 14; } },
+    check: function(){ return khStreakNow() >= 14; } },
   { id:'streak_180', cat:'streak', tier:'legendary',icon:pxBadge('castle'), name:'Half-Year Hero',  desc:'180-day study streak',
-    check: function(){ return getCurrentStreak() >= 180; } },
+    check: function(){ return khStreakNow() >= 180; } },
 
   // 📰 READING expansion
   { id:'read_200',  cat:'reading', tier:'silver', icon:pxBadge('newspaper'), name:'News Regular',  desc:'Read 200 articles',
@@ -861,7 +846,7 @@ function getBadgeStats() {
     total: total,
     pct: Math.round(earnedCount / total * 100),
     xp: khBadgeXP(),
-    streak: getCurrentStreak()
+    streak: (typeof khStreakNow === "function" ? khStreakNow() : getCurrentStreak())
   };
 }
 
@@ -959,12 +944,12 @@ function statBox(val, label, color) {
 function getBadgeProgress(b) {
   try {
     var map = {
-      'streak_3':    { cur: getCurrentStreak,          max: 3 },
-      'streak_7':    { cur: getCurrentStreak,          max: 7 },
-      'streak_30':   { cur: getCurrentStreak,          max: 30 },
-      'streak_50':   { cur: getCurrentStreak,          max: 50 },
-      'streak_100':  { cur: getCurrentStreak,          max: 100 },
-      'streak_365':  { cur: getCurrentStreak,          max: 365 },
+      'streak_3':    { cur: khStreakNow,              max: 3 },
+      'streak_7':    { cur: khStreakNow,              max: 7 },
+      'streak_30':   { cur: khStreakNow,              max: 30 },
+      'streak_50':   { cur: khStreakNow,              max: 50 },
+      'streak_100':  { cur: khStreakNow,              max: 100 },
+      'streak_365':  { cur: khStreakNow,              max: 365 },
       'read_10':     { cur: getTotalArticlesRead,       max: 10 },
       'read_50':     { cur: getTotalArticlesRead,       max: 50 },
       'read_100':    { cur: getTotalArticlesRead,       max: 100 },
@@ -998,7 +983,7 @@ function getBadgeProgress(b) {
       // Derive the rest from the id (read_1, xp_7500, …) — same counters as the checks.
       var mm = /^(read|word|xp|streak)_(\d+)$/.exec(b.id);
       if (!mm) return null;
-      var fn = { read: getTotalArticlesRead, word: khBadgeSavedCount, xp: khBadgeXP, streak: getCurrentStreak }[mm[1]];
+      var fn = { read: getTotalArticlesRead, word: khBadgeSavedCount, xp: khBadgeXP, streak: khStreakNow }[mm[1]];
       var c = fn(), mx = +mm[2];
       return { pct: c/mx*100, label: Math.min(c, mx) + ' / ' + mx };
     }

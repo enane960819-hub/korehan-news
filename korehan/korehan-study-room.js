@@ -3969,19 +3969,15 @@ function _pmRenderAssemble(body, lesson, pipsHtml) {
     // of the same chunks, so anchoring the start removes the
     // "where do I begin" pause without giving the answer away. Pop
     // the first occurrence of tokens[0] out of the shuffled pool.
-    var picked = [];
-    var firstWord = tokens[0];
-    var anchorIdx = shuffled.indexOf(firstWord);
-    if (anchorIdx >= 0) {
-      picked.push(shuffled.splice(anchorIdx, 1)[0]);
-    }
-    _pm.asmState = { target: tokens, pool: shuffled, picked: picked, result: null };
+    // picked holds pool INDICES (not words): with a repeated token a text
+    // count left the second copy disabled once the anchor was placed.
+    var anchorIdx = shuffled.indexOf(tokens[0]);
+    _pm.asmState = { target: tokens, pool: shuffled, anchor: anchorIdx, picked: anchorIdx >= 0 ? [anchorIdx] : [], result: null };
   }
   var st = _pm.asmState;
   var poolHtml = st.pool.map(function(w, pi) {
-    var usedCount = st.picked.filter(function(x){ return x === w; }).length;
-    var totalCount = st.pool.filter(function(x){ return x === w; }).length;
-    var isUsed = usedCount >= totalCount;
+    var isUsed = st.picked.indexOf(pi) >= 0;
+    if (isUsed && pi === st.anchor) return '';
     return '<button type="button" ' + (isUsed ? 'disabled' : '') + ' onclick="_pmAsmPick(' + pi + ')" '
       + 'style="padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);'
       + 'background:rgba(255,255,255,.06);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;'
@@ -3989,7 +3985,8 @@ function _pmRenderAssemble(body, lesson, pipsHtml) {
       + _esc(w) + '</button>';
   }).join('');
   var pickedHtml = st.picked.length
-    ? st.picked.map(function(w, si) {
+    ? st.picked.map(function(pi, si) {
+        var w = st.pool[pi];
         return '<button type="button" onclick="_pmAsmRemove(' + si + ')" '
           + 'style="padding:10px 14px;border-radius:12px;border:none;'
           + 'background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;'
@@ -4024,18 +4021,15 @@ function _pmRenderAssemble(body, lesson, pipsHtml) {
 function _pmAsmPick(pi) {
   if (!_pm.asmState || _pm.asmState.result !== null) return;
   var st = _pm.asmState;
-  var w = st.pool[pi];
-  var used = st.picked.filter(function(x){ return x === w; }).length;
-  var total = st.pool.filter(function(x){ return x === w; }).length;
-  if (used >= total) return;
-  st.picked.push(w);
+  if (st.pool[pi] == null || st.picked.indexOf(pi) >= 0) return;
+  st.picked.push(pi);
   _pmRender();
 }
 function _pmAsmRemove(si) {
   if (!_pm.asmState || _pm.asmState.result !== null) return;
-  // Anchor (picked[0]) is the pre-selected first word — can't remove
-  // it. Same convention as Sentence Build / Picture Description.
-  if (si <= 0) return;
+  // Any placed tile (the anchor too) goes back to the bank; Retry
+  // restores the anchor.
+  if (si < 0 || si >= _pm.asmState.picked.length) return;
   _pm.asmState.picked.splice(si, 1);
   _pmRender();
 }
@@ -4043,17 +4037,14 @@ function _pmAsmClear() {
   if (!_pm.asmState || _pm.asmState.result !== null) return;
   // Restore the anchor; everything else goes back to the pool.
   var st = _pm.asmState;
-  if (st.picked.length > 1) {
-    st.pool = st.pool.concat(st.picked.slice(1));
-    st.picked = st.picked.slice(0, 1);
-  }
+  st.picked = st.anchor >= 0 ? [st.anchor] : [];
   _pmRender();
 }
 function _pmAsmCheck() {
   if (!_pm.asmState) return;
   var st = _pm.asmState;
   var ok = st.picked.length === st.target.length
-    && st.picked.every(function(w, i){ return w === st.target[i]; });
+    && st.picked.every(function(pi, i){ return st.pool[pi] === st.target[i]; });
   st.result = ok ? 'right' : 'wrong';
   _pmRender();
 }
@@ -14328,15 +14319,22 @@ function goToBMStep2() {
     // so the same word appeared twice on screen (once in the answer
     // zone, once greyed-out in the word bank). Audit 2026-05-18 (A2
     // sitewide cleanup).
-    var preselected = [];
-    if (words.length) {
-      var firstIdx = shuffled.indexOf(words[0]);
-      if (firstIdx >= 0) preselected.push(shuffled.splice(firstIdx, 1)[0]);
-    }
-    return { original: words, shuffled: shuffled, selected: preselected };
+    // Tiles are tracked by position (wo.picked = tile indices), not by
+    // text: with a repeated word ("그 사람은 그 책을 …") a text count kept
+    // the second "그" disabled once the anchored one was placed. The anchor
+    // tile is hidden from the bank while it sits in the answer.
+    var anchor = -1;
+    if (words.length) anchor = shuffled.indexOf(words[0]);
+    var wo = { original: words, shuffled: shuffled, anchor: anchor, picked: anchor >= 0 ? [anchor] : [], selected: [] };
+    _bmSyncSelected(wo);
+    return wo;
   });
   _bm.wordOrderIdx = 0;  // 현재 문장 인덱스
   renderBMStep2();
+}
+
+function _bmSyncSelected(wo) {
+  wo.selected = (wo.picked || []).map(function(i){ return wo.shuffled[i]; });
 }
 
 function goToBMStep1Back() { _bm.step = 1; updateBMHeader(); renderBMStep1(); }
@@ -14357,9 +14355,9 @@ function renderBMStep2() {
     + '<div style="margin-bottom:16px">'
     + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Your Answer</div>'
     + '<div id="bm-answer-zone" class="bm-answer-zone">'
-    + (wo.selected.length
-        ? wo.selected.map(function(w, i) {
-            return '<button class="bm-word-chip bm-word-selected" onclick="bmDeselectWord(' + idx + ',' + i + ')">' + w + ' ×</button>';
+    + (wo.picked.length
+        ? wo.picked.map(function(t, i) {
+            return '<button class="bm-word-chip bm-word-selected" onclick="bmDeselectWord(' + idx + ',' + i + ')">' + wo.shuffled[t] + ' ×</button>';
           }).join('')
         : '<span class="bm-answer-empty">Tap words below to build the sentence</span>')
     + '</div></div>'
@@ -14368,9 +14366,9 @@ function renderBMStep2() {
     + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Words</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
     + wo.shuffled.map(function(w, i) {
-        var usedCount  = wo.selected.filter(function(x){ return x === w; }).length;
-        var totalCount = wo.shuffled.filter(function(x){ return x === w; }).length;
-        var isUsed = usedCount >= totalCount;
+        var isUsed = wo.picked.indexOf(i) >= 0;
+        // The anchored first word lives in the answer, not twice on screen.
+        if (isUsed && i === wo.anchor) return '';
         return '<button class="bm-word-chip' + (isUsed ? ' bm-word-used' : '') + '" onclick="bmSelectWord(' + idx + ',' + i + ')" ' + (isUsed ? 'disabled' : '') + '>' + w + '</button>';
       }).join('')
     + '</div></div>';
@@ -14387,18 +14385,20 @@ function renderBMStep2() {
 function bmSelectWord(sentIdx, wordPos) {
   var wo = _bm.wordOrders[sentIdx];
   var word = wo.shuffled[wordPos];
-  // 사용 횟수 체크
-  var usedCount = wo.selected.filter(function(x){ return x === word; }).length;
-  var totalCount = wo.shuffled.filter(function(x){ return x === word; }).length;
-  if (usedCount >= totalCount) return;
-  wo.selected.push(word);
+  if (word == null || wo.picked.indexOf(wordPos) >= 0) return;
+  wo.picked.push(wordPos);
+  _bmSyncSelected(wo);
   try { if (typeof ttsSpeak === 'function') srSpeak(word); } catch(_){}
   renderBMStep2();
 }
 
 function bmDeselectWord(sentIdx, selIdx) {
-  var word = _bm.wordOrders[sentIdx].selected[selIdx];
-  _bm.wordOrders[sentIdx].selected.splice(selIdx, 1);
+  var wo = _bm.wordOrders[sentIdx];
+  var word = wo.shuffled[wo.picked[selIdx]];
+  // Tapping any placed word — the anchored first word too — sends that
+  // tile back to the bank; Reset puts the anchor back in place.
+  wo.picked.splice(selIdx, 1);
+  _bmSyncSelected(wo);
   try { if (word && typeof ttsSpeak === 'function') srSpeak(word); } catch(_){}
   renderBMStep2();
 }
@@ -14406,7 +14406,8 @@ function bmDeselectWord(sentIdx, selIdx) {
 function bmClearAnswer(sentIdx) {
   var wo = _bm.wordOrders[sentIdx];
   // Reset back to the first-word-anchored state, not fully empty.
-  wo.selected = wo.original && wo.original.length ? [wo.original[0]] : [];
+  wo.picked = wo.anchor >= 0 ? [wo.anchor] : [];
+  _bmSyncSelected(wo);
   renderBMStep2();
 }
 
@@ -18536,12 +18537,12 @@ function _dctRenderArrange() {
     // Splice the anchor out of the shuffled pool so it doesn't appear
     // twice on screen (greyed-out in the bank + active in the answer).
     // Audit 2026-05-18 (A2 sitewide cleanup).
-    var preselected = [];
-    if (words.length) {
-      var firstIdx = shuffled.indexOf(words[0]);
-      if (firstIdx >= 0) preselected.push(shuffled.splice(firstIdx, 1)[0]);
-    }
-    _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:preselected, result:null, accepted:s.acceptable_orders };
+    // Tiles are tracked by position (picked = pool indices), not by text,
+    // so a repeated word ("그 사람은 그 책을 …") never leaves its second
+    // tile disabled. The anchor tile is hidden from the bank while placed.
+    var anchor = words.length ? shuffled.indexOf(words[0]) : -1;
+    _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, anchor:anchor, picked: anchor >= 0 ? [anchor] : [], selected:[], result:null, accepted:s.acceptable_orders };
+    _dctWOSync();
   }
   var wo = _dctWOState;
   // Dictation modal uses a LIGHT theme; the shared .bm-word-chip class is
@@ -18552,13 +18553,12 @@ function _dctRenderArrange() {
   var selChip      = 'padding:10px 16px;border-radius:12px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(14,168,143,.3)';
 
   var poolHTML = wo.pool.map(function(w,pi){
-    var usedCount=wo.selected.filter(function(x){return x===w;}).length;
-    var totalCount=wo.pool.filter(function(x){return x===w;}).length;
-    var isUsed=usedCount>=totalCount;
+    var isUsed = wo.picked.indexOf(pi) >= 0;
+    if (isUsed && pi === wo.anchor) return '';
     return '<button '+(isUsed?'disabled':'')+' onclick="dctWOPick('+pi+')" style="'+(isUsed?poolChipUsed:poolChipBase)+'">'+escapeHTML(w)+'</button>';
   }).join('');
-  var ansHTML = wo.selected.length
-    ? wo.selected.map(function(w,si){return '<button onclick="dctWORemove('+si+')" style="'+selChip+'">'+escapeHTML(w)+' ×</button>';}).join('')
+  var ansHTML = wo.picked.length
+    ? wo.picked.map(function(pi,si){return '<button onclick="dctWORemove('+si+')" style="'+selChip+'">'+escapeHTML(wo.pool[pi])+' ×</button>';}).join('')
     : '<span style="font-size:12px;color:rgba(255,255,255,.45)">Pick words to build the sentence</span>';
   var allSel = wo.selected.length === wo.original.length;
   body.innerHTML = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Sentence '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
@@ -18576,23 +18576,27 @@ function _dctRenderArrange() {
   foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Retry</span></button>'
     + '<button class="btn btn-g" '+(allSel?'':'disabled')+' onclick="dctWOCheck()">Check ✓</button>';
 }
+function _dctWOSync() {
+  if (!_dctWOState) return;
+  _dctWOState.selected = _dctWOState.picked.map(function(pi){ return _dctWOState.pool[pi]; });
+}
 function dctWOPick(pi) {
   if(!_dctWOState) return;
   var w=_dctWOState.pool[pi];
-  var used=_dctWOState.selected.filter(function(x){return x===w;}).length;
-  var total=_dctWOState.pool.filter(function(x){return x===w;}).length;
-  if(used>=total) return;
-  _dctWOState.selected.push(w);
+  if (w == null || _dctWOState.picked.indexOf(pi) >= 0) return;
+  _dctWOState.picked.push(pi);
+  _dctWOSync();
   try { _dctSpeakSentence(w); } catch(_){}
   _dctRenderArrange();
 }
 function dctWORemove(si) {
   if(!_dctWOState) return;
-  // Anchor (selected[0]) is the pre-selected first word — disallow
-  // removing it, same as the other word-arrange drills.
-  if (si <= 0) return;
-  var w = _dctWOState.selected[si];
-  _dctWOState.selected.splice(si,1);
+  // Any placed tile (the anchored first word too) goes back to the bank,
+  // like renderWordOrderActivity; Retry puts the anchor back in place.
+  if (si < 0 || si >= _dctWOState.picked.length) return;
+  var w = _dctWOState.pool[_dctWOState.picked[si]];
+  _dctWOState.picked.splice(si,1);
+  _dctWOSync();
   if (w) { try { _dctSpeakSentence(w); } catch(_){} }
   _dctRenderArrange();
 }
@@ -18601,8 +18605,8 @@ function dctWOClear() {
   // Reset to first-word-anchored state instead of fully empty so the
   // pre-selected start chunk persists through "다시" the same way it
   // does in BM Build / Picture Description / Sentence Build.
-  var first = _dctWOState.original && _dctWOState.original.length ? _dctWOState.original[0] : null;
-  _dctWOState.selected = first ? [first] : [];
+  _dctWOState.picked = _dctWOState.anchor >= 0 ? [_dctWOState.anchor] : [];
+  _dctWOSync();
   _dctRenderArrange();
 }
 function dctWOCheck() {

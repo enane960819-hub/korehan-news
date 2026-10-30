@@ -1429,7 +1429,7 @@ async function dbGetUserStats() {
   // user_stats.streak is only a fallback when that can't be read.
   var actStreak = (typeof khActivityStreak === 'function') ? await khActivityStreak() : null;
   computedStreak = (typeof actStreak === 'number') ? actStreak
-    : (Number(statsData && statsData.streak) || ((typeof getCurrentStreak === 'function') ? (Number(getCurrentStreak()) || 0) : 0));
+    : ((typeof khStreakNow === 'function') ? (Number(khStreakNow()) || 0) : 0);
 
   statsData = statsData || {};
   statsData.xp = computedXP;
@@ -4758,7 +4758,7 @@ function _badgeProgress(b) {
   var id = b.id, m;
   function safeGet(fn, dflt) { try { return fn(); } catch(e) { return dflt; } }
   if ((m = /^streak_(\d+)$/.exec(id))) {
-    return { current: safeGet(getCurrentStreak, 0), target: +m[1] };
+    return { current: safeGet(typeof khStreakNow === 'function' ? khStreakNow : getCurrentStreak, 0), target: +m[1] };
   }
   if ((m = /^read_(\d+)$/.exec(id))) {
     return { current: safeGet(getTotalArticlesRead, 0), target: +m[1] };

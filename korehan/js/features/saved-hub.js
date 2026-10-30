@@ -167,7 +167,17 @@ async function _svDelete(tab, key) {
   var sb = getSupa();
   if (tab === 'words') {
     var w = _sv.words.find(function (x) { return String(x.id) === key; });
-    await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('id', key);
+    var del = await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('id', key);
+    if (del && del.error) throw del.error;
+    // Drop it from the local mirror too, or it would look saved elsewhere
+    // (hover tooltips, Word Bank) until the next sync.
+    if (w && w.ko) {
+      if (typeof khForgetSavedWordLocal === 'function') khForgetSavedWordLocal(w.ko);
+      else try {
+        var lw = JSON.parse(localStorage.getItem('korehan_saved_words') || '[]') || [];
+        localStorage.setItem('korehan_saved_words', JSON.stringify(lw.filter(function (x) { return x && x.ko !== w.ko; })));
+      } catch (_) {}
+    }
     _sv.words = _sv.words.filter(function (x) { return x !== w; });
   } else if (tab === 'articles') {
     await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', key);

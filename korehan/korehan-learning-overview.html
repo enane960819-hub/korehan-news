@@ -2236,29 +2236,25 @@
         var cur = new Date(Date.now() + 9*3600000); // KST
         for (var i = 0; i < 400; i++) {
           var key = cur.toISOString().slice(0, 10);
+          // Fixed 24 h steps on the KST-shifted instant (setDate drifts at DST).
           if (activeDateSet[key]) {
             actStreak++;
-            cur.setDate(cur.getDate() - 1);
+            cur = new Date(cur.getTime() - 86400000);
           } else if (i === 0) {
             // today has no activity yet — allow checking yesterday
-            cur.setDate(cur.getDate() - 1);
+            cur = new Date(cur.getTime() - 86400000);
           } else {
             break;
           }
         }
         snap.streak = actStreak;
-
-        // Sync both xp and streak to user_stats
-        var { data: curStats } = await sb.from('user_stats').select('user_id').eq('user_id', userId).maybeSingle();
-        var statsRes;
-        if (curStats) {
-          statsRes = await sb.from('user_stats').update({ xp: totalXP, streak: actStreak, mission_streak: actStreak }).eq('user_id', userId);
-        } else {
-          statsRes = await sb.from('user_stats').insert({ user_id: userId, xp: totalXP, streak: actStreak, mission_streak: actStreak });
-        }
-        if (statsRes && statsRes.error && typeof kh_log_error === 'function') {
-          kh_log_error('user_stats xp/streak write failed', { xp: totalXP, streak: actStreak, op: curStats ? 'update' : 'insert', error: statsRes.error.message });
-        }
+        // The server streak (kh_user_streak, counts spent Streak Freezes) wins.
+        try {
+          var srvStreak = (typeof khActivityStreak === 'function') ? await khActivityStreak() : null;
+          if (typeof srvStreak === 'number') snap.streak = srvStreak;
+        } catch (_) {}
+        // user_stats xp / streak are server-only now (award_xp, kh_user_streak)
+        // — this page no longer writes them back.
       }
     } catch(e) {}
 
@@ -2361,7 +2357,7 @@
 
   // fallback: RPC 없을 때 localStorage에서 가능한 것만 표시
   function loadHubFallback() {
-    var streak = typeof getCurrentStreak === 'function' ? getCurrentStreak() : 0;
+    var streak = typeof khStreakNow === 'function' ? khStreakNow() : (typeof getCurrentStreak === 'function' ? getCurrentStreak() : 0);
     var xp     = typeof getXP === 'function' ? getXP() : 0;
     setText('stat-xp', xp);
     setText('stat-streak', streak);

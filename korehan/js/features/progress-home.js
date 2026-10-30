@@ -74,7 +74,7 @@
     // Chips
     var stats = (res[0] && res[0].data) || {};
     var act = (typeof khActivityStreak === 'function') ? await khActivityStreak() : null;
-    var streak = (typeof act === 'number') ? act : (Number(stats.streak) || ((typeof getCurrentStreak === 'function') ? getCurrentStreak() : 0));
+    var streak = (typeof act === 'number') ? act : ((typeof khStreakNow === 'function') ? khStreakNow() : 0);
     var lvl = ''; try { lvl = localStorage.getItem('kh_level') || ''; } catch (_) {}
     var chips = document.getElementById('pg-chips');
     if (chips) chips.innerHTML = (LV_NAME[lvl] ? '<span class="pg-chip">' + LV_NAME[lvl] + '</span>' : '')

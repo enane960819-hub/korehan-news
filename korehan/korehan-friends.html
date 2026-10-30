@@ -268,20 +268,31 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
       currentUser = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
     } catch (_) { currentUser = null; }
 
-    if (!currentUser) {
-      // Wait briefly for the auth check that runs in shared.js DCL —
-      // some users land here mid-bootstrap.
-      await new Promise(function (r) { setTimeout(r, 600); });
-      try {
-        currentUser = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
-      } catch (_) {}
+    // Wait for shared.js to finish the session check (window._sessionChecked)
+    // instead of a fixed 600 ms — slow loads showed "Sign in" to signed-in
+    // learners. A later sign-in (kh-auth-signed-in) re-runs init.
+    for (var w = 0; w < 100 && !currentUser && !window._sessionChecked; w++) {
+      await new Promise(function (r) { setTimeout(r, 100); });
+      try { currentUser = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null; } catch (_) {}
     }
+    try { currentUser = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null; } catch (_) {}
     if (!currentUser) {
       $('kh-fr-loading').hidden = true;
       $('kh-fr-signin').hidden = false;
+      if (!init._waiting) {
+        init._waiting = true;
+        window.addEventListener('kh-auth-signed-in', function onIn() {
+          window.removeEventListener('kh-auth-signed-in', onIn);
+          init._waiting = false;
+          init();
+        });
+      }
       return;
     }
+    if (init._done) return;
+    init._done = true;
 
+    $('kh-fr-signin').hidden = true;
     $('kh-fr-tabs').hidden = false;
     $('kh-fr-loading').hidden = true;
 

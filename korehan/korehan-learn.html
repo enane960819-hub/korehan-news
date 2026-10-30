@@ -54,11 +54,15 @@ body.wb-locked { overflow:hidden; }
 .wb-empty { text-align:center; color:rgba(255,255,255,.55); font-size:13px; padding:30px 0; }
 .wb-src { margin-top:26px; font-size:11px; color:rgba(255,255,255,.4); line-height:1.5; }
 .wb-src a { color:rgba(147,197,253,.8); }
-/* Phones: leave room on the right for the floating Daily Mission button. */
-.wb-dock { position:fixed; left:12px; right:66px; bottom:calc(84px + env(safe-area-inset-bottom)); display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:7px; z-index:40; }
+/* The Daily Mission / First Journey chips are not shown on this page (they
+   covered the dock), so the dock spans the width. */
+.wb-dock { position:fixed; left:12px; right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:7px; z-index:40; }
 .wb-dock button { display:flex; align-items:center; justify-content:center; gap:6px; padding:12px 6px; border-radius:13px; border:1px solid rgba(255,255,255,.12); background:#1e293b; color:#fff; font:inherit; font-size:12.5px; font-weight:800; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,.3); }
 .wb-dock button.p { background:linear-gradient(135deg,#2563eb,#7c3aed); border:0; }
 @media (min-width:900px) { .wb-dock { left:50%; right:auto; transform:translateX(-50%); width:min(728px, calc(100% - 180px)); bottom:22px; } }
+/* Room under the last row / footer Subscribe for the dock (+ tab bar on phones). */
+body:has(#wb-dock) #kh-footer > footer { padding-bottom:calc(170px + env(safe-area-inset-bottom, 0px)) !important; }
+@media (min-width:900px) { body:has(#wb-dock) #kh-footer > footer { padding-bottom:96px !important; } }
 /* Hangul */
 .wb-hg { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin:4px 0 12px; }
 .wb-hg button { aspect-ratio:1/1.05; border-radius:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Noto Sans KR',sans-serif; font-size:22px; font-weight:800; color:#fff; cursor:pointer; }
