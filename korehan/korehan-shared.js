@@ -7418,6 +7418,7 @@ function openVocabEditModal(word) {
       if (!ok) return;
       await saveVocabToDB(word, null, null, true);
       delete VOCAB[word];
+      await _khPatchArticleVocabCache(word, null, null, true);
       // 해당 단어 span 제거
       document.querySelectorAll('.kh-word[data-word="' + word + '"]').forEach(function(s) {
         s.replaceWith(document.createTextNode(s.textContent));
@@ -7537,6 +7538,8 @@ function openVocabEditModal(word) {
 
       // KEY VOCABULARY 섹션에 즉시 추가
       _addWordToKeyVocabList(word, rom, en);
+      // ...and this article's cached Vocab list, so the edit survives a reload.
+      await _khPatchArticleVocabCache(word, rom, en, false);
 
       modal.remove();
       showToast(word + ' saved');
@@ -7546,6 +7549,60 @@ function openVocabEditModal(word) {
       btn.textContent = 'Save'; btn.disabled = false;
     }
   };
+}
+
+// Vocab Edit Mode on an article page: the Vocab tab shows the article's own
+// cached vocab (article_cache 'vocab') ahead of the sitewide bank, so an edit
+// saved only to vocabulary_bank came back with the old meaning after a reload
+// ("저장이 안 된다", owner 2026-10-30). Patch that article's cached entry too
+// (remove on delete; append a new word that appears in the body).
+async function _khPatchArticleVocabCache(word, rom, en, remove) {
+  var art = window._currentArticle;
+  var artId = (art && art.id) || new URLSearchParams(location.search).get('id');
+  if (!artId || !word) return;
+  try {
+    // Two layouts exist: 'wide' (one row per article, vocab column — live) and
+    // 'kv' (content_type / content_id / cache_key rows).
+    var schema = (typeof _detectArtCacheSchema === 'function') ? await _detectArtCacheSchema() : 'wide';
+    if (schema !== 'wide' && schema !== 'kv') return;
+    var sb = getSupa(); if (!sb) return;
+    var filters = schema === 'kv'
+      ? [{ col: 'content_type', val: 'article' }, { col: 'content_id', val: String(artId) }, { col: 'cache_key', val: 'vocab' }]
+      : [{ col: 'article_id', val: String(artId) }];
+    var col = schema === 'kv' ? 'cache_value' : 'vocab';
+    var q = sb.from('article_cache').select(col);
+    filters.forEach(function(f) { q = q.eq(f.col, f.val); });
+    var r = await q.limit(1).maybeSingle();
+    if (r.error || !r.data) return;
+    var list = r.data[col];
+    if (typeof list === 'string') { try { list = JSON.parse(list); } catch (_) { return; } }
+    if (!Array.isArray(list)) return;
+    var keyOf = function(v) { return v && (v.ko || v.word_ko || v.word); };
+    var hit = list.filter(function(v) { return keyOf(v) === word; });
+    if (remove) {
+      if (!hit.length) return;
+      list = list.filter(function(v) { return keyOf(v) !== word; });
+    } else if (hit.length) {
+      hit.forEach(function(v) {
+        var enKeys = ['en', 'meaning', 'word_en'].filter(function(k) { return k in v; });
+        (enKeys.length ? enKeys : ['en']).forEach(function(k) { v[k] = en; });
+        if (rom) {
+          var romKeys = ['rom', 'reading', 'word_rom'].filter(function(k) { return k in v; });
+          (romKeys.length ? romKeys : ['rom']).forEach(function(k) { v[k] = rom; });
+        }
+      });
+    } else {
+      var body = (art && (art.body || art.full)) || '';
+      if (body.indexOf(word) < 0) return;
+      list.push({ ko: word, rom: rom || '', en: en });
+    }
+    var data = {}; data[col] = (typeof r.data[col] === 'string') ? JSON.stringify(list) : list;
+    await khAdminApi({ action: 'db', table: 'article_cache', method: 'update', params: { data: data, eq: filters } });
+    if (art && art._cache && art._cache.ai_analysis) art._cache.ai_analysis.vocab = list;
+    if (typeof renderArticleVocab === 'function' && art) { try { renderArticleVocab(art); } catch (_) {} }
+  } catch (e) {
+    console.warn('[vocab edit] article cache not updated', e && e.message);
+  }
 }
 
 function wrapSingleWord(el, word) {
