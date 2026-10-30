@@ -137,7 +137,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:'DM Sans','Noto Sans 
 <script src="js/features/comments.js?v=20261016a"></script>
 <script src="js/features/sidebar.js?v=20261029s"></script>
 <script src="korehan-shared.js?v=20261030b"></script>
-<script src="js/features/conv-page.js?v=20261029w"></script>
+<script src="js/features/conv-page.js?v=20261030rp"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // State
@@ -182,6 +182,7 @@ async function caLoad(){
   var r = await getSupa().from('conversations_data').select('*').order('created_at', { ascending:false }).limit(1000);
   if (r.error) { toast('Load failed: ' + r.error.message); return; }
   CA.rows = (r.data||[]).map(function(x){ if (!x.status) x.status = 'published'; return x; });
+  if (window.khConvRules && khConvRules.setPool) khConvRules.setPool(CA.rows.filter(function(x){ return x.status !== 'draft'; }).map(khConvRules.norm));
   caRender();
 }
 function caVisible(){

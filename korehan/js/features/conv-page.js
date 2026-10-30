@@ -8,14 +8,14 @@
        key expressions highlighted, Play all at 0.8× / 1×
      2 Key expressions (free) — what to keep, with the line it came from
      3 Role-play (Premium: conversation_study) — you play the second
-       speaker and choose each reply; wrong options are wrong for a reason
-       (speech level, doesn't answer) and say why
+       speaker and choose each reply from four; wrong options are wrong for a
+       reason (speech level, a different situation) and say why
    Done → expressions can be saved to My Words (Today's Review picks them
    up), the conversation is marked Done (user_study_progress), and the next
    one at your level is suggested.
 
    Role-play options are built by rule (no AI cost): the 반말 version of a
-   polite line, and the speaker's other lines. An admin can override them
+   polite line, and lines from other conversations (see poolLines). An admin can override them
    per line with msgs[i].options = [{ ko, why }] (wrong options only).
    ============================================================ */
 (function () {
@@ -257,9 +257,41 @@
     });
     return changed && out !== t ? out : null;
   }
+  // Wrong options come from OTHER conversations (different situation, same
+  // speech level, similar length), so exactly one reply fits — TOPIK-style.
+  // Only when the pool is too small do we fall back to this conversation's
+  // own lines.
+  var POOL = null;
+  // A line opening with agreement / thanks / apology / "me too" answers almost
+  // anything ("그럼 빨리 가자", "고마워. 우리 자주 보자"), so it never becomes a wrong option.
+  var GENERIC = /^(네|예|응|어|아|아니|아뇨|그래|그럼|좋아|좋지|고마|감사|미안|죄송|알겠|알았|맞아|맞다|진짜|정말|와|우와|오|글쎄|괜찮|당연|물론|잠깐|잠시만|나도|저도|그러게|그렇|ㅋ|ㅎ)/;
+  function hangulLen(t) { return (String(t).match(/[가-힣]/g) || []).length; }
+  function poolLines(c, b) {
+    if (c._rpPool) return c._rpPool;
+    var polite = c.level[b] === '존댓말';
+    var own = {}; c.msgs.forEach(function (m) { own[m.txt] = 1; });
+    var rows = (POOL || S.rows || []).filter(function (x) { return x && x.id !== c.id && x.msgs; });
+    var other = rows.filter(function (x) { return x.cat !== c.cat; });
+    function collect(list) {
+      var out = [], seen = {};
+      list.forEach(function (x) {
+        x.msgs.forEach(function (m) {
+          var t = m.txt;
+          if (!t || own[t] || seen[t] || isPolite(t) !== polite) return;
+          if (hangulLen(t) < 5 || GENERIC.test(t)) return;
+          seen[t] = 1; out.push({ ko: t, en: m.en, lvl: x.lvl });
+        });
+      });
+      return out;
+    }
+    var out = collect(other);
+    if (out.length < 12) out = collect(rows);
+    return (c._rpPool = out);
+  }
   function buildRoleplay(c) {
     var a = c.speakers[0], b = c.speakers[1];
-    var qs = [];
+    var qs = [], used = {};
+    var pool = poolLines(c, b);
     c.msgs.forEach(function (m, i) {
       if (m.who !== b || i === 0) return;
       var prev = c.msgs[i - 1];
@@ -271,14 +303,23 @@
           var ban = toBanmal(m.txt);
           if (ban) wrong.push({ ko: ban, why: '반말 — ' + b + ' speaks 존댓말 to ' + a + ' here.' });
         }
-        shuffle(c.msgs.filter(function (x, j) { return x.who === b && j !== i && x.txt !== m.txt && Math.abs(j - i) > 1; }))
-          .forEach(function (x) { if (wrong.length < 2) wrong.push({ ko: x.txt, en: x.en, why: 'That’s ' + b + '’s line from another point in the conversation — it doesn’t answer what ' + a + ' just said.' }); });
+        var len = hangulLen(m.txt);
+        var near = pool.filter(function (x) { var l = hangulLen(x.ko); return !used[x.ko] && l >= len * 0.5 && l <= len * 1.8 + 2; });
+        var same = near.filter(function (x) { return x.lvl === c.lvl; });
+        shuffle(same.length >= 3 ? same : near).forEach(function (x) {
+          if (wrong.length < 3) { used[x.ko] = 1; wrong.push({ ko: x.ko, en: x.en, why: 'This doesn’t follow what ' + a + ' just said — it belongs to a different situation.' }); }
+        });
+        if (wrong.length < 2) {
+          shuffle(c.msgs.filter(function (x, j) { return x.who === b && j !== i && x.txt !== m.txt && Math.abs(j - i) > 1; }))
+            .forEach(function (x) { if (wrong.length < 3) wrong.push({ ko: x.txt, en: x.en, why: 'That’s ' + b + '’s line from another point in the conversation — it doesn’t answer what ' + a + ' just said.' }); });
+        }
       }
       if (!wrong.length) return;
-      qs.push({ prev: prev, line: m, opts: shuffle([{ ko: m.txt, en: m.en, ok: true }].concat(wrong.slice(0, 2))) });
+      qs.push({ prev: prev, line: m, opts: shuffle([{ ko: m.txt, en: m.en, ok: true }].concat(wrong.slice(0, 3))) });
     });
     return qs.slice(0, 5);
   }
+  function setPool(rows) { POOL = rows || null; }
   function dark(on) { document.body.classList.toggle('cv-dark', !!on); }
   function renderRoleplay() {
     var c = S.conv, root = document.getElementById('cv-root'), R = S.rp;
@@ -441,7 +482,7 @@
 
   // Shared with the admin editor (korehan-x9f4k2m7-conversations.html) so
   // the preview uses exactly the learner rules.
-  window.khConvRules = { norm: norm, speechLevels: speechLevels, isPolite: isPolite, toBanmal: toBanmal, buildRoleplay: buildRoleplay, markKx: markKx, LV: LV, CAT: CAT };
+  window.khConvRules = { norm: norm, speechLevels: speechLevels, isPolite: isPolite, toBanmal: toBanmal, buildRoleplay: buildRoleplay, setPool: setPool, markKx: markKx, LV: LV, CAT: CAT };
 
   window.khConv = {
     open: open, back: back, step: step, playAll: playAll, tapLine: tapLine,
