@@ -90,6 +90,10 @@
 
   async function render(host, room) {
     if (!host) return;
+    // A newer render into the same box (e.g. a quick tap on another room tab while
+    // this one still loads) wins; this one stops instead of adding its items too.
+    var seq = host._khRvSeq = (host._khRvSeq || 0) + 1;
+    var stale = function () { return host._khRvSeq !== seq; };
     ensureStyle();
     room = room || {};
     var theme = (room.theme && typeof room.theme === 'object') ? room.theme : {};
@@ -105,12 +109,14 @@
 
     var items = await loadItems();
     if (window.khAvatar && room.avatar) items = await khAvatar.withRoomItem(items, room.avatar);
+    if (stale()) return;
     var owned = Array.isArray(room.owned) ? room.owned : [];
     var layout = (Array.isArray(room.layout) ? room.layout : []).filter(function (p) {
       var d = p && items[p.id];
       return d && (owned.indexOf(p.id) !== -1 || d.price === 0);
     }).slice(0, 60);
     var ok = await Promise.all(layout.map(function (p) { return imgOk(items[p.id].img); }));
+    if (stale()) return;
     layout = layout.filter(function (p, i) { return ok[i]; });
 
     if (!layout.length) {
