@@ -428,7 +428,7 @@
     document.documentElement.classList.remove('kav-lock');
     E = null;
   }
-  function open() {
+  function open(tab) {
     if (!A()) return;
     if (!user()) { if (typeof openAuthModal === 'function') openAuthModal('login'); else say('Please sign in first'); return; }
     if (E) close();
@@ -437,7 +437,7 @@
     var saved = { av: A().getAvatar() || A().cleanAvatar(A().DEFAULT_AVATAR), theme: A().getRoomTheme(),
       roomName: curRoom.name, avRoom: (A().avatarRoom && A().avatarRoom()) || curRoom.id };
     E = {
-      saved: saved, av: A().cleanAvatar(saved.av), theme: saved.theme, roomName: saved.roomName, avRoom: saved.avRoom, tab: 'look',
+      saved: saved, av: A().cleanAvatar(saved.av), theme: saved.theme, roomName: saved.roomName, avRoom: saved.avRoom, tab: (tab === 'acc' || tab === 'room') ? tab : 'look',
       owned: (typeof getRoomOwned === 'function') ? getRoomOwned().slice() : [], progress: {}, busy: false, root: null
     };
     var root = document.createElement('div');

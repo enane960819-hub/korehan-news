@@ -186,22 +186,22 @@
   }
 
   // ── Sheets (add a room / edit a room) ──────────────────────────────
-  function ownedThemes() {
-    var own = owned();
-    return A().ROOMS.filter(function (r) {
-      if (r.classic) return true;
-      return A().isFree(r) || own.indexOf(A().serverId('room', r.id)) !== -1;
-    });
+  function themeOwned(r) {
+    return r.classic || A().isFree(r) || owned().indexOf(A().serverId('room', r.id)) !== -1;
   }
+  // Every background is listed; ones you don't have yet show their price / study goal and
+  // open Customize → Room, where they can be tried on and bought.
   function themeGrid(sel) {
     var c = (typeof _getRoomTheme === 'function') ? (_getRoomTheme() || {}) : {};
     var rv = window.khRoomView, wall = '#e8dcc6';
     if (rv) { var wp = rv.WALLPAPERS.filter(function (w) { return w.id === (c.wallpaper || 'default'); })[0] || rv.WALLPAPERS[0]; wall = wp.bg; }
-    return '<div class="rt-thg">' + ownedThemes().map(function (r) {
+    return '<div class="rt-thg">' + A().ROOMS.map(function (r) {
+      var have = themeOwned(r);
       var bg = r.classic ? 'background:' + esc(wall) : 'background-image:url(&quot;' + esc(A().themeUrl(r.id)) + '&quot;)';
-      return '<button type="button" class="rt-th1' + (r.id === sel ? ' on' : '') + '" data-theme="' + r.id + '" aria-pressed="' + (r.id === sel) + '">'
-        + '<span class="rt-thb" style="' + bg + '"></span><span class="rt-thn">' + esc(r.name) + '</span></button>';
-    }).join('') + '</div><p class="rt-hint">More backgrounds in Customize → Room.</p>';
+      var tag = have ? '' : '<span class="rt-thl">' + ic(r.goal ? 'graduation-cap' : 'lock') + esc(r.goal ? r.goal.short : (nf(r.price) + (r.season ? ' · ' + r.season : ''))) + '</span>';
+      return '<button type="button" class="rt-th1' + (r.id === sel ? ' on' : '') + (have ? '' : ' rt-lock') + '" data-pick="' + r.id + '"' + (have ? '' : ' data-locked="1"') + ' aria-pressed="' + (r.id === sel) + '">'
+        + '<span class="rt-thb" style="' + bg + '"></span>' + tag + '<span class="rt-thn">' + esc(r.name) + '</span></button>';
+    }).join('') + '</div><p class="rt-hint">Locked backgrounds open in Customize, where you can try them on.</p>';
   }
   function openSheet(html, onAct) {
     closeSheet();
@@ -211,10 +211,17 @@
     document.body.appendChild(ov);
     ov.addEventListener('click', function (e) {
       if (e.target === ov) return closeSheet();
-      var th = e.target.closest('[data-theme]');
+      // (The pick is kept in ov.dataset.sel — an attribute matching this selector on the
+      // overlay itself used to swallow every later tap, Save included.)
+      var th = e.target.closest('.rt-th1');
       if (th) {
-        ov.querySelectorAll('[data-theme]').forEach(function (b) { b.classList.toggle('on', b === th); b.setAttribute('aria-pressed', b === th ? 'true' : 'false'); });
-        ov.dataset.theme = th.dataset.theme;
+        if (th.dataset.locked) {
+          closeSheet();
+          if (window.khAvatarEditor) khAvatarEditor.open('room');
+          return;
+        }
+        ov.querySelectorAll('.rt-th1').forEach(function (b) { b.classList.toggle('on', b === th); b.setAttribute('aria-pressed', b === th ? 'true' : 'false'); });
+        ov.dataset.sel = th.dataset.pick;
         return;
       }
       var a = e.target.closest('[data-sact]');
@@ -244,7 +251,7 @@
       if (act === 'cancel') return closeSheet();
       if (act === 'save') {
         var name = ov.querySelector('.rt-in').value;
-        A().updateRoom(id, name, ov.dataset.theme || r.theme);
+        A().updateRoom(id, name, ov.dataset.sel || r.theme);
         closeSheet();
         if (typeof _syncRoomToServer === 'function') _syncRoomToServer();
         if (typeof _applyRoomTheme === 'function') _applyRoomTheme();
@@ -252,7 +259,7 @@
         say('Room saved');
       }
     });
-    ov.dataset.theme = r.theme;
+    ov.dataset.sel = r.theme;
   }
 
   async function openAdd() {
@@ -301,7 +308,7 @@
       if (act === 'cancel') return closeSheet();
       if (act === 'add') addRoom(ov, { price: price, slot: next && next.slot, freeSlot: freeSlot, hidden: hidden });
     });
-    ov.dataset.theme = 'default';
+    ov.dataset.sel = 'default';
   }
 
   async function addRoom(ov, o) {
@@ -338,7 +345,7 @@
       if (o.hidden) id = o.hidden.id;
       else {
         var name = (ov.querySelector('.rt-in') || {}).value || '';
-        id = A().addRoom(name || ('Room ' + (vis + 1)), ov.dataset.theme || 'default');
+        id = A().addRoom(name || ('Room ' + (vis + 1)), ov.dataset.sel || 'default');
       }
       closeSheet();
       if (typeof _syncRoomToServer === 'function') _syncRoomToServer();
@@ -388,6 +395,9 @@
       '.rt-thg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}',
       '.rt-th1{position:relative;aspect-ratio:10/9;border-radius:12px;border:2px solid transparent;overflow:hidden;cursor:pointer;padding:0;background:#16223b;font:inherit}',
       '.rt-th1.on{border-color:#fbbf24}',
+      '.rt-th1.rt-lock .rt-thb{filter:saturate(.55) brightness(.75)}',
+      '.rt-thl{position:absolute;top:6px;right:6px;display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;background:rgba(2,6,23,.72);color:#fcd34d;font-size:10px;font-weight:800}',
+      '.rt-thl .rt-i{width:11px;height:11px}',
       '.rt-thb{position:absolute;inset:0;background-size:cover;background-position:center}',
       '.rt-thn{position:absolute;left:0;right:0;bottom:0;padding:14px 7px 5px;text-align:left;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(transparent,rgba(2,6,23,.75))}',
       '.rt-hint{font-size:11.5px!important;margin:8px 0 12px!important}',
