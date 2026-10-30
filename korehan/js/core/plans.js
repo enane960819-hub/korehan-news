@@ -30,7 +30,8 @@ var _KH_PREMIUM_FEATURES = {
   growth_lab: true, word_book_srs: true, monthly_report: true,
   fast_track: true, phone_call: true, tutor_review: true,
   personal_recommendation: true, topik_full: true,
-  writing_feedback: true, speaking_feedback: true, priority_feedback: true
+  writing_feedback: true, speaking_feedback: true, priority_feedback: true,
+  speaking_practice: true
 };
 var KH_PLANS = {
   free: {
@@ -253,7 +254,7 @@ function showUpgradeModal(feature, minPlan) {
     article_study: 'Article Study', conversation_study: 'Conversation Study', express_writing: 'Weekly Writing',
     slang_full: 'Slang Library', weekly_monthly_review: 'Weekly & Monthly Review', listening_quiz: 'Listening Quiz',
     tutor_review: 'Tutor Review', live_class: 'Live Class', fast_track: 'Fast Track', phone_call: 'Phone Call',
-    monthly_report: 'Monthly Report', speaking_feedback: 'Speaking Feedback', priority_feedback: 'Priority Feedback',
+    monthly_report: 'Monthly Report', speaking_feedback: 'Speaking Feedback', speaking_practice: 'Speaking Practice', priority_feedback: 'Priority Feedback',
     personal_recommendation: 'Study Plan', writing_feedback: 'Writing Feedback', topik_full: 'TOPIK Practice'
   };
   var isLive = minPlan === 'premium_live';
