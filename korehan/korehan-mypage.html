@@ -1200,6 +1200,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
       <button onclick="openRoomShop(true)" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">My Items</button>
       <button onclick="onRoomEditBtn()" id="room-edit-btn" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Edit Room</button>
+      <button type="button" onclick="if(window.khAvatarEditor)khAvatarEditor.open()" id="room-customize-btn" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Customize</button>
       <a href="korehan-shop.html" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;font-family:inherit">Shop →</a>
       <button onclick="saveRoomLayout()" id="room-save-btn" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none">Save</button>
     </div>
@@ -1314,10 +1315,13 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261030bn"></script>
+<script src="korehan-shared.js?v=20261030d"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261030fx"></script>
-<script src="js/features/room-view.js?v=20261029ra"></script>
+<script src="js/features/room-view.js?v=20261030rm"></script>
+<script src="js/features/avatar-art.js?v=20261030rm"></script>
+<script src="js/features/avatar-editor.js?v=20261030rm"></script>
+<script src="js/features/room-tabs.js?v=20261030rm"></script>
 <script src="js/features/room-learn.js?v=20261029rl"></script>
 <script>
 
@@ -2978,6 +2982,7 @@ async function loadRoomItemsFromDB() {
   // Earned-badge → room-item linkage was scrapped per product spec
   // (#9 in the May 2026 feedback batch). Badges now live as profile
   // collectibles only; rooms are decorated with shop purchases.
+  if (window.khAvatar) khAvatar.ensureRoomItem(ROOM_ITEMS); // the learner's character (js/features/avatar-art.js)
   return ROOM_ITEMS;
 }
 
@@ -3035,12 +3040,22 @@ function isRoomItemOwned(id) {
 }
 
 // ── Layout helpers ───────────────────────────────────────────
-function getRoomLayout() {
-  try { return JSON.parse(localStorage.getItem(K_ROOM_LAYOUT) || '[]'); } catch(e) { return []; }
+// One stored array for all rooms (entry.room = which room, none = room 1).
+// getRoomLayout / setRoomLayout work on the current room only
+// (js/features/avatar-art.js viewLayout / mergeLayout); sync uses the whole array.
+function _getRoomLayoutAll() {
+  try { var v = JSON.parse(localStorage.getItem(K_ROOM_LAYOUT) || '[]'); return Array.isArray(v) ? v : []; } catch(e) { return []; }
 }
-function setRoomLayout(arr) {
+function _setRoomLayoutAll(arr) {
   try { localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(arr)); }
   catch(e) { console.warn('room layout write failed (private mode?)', e); }
+}
+function getRoomLayout() {
+  var all = _getRoomLayoutAll();
+  return window.khAvatar ? khAvatar.viewLayout(all) : all;
+}
+function setRoomLayout(arr) {
+  _setRoomLayoutAll(window.khAvatar ? khAvatar.mergeLayout(_getRoomLayoutAll(), arr) : arr);
 }
 
 // ── Room prefs (wallpaper/floor, sound, pet affinity) ────────
@@ -3062,11 +3077,13 @@ function _roomPrefsBlob() {
   var affOut = {};
   Object.keys(aff).slice(0, 60).forEach(function(k){ var n = Number(aff[k]); if (n > 0) affOut[String(k).slice(0, 60)] = Math.min(n, 1000000); });
   var theme = _roomLsJson(_ROOM_THEME_KEY);
-  return {
+  var out = {
     theme: { wallpaper: String(theme.wallpaper || 'default').slice(0, 40), floor: String(theme.floor || 'none').slice(0, 40) },
     bgm: { track: String(bgm.track || 'off').slice(0, 20), volume: typeof bgm.volume === 'number' ? bgm.volume : 0.4 },
     pet_affinity: affOut
   };
+  if (window.khAvatar) khAvatar.extendPrefs(out); // character + rooms (js/features/avatar-art.js)
+  return out;
 }
 function _applyServerRoomPrefs(p) {
   if (!p || typeof p !== 'object') return;
@@ -3083,6 +3100,7 @@ function _applyServerRoomPrefs(p) {
     Object.keys(p.pet_affinity).forEach(function(k){ local[k] = Math.max(Number(local[k]) || 0, Number(p.pet_affinity[k]) || 0); });
     _roomLsSet(_PET_AFF_KEY, local);
   }
+  if (window.khAvatar) khAvatar.applyServerPrefs(p);
 }
 
 // ── Supabase sync (cross-device) ─────────────────────────────
@@ -3108,7 +3126,7 @@ function _syncRoomToServer() {
     if (_roomSyncInFlight) { _syncRoomToServer(); return; }
     _roomSyncInFlight = true;
     var write = function() {
-      var row = { user_id: supaUser.id, layout: getRoomLayout(), updated_at: new Date().toISOString() };
+      var row = { user_id: supaUser.id, layout: _getRoomLayoutAll(), updated_at: new Date().toISOString() };
       if (_roomPrefsCol) row.prefs = _roomPrefsBlob();
       return sb.from('user_room_state').upsert(row, { onConflict: 'user_id' });
     };
@@ -3151,8 +3169,8 @@ async function _loadRoomFromServer() {
       if (Array.isArray(r.data.layout)) {
         // Don't let an empty server layout wipe a non-empty local one that
         // hasn't synced yet; a real server layout always wins.
-        var _localLayout = getRoomLayout();
-        if (r.data.layout.length || !_localLayout.length) setRoomLayout(r.data.layout);
+        var _localLayout = _getRoomLayoutAll();
+        if (r.data.layout.length || !_localLayout.length) _setRoomLayoutAll(r.data.layout);
       }
       // Server is authoritative for ownership (only buy_room_item writes it).
       if (Array.isArray(r.data.owned)) setRoomOwned(r.data.owned);
@@ -3402,6 +3420,7 @@ function _applyRoomTheme() {
   }
   var btn = document.getElementById('room-theme-btn');
   if (btn) btn.classList.toggle('on', wpId !== 'default' || flId !== 'none');
+  if (window.khAvatar) khAvatar.applyRoomTheme(); // room theme picture (js/features/avatar-art.js)
 }
 function _renderThemeDrawer() {
   var d = document.getElementById('room-theme-drawer');
@@ -3907,6 +3926,7 @@ async function loadRoomLayout() {
   _handlePlaceParam();
   // Today's word + study unlocks (claims reached items on the server).
   if (window.khRoomLearn) khRoomLearn.init();
+  if (window.khRoomTabs) khRoomTabs.init(); // room tabs (js/features/room-tabs.js)
 }
 
 // korehan-shop.html → "Place it now" links here with ?place=<item id>:
