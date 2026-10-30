@@ -4,6 +4,13 @@ Owner picked option B (2026-10-30): every conversation card shows a small pixel-
 instead of the speakers' initials. 18 scenes cover all situations; each conversation picks
 one by its title / situation (a conversation can also name its scene in the admin).
 
+**Live (2026-10-31):** both sheets are drawn and cut to `korehan/assets/convo/<scene>.webp`
+(200x200). `khConvScene()` in `korehan-shared.js` picks the scene: `data.scene` (admin "Card
+picture" field) first, then keyword rules on the title / situation (`KH_CONV_SCENE_RULES`), then
+the category default. Used by the Conversations list, the "Next" card and the Home rail. A new
+scene = new picture + add its name to `KH_CONV_SCENES` (and a rule if it should be picked
+automatically).
+
 Two sheets, nine scenes each, same style chat as the room items. Send the pictures back
 with their sheet number; they are cut like room items (background removal, trim) into
 `korehan/assets/convo/`.

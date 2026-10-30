@@ -136,7 +136,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:'DM Sans','Noto Sans 
 <script src="js/core/plans.js?v=20261030cv"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
 <script src="js/features/sidebar.js?v=20261030bn"></script>
-<script src="korehan-shared.js?v=20261031c"></script>
+<script src="korehan-shared.js?v=20261031d"></script>
 <script src="js/features/conv-page.js?v=20261030rp"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -237,7 +237,7 @@ function caOpen(id){
   var sp = []; msgs.forEach(function(m){ if (m.who && sp.indexOf(m.who)<0) sp.push(m.who); });
   CA.cur = { id:r.id, row:r, d:d, status:r.status, lvl:r.lvl||d.lvl||'b', cat:r.cat||d.cat||'everyday', title:r.ctx_en||d.topic||'', ctx:r.ctx||d.ctx||'',
              a:sp[0]||'', b:sp[1]||'', speech: Object.assign({}, d.speech||{}), msgs:msgs,
-             kx:(d.key_expressions||[]).map(function(k){ return { ko:k.ko||'', en:k.en||'' }; }), flags: flagsOf(r) };
+             kx:(d.key_expressions||[]).map(function(k){ return { ko:k.ko||'', en:k.en||'' }; }), flags: flagsOf(r), scene: d.scene||'' };
   CA.openOpt = -1; CA.dirty = false;
   try { history.replaceState(null, '', '?id=' + id); } catch(_) {}
   caRender();
@@ -286,6 +286,13 @@ function caRenderEditor(){
     +   '<div class="f"><label>Situation (Korean)</label><input value="' + e(c.ctx) + '" oninput="caSet(\'ctx\',this.value,true)"></div>'
     +   speakers.map(function(sp, i){ var cur = c.speech[sp] || ''; return '<div class="f"><label>' + (i?'B':'A') + ' speech level</label><select onchange="caSpeech(\'' + e(sp) + '\',this.value)"><option value="">Auto (' + e(lv[sp]||'—') + ')</option><option' + (cur==='반말'?' selected':'') + '>반말</option><option' + (cur==='존댓말'?' selected':'') + '>존댓말</option></select></div>'; }).join('')
     + '</div>'
+    + (typeof khConvScene === 'function' ? (function(){
+        // Card picture (khConvScene in korehan-shared.js): Auto = picked from the title / situation.
+        var auto = khConvScene({ title: c.title, ctx: c.ctx, cat: c.cat }), cur = khConvScene({ scene: c.scene, title: c.title, ctx: c.ctx, cat: c.cat });
+        return '<div class="grid" style="grid-template-columns:2fr 64px 3fr;align-items:end"><div class="f"><label>Card picture</label><select onchange="caSet(\'scene\',this.value)">'
+          + '<option value="">Auto (' + e(auto) + ')</option>' + KH_CONV_SCENES.map(function(k){ return '<option value="' + k + '"' + (c.scene===k?' selected':'') + '>' + k + '</option>'; }).join('')
+          + '</select></div><img src="' + e(khRoomImg('assets/convo/' + cur + '.webp')) + '" alt="" style="width:56px;height:56px;object-fit:contain;background:#f1f5f9;border-radius:12px"><span></span></div>';
+      })() : '')
     + '<div class="sec">Lines <button onclick="caAddLine()">+ Add line</button></div>'
     + c.msgs.map(function(m, i){
         var fl = flagByLine[i] || [];
@@ -400,6 +407,7 @@ async function caSave(status){
     key_expressions: c.kx.filter(function(k){ return k.ko.trim(); })
   });
   if (Object.keys(c.speech).length) data.speech = c.speech; else delete data.speech;
+  if (c.scene) data.scene = c.scene; else delete data.scene;
   var row = { name: data.name, ctx: c.ctx, ctx_en: c.title || null, lvl: c.lvl, cat: c.cat, data: data, status: status,
               qa_report: c.row && c.row.qa_report ? Object.assign({}, c.row.qa_report, { flags: c.flags }) : (c.flags.length ? { flags: c.flags } : null) };
   var sb = getSupa(), res;

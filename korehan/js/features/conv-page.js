@@ -60,7 +60,7 @@
       ctx: row.ctx || d.ctx || '', msgs: msgs, speakers: order.slice(0, 2), cast: order,
       vocab: Array.isArray(d.vocab) ? d.vocab : [], grammar: Array.isArray(d.grammar) ? d.grammar : [],
       kx: (Array.isArray(d.key_expressions) ? d.key_expressions : []).filter(function (k) { return k && k.ko; }),
-      speech: d.speech || null
+      speech: d.speech || null, scene: d.scene || ''
     };
     if (!c.kx.length) c.kx = c.vocab.slice(0, 4).map(function (v) { return { ko: v.ko, en: v.en }; });
     c.level = speechLevels(c);
@@ -149,7 +149,10 @@
       return (!S.lvl || c.lvl === S.lvl) && (S.cat === 'all' || c.cat === S.cat);
     });
   }
+  // Card picture: the conversation's scene (khConvScene in korehan-shared.js); the two
+  // speakers' initials only if shared.js is older than this file.
   function avatars(c, small) {
+    if (typeof khConvSceneUrl === 'function') return '<span class="cv-scene' + (small ? ' sm' : '') + '"><img src="' + esc(khConvSceneUrl(c)) + '" alt="" loading="lazy" decoding="async"></span>';
     var a = c.speakers[0] || '?', b = c.speakers[1] || '?';
     return '<span class="cv-av2' + (small ? ' sm' : '') + '"><i style="background:' + col(c, a) + '">' + esc(initial(a)) + '</i><i style="background:' + col(c, b) + '">' + esc(initial(b)) + '</i></span>';
   }

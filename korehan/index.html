@@ -470,6 +470,9 @@
 .cc2{border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;border:none;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);}
 .cc2:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.15);}
 .cc2-head{padding:16px 16px 12px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid #f0f4fa;}
+.cc2-head{align-items:center;}
+.cc2-scene{width:48px;height:48px;flex-shrink:0;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cc2-scene img{width:44px;height:44px;object-fit:contain;display:block}
 .cc2-head-info{flex:1;min-width:0;}
 .cc2-ctx{font-size:14px;color:#0f172a;font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .cc2-bubbles{padding:12px 16px 14px;flex:1;display:flex;flex-direction:column;gap:8px;}
@@ -1203,7 +1206,7 @@ window._khLoaderClearAuto = function() {};
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261030qa"></script>
-<script src="korehan-shared.js?v=20261031c"></script>
+<script src="korehan-shared.js?v=20261031d"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 var HOME_CONVS = [
@@ -1279,6 +1282,7 @@ function renderHomeConvs() {
 
     return '<div class="cc2" data-kh-conv-id="' + esc(c._id || '') + '" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'">'
       + '<div class="cc2-head">'
+        + (typeof khConvSceneUrl === 'function' ? '<span class="cc2-scene"><img src="' + esc(khConvSceneUrl({ scene: c.scene, title: titleEn, ctx: rawCtx, cat: c.cat })) + '" alt="" loading="lazy" decoding="async"></span>' : '')
         + '<div class="cc2-head-info"><div class="cc2-ctx">' + esc(titleEn) + '</div></div>'
       + '</div>'
       + '<div class="cc2-bubbles">' + bubblesHtml + '</div>'
@@ -1655,6 +1659,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       ctx_en: row.ctx_en || (row.data && row.data.ctx_en) || '',
       cat:  row.cat  || (row.data && row.data.cat)  || 'everyday',
       lvl:  row.lvl  || (row.data && row.data.lvl)  || 'b',
+      scene: row.scene || (row.data && row.data.scene) || '',
       msgs: msgs,
     };
   }
@@ -1689,7 +1694,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
         try {
           var toCache = freshConvs.map(function(c){
-            return { _id:c._id, name:c.name, ctx:c.ctx, ctx_en:c.ctx_en || '', cat:c.cat, lvl:c.lvl, msgs:c.msgs };
+            return { _id:c._id, name:c.name, ctx:c.ctx, ctx_en:c.ctx_en || '', cat:c.cat, lvl:c.lvl, scene:c.scene || '', msgs:c.msgs };
           });
           localStorage.setItem(_HOME_CONV_CACHE_KEY, JSON.stringify(toCache));
         } catch(e) {}
