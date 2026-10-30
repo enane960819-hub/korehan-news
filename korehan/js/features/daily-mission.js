@@ -347,6 +347,14 @@ function renderDailyMission() {
       + '</div>';
 }
 
+// Escape folds the open Daily Mission panel back into its pill.
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape' || e.defaultPrevented || _dmCollapsed) return;
+  var a = document.getElementById('kh-auth-modal');
+  if (a && a.style.display === 'flex') return;   // the auth modal closes first
+  if (document.querySelector('#kh-daily-mission .dm-close')) dmToggle();
+});
+
 function dmToggle() {
   _dmCollapsed = !_dmCollapsed;
   localStorage.setItem('kh_dm_collapsed', _dmCollapsed ? '1' : '0');

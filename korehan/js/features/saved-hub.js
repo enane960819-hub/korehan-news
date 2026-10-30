@@ -26,7 +26,7 @@ async function _svLoadWords() {
   var r = await getSupa().from('user_saved_words').select('*')
     .eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
   _sv.words = (r.data || []).map(function (w) {
-    return { id: w.id, ko: w.word_ko || w.ko || '', rom: w.word_rom || '', en: w.word_en || w.en || '', at: w.created_at };
+    return { id: w.id, ko: w.word_ko || w.ko || '', rom: (typeof _khSavedRom === 'function' ? _khSavedRom(w.word_ko || w.ko || '', w.word_rom || '') : (w.word_rom || '')), en: w.word_en || w.en || '', at: w.created_at };
   }).filter(function (w) { return w.ko; });
 }
 

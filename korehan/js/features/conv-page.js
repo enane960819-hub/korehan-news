@@ -245,6 +245,7 @@
   }
 
   // ── Role-play (rule-built options) ────────────────────────────
+  var CLOSE_FAMILY = /^(엄마|어머니|아빠|아버지|할머니|할아버지|언니|누나|형|오빠|동생)$/;   // the role, not a name like 형준
   var BAN_OK = /[아어여해와워봐줘돼게지네래까군걸데대야자고]$/;
   function toBanmal(t) {
     var changed = false;
@@ -295,23 +296,26 @@
     c.msgs.forEach(function (m, i) {
       if (m.who !== b || i === 0) return;
       var prev = c.msgs[i - 1];
+      var to = prev.who || a;   // who b is answering (a third speaker can talk too)
       var wrong = [];
       if (m.options && m.options.length) {
         m.options.forEach(function (o) { if (o && o.ko && o.ko !== m.txt) wrong.push({ ko: o.ko, why: o.why || '' }); });
       } else {
-        if (c.level[b] === '존댓말') {
+        // 반말 to a parent / sibling is natural Korean, so it can't be the
+        // "wrong" option there even when this scene happens to use 존댓말.
+        if (c.level[b] === '존댓말' && !CLOSE_FAMILY.test(to)) {
           var ban = toBanmal(m.txt);
-          if (ban) wrong.push({ ko: ban, why: '반말 — ' + b + ' speaks 존댓말 to ' + a + ' here.' });
+          if (ban) wrong.push({ ko: ban, why: '반말 — ' + b + ' speaks 존댓말 to ' + to + ' here.' });
         }
         var len = hangulLen(m.txt);
         var near = pool.filter(function (x) { var l = hangulLen(x.ko); return !used[x.ko] && l >= len * 0.5 && l <= len * 1.8 + 2; });
         var same = near.filter(function (x) { return x.lvl === c.lvl; });
         shuffle(same.length >= 3 ? same : near).forEach(function (x) {
-          if (wrong.length < 3) { used[x.ko] = 1; wrong.push({ ko: x.ko, en: x.en, why: 'This doesn’t follow what ' + a + ' just said — it belongs to a different situation.' }); }
+          if (wrong.length < 3) { used[x.ko] = 1; wrong.push({ ko: x.ko, en: x.en, why: 'This doesn’t follow what ' + to + ' just said — it belongs to a different situation.' }); }
         });
         if (wrong.length < 2) {
           shuffle(c.msgs.filter(function (x, j) { return x.who === b && j !== i && x.txt !== m.txt && Math.abs(j - i) > 1; }))
-            .forEach(function (x) { if (wrong.length < 3) wrong.push({ ko: x.txt, en: x.en, why: 'That’s ' + b + '’s line from another point in the conversation — it doesn’t answer what ' + a + ' just said.' }); });
+            .forEach(function (x) { if (wrong.length < 3) wrong.push({ ko: x.txt, en: x.en, why: 'That’s ' + b + '’s line from another point in the conversation — it doesn’t answer what ' + to + ' just said.' }); });
         }
       }
       if (!wrong.length) return;
@@ -341,8 +345,10 @@
         }).join('') + '</div>'
       + (R.answered ? (function () {
           var chosen = q.opts[R.pick];
-          var bad = q.opts.filter(function (o) { return !o.ok && o.why; });
-          return '<div class="cv-why">' + (chosen.ok ? '<b>Right.</b> ' : '<b>Not quite.</b> ') + esc((chosen.ok ? (bad[0] && bad[0].why ? 'The other options: ' + bad.map(function (o) { return o.why; }).join(' ') : '') : chosen.why) || '') + '</div>'
+          // Distractors from other conversations share one reason: say it once.
+          var whys = [];
+          q.opts.forEach(function (o) { if (!o.ok && o.why && whys.indexOf(o.why) < 0) whys.push(o.why); });
+          return '<div class="cv-why">' + (chosen.ok ? '<b>Right.</b> ' : '<b>Not quite.</b> ') + esc((chosen.ok ? (whys.length ? 'The other options: ' + whys.join(' ') : '') : chosen.why) || '') + '</div>'
             + '<div class="cv-rp-say"><button type="button" onclick="khConv.sayText(' + R.i + ',\'line\')">' + icon('volume-2') + 'Hear it</button></div>'
             + '<button type="button" class="cv-next wide" onclick="khConv.nextQ()">' + (R.i + 1 >= R.qs.length ? 'See results' : 'Next') + '</button>';
         })() : '')
@@ -500,7 +506,7 @@
       try { (ok ? playCorrectSound : playWrongSound)(); } catch (_) {}
       renderRoleplay();
     },
-    nextQ: function () { var R = S.rp; R.i++; R.answered = false; R.pick = -1; renderRoleplay(); try { window.scrollTo(0, 0); } catch (_) {} },
+    nextQ: function () { var R = S.rp; if (!R || !R.answered) return; R.i++; R.answered = false; R.pick = -1; renderRoleplay(); try { window.scrollTo(0, 0); } catch (_) {} },
     saveAll: async function () {
       var c = S.conv, btn = document.getElementById('cv-save');
       if (typeof supaUser === 'undefined' || !supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signin'); return; }
