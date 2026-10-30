@@ -1221,6 +1221,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
         <button id="room-remove-btn" class="room-ctrl-btn room-ctrl-danger" onclick="removeSelectedRoomItem()" style="display:none">Remove</button>
       </div>
       </div>
+      <button class="room-ctrl-btn" onclick="resetRoomPositions()" style="margin-top:8px" title="Put every item back in view"><i data-lucide="rotate-ccw" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Reset positions</button>
       <div style="font-size:10px;color:#94a3b8;margin-top:6px">Tap an item → resize/flip/layer · Hold → remove</div>
     </div>
     <!-- Study unlocks (js/features/room-learn.js, room_unlocks). Below the room controls so the
@@ -3243,6 +3244,12 @@ function renderRoomItems() {
     if (def.effect && def.effect !== 'none') div.dataset.effect = def.effect;
     var scale = Math.max(70, Math.min(170, Number(placed.scale || 100)));
     var base = def.size || 100;
+    // Keep the tap area inside the room so nothing can end up out of reach.
+    var _hr = window.innerWidth > 700 ? 0.4 : 0.7;
+    var _maxX = Math.max(0, 400 - base * (1 + _hr) / 2), _maxY = Math.max(0, 360 - base * (1 + _hr) / 2);
+    if (placed.x > _maxX || placed.y > _maxY || placed.x < 0 || placed.y < 0) {
+      placed = Object.assign({}, placed, { x: Math.max(0, Math.min(_maxX, placed.x || 0)), y: Math.max(0, Math.min(_maxY, placed.y || 0)) });
+    }
     // Position as % of 400x360 base
     var leftPct = (placed.x / 400) * 100;
     var topPct  = (placed.y / 360) * 100;
@@ -4261,6 +4268,22 @@ function flipSelectedItem() {
   _syncDOMToLayout();
 }
 
+// Lay every item in this room out in rows on the floor, same size and layer order.
+function resetRoomPositions() {
+  if (!confirm('Put every item in this room back in view? Their sizes and layers stay the same.')) return;
+  var layout = getRoomLayout();
+  var n = layout.length, cols = Math.max(1, Math.min(4, n)), rows = Math.ceil(n / cols);
+  layout.forEach(function(it, i) {
+    var c = i % cols, r = Math.floor(i / cols);
+    it.x = Math.round(20 + c * (300 / Math.max(1, cols - 1 || 1)) * (cols > 1 ? 1 : 0) + (cols === 1 ? 140 : 0));
+    it.y = Math.round(150 + r * (120 / Math.max(1, rows)));
+  });
+  setRoomLayout(layout);
+  _syncRoomToServer();
+  renderRoomItems();
+  if (typeof toast === 'function') toast('Items are back in view');
+}
+
 function moveSelectedLayer(dir) {
   if (!_selectedRoomItemId) return;
   // Save current DOM positions to layout first (user may have dragged without saving)
@@ -4289,11 +4312,16 @@ function _syncDOMToLayout() {
     var id = el.dataset.itemId;
     var curLeft = parseFloat(el.style.left) || 0;
     var curTop  = parseFloat(el.style.top) || 0;
+    // Undo the hitbox offset renderRoomItems adds (same math as saveRoomLayout). Without
+    // this every Front / Back / Flip re-saved every item shifted right and down, until
+    // they all drifted into the corner.
+    var sizePct = parseFloat(el.dataset.sizePct) || 0;
+    var offsetPct = (sizePct - sizePct * (parseFloat(el.dataset.hitboxRatio) || 0.7)) / 2;
     var x = (String(el.style.left).indexOf('%') >= 0)
-      ? Math.round((curLeft / 100) * 400)
+      ? Math.round(((curLeft - offsetPct) / 100) * 400)
       : Math.round((curLeft / cW) * 400);
     var y = (String(el.style.top).indexOf('%') >= 0)
-      ? Math.round((curTop / 100) * 360)
+      ? Math.round(((curTop - offsetPct) / 100) * 360)
       : Math.round((curTop / cH) * 360);
     var spriteEl = el.querySelector('.room-placed-sprite');
     for (var i = 0; i < layout.length; i++) {
