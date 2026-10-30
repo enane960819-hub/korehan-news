@@ -935,8 +935,10 @@ function renderBadgePage(container) {
 }
 
 function statBox(val, label, color) {
-  return '<div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.08);padding:0 12px">'
-    + '<div style="font-size:26px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:3px">' + val + '</div>'
+  // nowrap + fluid size: "11 / 84" wrapped into a vertical stack in the
+  // All Badges modal on phones.
+  return '<div style="flex:1;min-width:0;text-align:center;border-right:1px solid rgba(255,255,255,.08);padding:0 6px">'
+    + '<div style="font-size:clamp(18px,5.6vw,26px);font-weight:900;color:' + color + ';line-height:1;margin-bottom:3px;white-space:nowrap">' + val + '</div>'
     + '<div style="font-size:9px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:1px">' + label + '</div>'
     + '</div>';
 }

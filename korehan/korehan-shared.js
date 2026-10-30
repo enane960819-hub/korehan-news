@@ -2081,7 +2081,7 @@ function updateAuthUI() {
       userDrop.innerHTML =
         '<div class="kh-user-dropdown-head">'
         + '<div class="kh-user-dropdown-name">' + escapeHtml(name || 'User') + '</div>'
-        + '<div class="kh-user-dropdown-email">' + escapeHtml(supaUser.email || '') + '</div>'
+        + '<div class="kh-user-dropdown-email" title="' + escapeHtml(supaUser.email || '') + '">' + escapeHtml(supaUser.email || '') + '</div>'
         + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>0 Nyang</span></div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
@@ -8442,7 +8442,7 @@ function renderSharedSidebar() {
     + '<a href="korehan-learn.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
     + '<div style="display:flex;justify-content:center;margin-bottom:8px">' + khIcon('languages', '', 'kh-ui-icon-lg') + '</div>'
     + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Word Bank</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">10,000+ words · Quiz · Listening</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">15,000+ words · Quiz · Listening</div>'
     + '</a></div>'
     + '</div>';
 }
@@ -10672,8 +10672,10 @@ function renderBadgePage(container) {
 }
 
 function statBox(val, label, color) {
-  return '<div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.08);padding:0 12px">'
-    + '<div style="font-size:26px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:3px">' + val + '</div>'
+  // nowrap + fluid size: "11 / 84" wrapped into a vertical stack in the
+  // All Badges modal on phones.
+  return '<div style="flex:1;min-width:0;text-align:center;border-right:1px solid rgba(255,255,255,.08);padding:0 6px">'
+    + '<div style="font-size:clamp(18px,5.6vw,26px);font-weight:900;color:' + color + ';line-height:1;margin-bottom:3px;white-space:nowrap">' + val + '</div>'
     + '<div style="font-size:9px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:1px">' + label + '</div>'
     + '</div>';
 }

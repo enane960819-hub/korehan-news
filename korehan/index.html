@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
+<link rel="stylesheet" href="korehan-shared.css?v=20261030fx">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -1183,22 +1183,22 @@ window._khLoaderClearAuto = function() {};
 <script src="js/core/plans.js?v=20261029pl"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
 <script src="js/core/phrases.js?v=20261029a"></script>
-<script src="js/core/saved-words.js?v=20261013a"></script>
-<script src="js/features/review-queue.js?v=20261028c"></script>
+<script src="js/core/saved-words.js?v=20261030fx"></script>
+<script src="js/features/review-queue.js?v=20261030fx"></script>
 <script src="js/core/hangul-jamo-input.js?v=20261028a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261029x"></script>
 <script src="js/core/reporters.js?v=20261029ng"></script>
 <script src="js/features/streak.js?v=20260525r" defer></script>
-<script src="js/features/daily-mission.js?v=20261029s" defer></script>
+<script src="js/features/daily-mission.js?v=20261030fx" defer></script>
 <script src="js/features/reading-tracker.js?v=20260525r" defer></script>
 <script src="js/features/bookmarks.js?v=20261029s" defer></script>
 <script src="js/features/comments.js?v=20261016a" defer></script>
-<script src="js/features/sidebar.js?v=20261029s" defer></script>
+<script src="js/features/sidebar.js?v=20261030fx" defer></script>
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261030a"></script>
+<script src="korehan-shared.js?v=20261030fx"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 var HOME_CONVS = [
@@ -1531,7 +1531,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           + '<div class="kt-prog"><i style="width:' + Math.max(3, Math.round(doneN / 3 * 100)) + '%"></i></div>' + stepHtml
           + (doneN === 0 && streak > 0 ? '<div class="kt-keep">' + ic('flame') + 'Do one step to keep your ' + streak + '-day streak</div>' : '')
         : '<div class="kt-cele"><div class="big">' + ic('check') + '</div><b>Today’s plan is done</b><small>Streak safe · +' + (typeof dmXPFromData === 'function' ? dmXPFromData(dm) : 0) + ' XP today · see you tomorrow</small></div>'
-          + '<div class="kt-more"><a href="korehan-conversations.html">A conversation</a><a href="korehan-stories.html">A story</a><a href="korehan-mypage.html#mp-miniroom-section">My Room</a></div>';
+          + '<div class="kt-more"><a href="korehan-conversations.html">A conversation</a><a href="korehan-section.html?s=buzz">Korea Buzz</a><a href="korehan-mypage.html#mp-miniroom-section">My Room</a></div>';
       box.innerHTML =
           '<div class="kt">'
         +   '<div class="kt-main">'

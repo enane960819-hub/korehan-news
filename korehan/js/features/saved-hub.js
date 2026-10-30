@@ -109,7 +109,7 @@ function _svRender() {
   var listEl = document.getElementById('sv-list');
   var more = document.getElementById('sv-more');
   var all = _sv[_sv.tab];
-  if (!all) { listEl.innerHTML = '<div class="sv-empty">Loading…</div>'; more.hidden = true; bar.innerHTML = ''; return; }
+  if (!all) { listEl.innerHTML = '<div class="sv-empty">Loading…</div>'; more.hidden = true; bar.innerHTML = ''; var h0 = document.querySelector('.sv-hint'); if (h0) h0.hidden = true; return; }
 
   var chips = { articles: [['all', 'All'], ['news', 'News'], ['buzz', 'Korea Buzz']],
                 phrases: [['all', 'All'], ['phrase', "Today's phrase"], ['conversation', 'Conversations']] }[_sv.tab] || [];
@@ -124,6 +124,9 @@ function _svRender() {
   }).join('') + act;
 
   var list = _svFiltered();
+  // The swipe-to-remove hint only makes sense when there is a row to swipe.
+  var hint = document.querySelector('.sv-hint');
+  if (hint) hint.hidden = !list.length;
   if (!list.length) {
     var empty = {
       words: 'No saved words yet. Tap any word while reading to save it.',
