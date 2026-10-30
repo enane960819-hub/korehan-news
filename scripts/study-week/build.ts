@@ -1,7 +1,12 @@
-// node --experimental-strip-types scripts/study-week/build.ts
-// Lints content.mjs and writes the fill-only migration.
+// node --experimental-strip-types scripts/study-week/build.ts [weeks/<monday>.mjs] [--table]
+// Lints a content file (default content.mjs = the first two weeks) and writes its
+// fill-only migration: supabase/migrations/<today>_study_week_<monday>.sql
+// (content.mjs keeps its original 20261030_study_week_content.sql). See README.md.
 import { writeFileSync } from 'node:fs'
-import { ROWS } from './content.mjs'
+import { pathToFileURL } from 'node:url'
+import { resolve } from 'node:path'
+const SRC = process.argv.slice(2).find((a) => !a.startsWith('--')) || new URL('./content.mjs', import.meta.url).pathname
+const { ROWS } = await import(pathToFileURL(resolve(SRC)).href)
 import { romanize } from '../../supabase/functions/_shared/romanize.ts'
 
 const errs: string[] = []
@@ -57,17 +62,26 @@ if (process.argv.includes('--table')) for (const r of ROWS) {
 if (errs.length) { console.error(errs.join('\n')); process.exit(1) }
 
 const q = (v: unknown) => '$j$' + JSON.stringify(v) + '$j$'
-let sql = `-- auto-apply
+const weeks = [...new Set(ROWS.map((r: any) => r.date))].join(', ')
+let sql = SRC.endsWith('/content.mjs') ? `-- auto-apply
 -- Hand-written Phrase Munch lessons + Key Expressions for the study weeks of
 -- 2026-10-26 and 2026-11-02 (owner 2026-10-30). Those rows had none, so the
 -- first learner to open either step started an unreviewed browser AI
 -- generation. Written in scripts/study-week/content.mjs, linted and built by
 -- build.ts. Fill-only: a row that already has content is left alone.
+` : `-- auto-apply
+-- Hand-written Phrase Munch lessons + Key Expressions for the study week of
+-- ${weeks} (weekly, owner 2026-10-30), so no learner triggers an unreviewed
+-- browser AI generation. Written in scripts/study-week/weeks/, linted and built
+-- by build.ts. Fill-only: a row that already has content is left alone.
 `
 for (const r of ROWS) {
   const where = `scheduled_date = '${r.date}' and level = '${r.level}'`
   sql += `\nupdate public.study_daily_content set phrase_munch_lessons = ${q(r.pm)}\n where ${where}\n   and (phrase_munch_lessons is null or phrase_munch_lessons::text in ('[]', 'null'));\n`
   sql += `update public.study_daily_content set key_expressions = ${q(r.ke.map((e: any) => ({ ko: e.ko, rom: e.rom, en: e.en, parts: e.parts, examples: e.examples })))}\n where ${where}\n   and (key_expressions is null or key_expressions::text in ('[]', 'null'));\n`
 }
-writeFileSync(new URL('../../supabase/migrations/20261030_study_week_content.sql', import.meta.url), sql)
+const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10).replace(/-/g, '')
+const out = SRC.endsWith('/content.mjs') ? '20261030_study_week_content.sql' : `${today}_study_week_${ROWS[0].date}.sql`
+writeFileSync(new URL('../../supabase/migrations/' + out, import.meta.url), sql)
+console.log('wrote supabase/migrations/' + out)
 console.log('ok:', ROWS.length, 'rows')
