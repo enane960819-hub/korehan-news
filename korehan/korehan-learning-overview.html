@@ -3470,8 +3470,8 @@
     }
     if (st === 'ai_reviewed') {
       return item.tutor_requested
-        ? { ready: true, text: 'AI feedback ready · tutor review coming', icon: 'sparkles', color: '#2563eb' }
-        : { ready: true, text: 'AI feedback ready', icon: 'sparkles', color: '#16a34a' };
+        ? { ready: true, text: 'Feedback ready · tutor review coming', icon: 'sparkles', color: '#2563eb' }
+        : { ready: true, text: 'Feedback ready', icon: 'sparkles', color: '#16a34a' };
     }
     return { ready: false, text: 'Submitted', icon: 'send', color: '#94a3b8' };
   }
@@ -3515,7 +3515,7 @@
       if (fbAi || fbAdminText) {
         html += _glRenderFeedbackBody({ ai:fbAi, adminText:fbAdminText, row:item });
       } else {
-        html += '<div style="text-align:center;padding:18px;font-size:12px;color:#94a3b8">' + 'AI feedback is being prepared — usually ready in a few minutes.' + '</div>';
+        html += '<div style="text-align:center;padding:18px;font-size:12px;color:#94a3b8">' + 'Feedback is being prepared — usually ready in a few minutes.' + '</div>';
       }
       bodyEl.innerHTML = html;
       if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();

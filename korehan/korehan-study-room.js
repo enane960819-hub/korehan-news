@@ -9154,10 +9154,10 @@ async function submitSpeaking() {
       _triggerSpeakingFeedback(newId, scriptText, _speakScores)
         .catch(function(e){ console.warn('speaking feedback failed', e && e.message); });
     }
-    showToast('Recording submitted! Your AI feedback is on its way.');
+    showToast('Recording submitted! Your feedback is on its way.');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
-    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted! Your AI feedback is on its way.</span></span>';
+    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted! Your feedback is on its way.</span></span>';
     // Drop the captured blob now that it's safely on the server —
     // a stale _speakBlob made it past the early guard if the user
     // re-opened the submit row from a tab toggle, double-charging a
@@ -9473,7 +9473,7 @@ function _showSubmitReview(limit) {
       var header = '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid rgba(255,255,255,.08)">'
         + '<div>'
         +   '<div style="font-size:16px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_NEWSPAPER+'</span><span>Submit today\'s work</span></div>'
-        +   '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">' + ready + ' / ' + drafts.length + ' ready · once per week · instant AI feedback</div>'
+        +   '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">' + ready + ' / ' + drafts.length + ' ready · once per week · instant feedback</div>'
         + '</div>'
         + '<button data-act="cancel" aria-label="Close" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:50%;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span></button>'
         + '</div>';
@@ -9665,8 +9665,8 @@ async function submitAllWritingsToday() {
     var res = await _submitWeeklyPackage();
     if (res.id) _triggerPackageFeedback(res.id, res.items);
     showToast((typeof khIsPremiumPlan === 'function' && khIsPremiumPlan())
-      ? 'Submitted! AI feedback in about a minute — your tutor review follows within 48h.'
-      : 'Submitted! Your AI feedback will be ready in about a minute.');
+      ? 'Submitted! Feedback in about a minute — your tutor review follows within 48h.'
+      : 'Submitted! Your feedback will be ready in about a minute.');
     if (typeof _startFeedbackArrivalPoll === 'function') setTimeout(_startFeedbackArrivalPoll, 800);
   } catch(e) {
     showToast('Submit error: ' + (e.message || e));
@@ -10210,7 +10210,7 @@ async function _wmRenderSubmittedState() {
     if (btn && !window._wmSubmitting) btn.disabled = false;
     if (lbl && !window._wmSubmitting) lbl.textContent = 'Submit & get feedback';
     var note = document.getElementById('wm-submit-note');
-    if (note) note.textContent = 'One submission per week · AI feedback appears right here';
+    if (note) note.textContent = 'One submission per week · feedback appears right here';
     return;
   }
   _wmSetSubmittedUI();
@@ -10259,7 +10259,7 @@ function _wmRenderFeedback(fb, state) {
   var a = acts.find(function(x){ return String(x && x.type || '').indexOf('express') === 0; }) || acts[0] || fb;
   var h = '<div style="' + card + '">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">'
-    + '<div style="font-size:12px;font-weight:800;color:#86efac;text-transform:uppercase;letter-spacing:.06em">AI Feedback</div>'
+    + '<div style="font-size:12px;font-weight:800;color:#86efac;text-transform:uppercase;letter-spacing:.06em">Feedback</div>'
     + (a.score != null ? '<div style="font-size:20px;font-weight:900;color:#f1f5f9">' + esc(a.score) + '<span style="font-size:12px;color:#94a3b8">/100</span></div>' : '')
     + '</div>';
   if (a.overall || fb.overall_assessment) h += '<div style="font-size:13px;color:#e2e8f0;margin-bottom:10px">' + esc(a.overall || fb.overall_assessment) + '</div>';
@@ -10407,10 +10407,10 @@ async function loadFeedbackInbox() {
       btnEl.querySelector('a').style.background = 'rgba(34,197,94,.1)';
       btnEl.querySelector('a').style.color = '#4ade80';
       if (labelEl) labelEl.textContent = (latest.status === 'ai_reviewed' && latest.tutor_requested)
-        ? 'AI feedback ready · tutor review pending'
-        : (latest.status === 'ai_reviewed' ? 'AI feedback ready! Tap to view' : 'Tutor feedback arrived! Tap to view');
+        ? 'Feedback ready · tutor review pending'
+        : (latest.status === 'ai_reviewed' ? 'Feedback ready! Tap to view' : 'Tutor feedback arrived! Tap to view');
     } else if (latest.status === 'submitted') {
-      if (labelEl) labelEl.textContent = 'AI feedback on its way…';
+      if (labelEl) labelEl.textContent = 'Feedback on its way…';
     } else {
       if (labelEl) labelEl.textContent = 'View my writing feedback';
     }
@@ -10978,7 +10978,7 @@ async function renderFeedbackInboxContent() {
       // review" — they shouldn't expect to read feedback at this
       // stage. The green "Feedback ready" tier only fires once the
       // tutor approves (admin_approved) or sends.
-      ai_reviewed:    { label: '✅ AI feedback',     color: '#4ade80',               bg: 'rgba(74,222,128,.1)' },
+      ai_reviewed:    { label: '✅ Feedback',     color: '#4ade80',               bg: 'rgba(74,222,128,.1)' },
       admin_approved: { label: '⭐ Tutor reviewed',  color: '#fbbf24',               bg: 'rgba(251,191,36,.12)' },
       sent:           { label: '⭐ Tutor reviewed',  color: '#fbbf24',               bg: 'rgba(251,191,36,.12)' }
     };
@@ -11110,7 +11110,7 @@ async function renderFeedbackInboxContent() {
           // means AI has drafted; submitted means even that hasn't run
           // yet. Either way, the next signal the USER gets is the
           // tutor sign-off — usually within 24 h.
-          var placeholderTxt = '📨 Submitted. Your AI feedback is on its way…';
+          var placeholderTxt = '📨 Submitted. Your feedback is on its way…';
           html += '<div style="color:rgba(255,255,255,.5);text-align:center;padding:16px;font-size:13px;line-height:1.5">'
             + placeholderTxt
             + '</div>';
@@ -12897,7 +12897,7 @@ async function checkPictureDescription() {
   }
   result.style.display = 'block';
   var _aiFailedBanner = !corrected || corrected === text
-    ? '<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#b45309;padding:8px 10px;border-radius:8px;font-size:11px;margin-bottom:8px">⚠️ AI feedback temporarily unavailable — showing general guidance.</div>'
+    ? '<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#b45309;padding:8px 10px;border-radius:8px;font-size:11px;margin-bottom:8px">⚠️ Feedback temporarily unavailable — showing general guidance.</div>'
     : '';
   result.innerHTML =
     _aiFailedBanner
