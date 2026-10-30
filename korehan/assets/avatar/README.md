@@ -1,4 +1,4 @@
-# Avatar sprites (character customization — work in progress)
+# Avatar sprites (My Room character editor)
 
 Cut from the owner's ChatGPT sheets (2026-10-29), background removed, trimmed.
 Same body template for all: base-<hair>.png (white tee, grey trousers) and
@@ -12,7 +12,7 @@ Hats removed (owner 2026-10-29: placed-on hats look wrong): cap, beanie, beret, 
 crown, earmuffs. Only flat head pieces (cat ears, headband, flower crown, bows, clips) and
 glasses stay. Outfits with a hat drawn in are fine (drawn together with the head).
 Pale fringe between hair strands was repainted with the neighbouring hair colour.
-Not used by the site yet — the editor is being built.
+Used by js/features/avatar-art.js (drawing, per-sprite anchors) and avatar-editor.js (My Room → Customize).
 
 Accessory anchors tested on base-long (176x368): centre x, y, drawn width, y mode
 (bottom = sprite bottom sits at y, centre = sprite centre at y). Sprites are drawn
@@ -41,4 +41,10 @@ witch hat, red hood): the editor should hide head accessories on those.
 All body sprites are stored at half the original scale (base-long 176x368).
 Room backgrounds: see korehan/assets/room/themes/README.md.
 
-Next: green-hair mask sheet (optional), editor.
+Editor (2026-10-30): anchors above are the base-long reference; avatar-art.js maps them onto
+every sprite with per-sprite metrics (eye centre + face scale by template matching against
+base-long, hair top + hair edges). Changes from the table: catears y 66 / width 132 (the band
+floated above the hair), sakura-pin x 132. Head accessories are hidden only on sprites that
+really have headwear drawn in (long/bob street, long/bob cute, bob hanbok, long/bob summer,
+long/bob pajamas, long/bob halloween); glasses are hidden on bob-summer (heart glasses on the
+head) and curly-uniform (round glasses drawn in). New art: bump KH_ROOM_ART_V.

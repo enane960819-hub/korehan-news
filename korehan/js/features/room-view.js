@@ -8,8 +8,11 @@
    No editing, no shop, no taps. Used by the public profile
    (get_public_room). My Room uses WALLPAPERS / FLOORS from here too.
 
-   khRoomView.render(host, { layout, owned, theme }) → Promise
+   khRoomView.render(host, { layout, owned, theme, roomTheme, avatar, emptyText }) → Promise
      host: an empty element; it gets class kh-rv (10:9 box).
+     roomTheme / avatar (optional): theme picture and character from
+     get_public_room prefs (drawn by avatar-art.js when it's loaded);
+     emptyText false = no "nothing placed" overlay.
    ============================================================ */
 (function () {
   var DEFAULT_WALL = 'url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat';
@@ -97,8 +100,11 @@
     host.innerHTML = '<div class="kh-rv-floor"></div>';
     host.firstChild.style.background = fl.bg;
     host.firstChild.style.opacity = fl.id === 'none' ? '0' : '1';
+    // Room theme picture + the learner's character (js/features/avatar-art.js).
+    if (window.khAvatar && room.roomTheme) khAvatar.applyThemeBg(host, room.roomTheme, host.firstChild);
 
     var items = await loadItems();
+    if (window.khAvatar && room.avatar) items = await khAvatar.withRoomItem(items, room.avatar);
     var owned = Array.isArray(room.owned) ? room.owned : [];
     var layout = (Array.isArray(room.layout) ? room.layout : []).filter(function (p) {
       var d = p && items[p.id];
@@ -108,6 +114,7 @@
     layout = layout.filter(function (p, i) { return ok[i]; });
 
     if (!layout.length) {
+      if (room.emptyText === false) return;
       var em = document.createElement('div');
       em.className = 'kh-rv-empty';
       em.textContent = room.emptyText || 'Nothing placed in this room yet.';

@@ -43,6 +43,10 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 .pf-link { border:0; background:none; color:#94a3b8; font:800 12px 'DM Sans',sans-serif; cursor:pointer; padding:2px 0; letter-spacing:.04em; }
 .pf-link:hover { color:#cbd5e1; }
 .pf-room-wrap { max-width:560px; margin:0 auto; }
+.pf-rtabs { display:flex; gap:8px; overflow-x:auto; padding:0 0 10px; scrollbar-width:none; }
+.pf-rtabs::-webkit-scrollbar { display:none; }
+.pf-rtabs button { flex:none; padding:7px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:#e2e8f0; font:inherit; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.pf-rtabs button.on { background:#fbbf24; border-color:#fbbf24; color:#1a1300; }
 .pf-room-msg { aspect-ratio:10/9; border-radius:12px; background:#0b1426; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; color:#94a3b8; font-size:13px; }
 .pf-badges { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 .pf-bd { background:#0b1426; border-radius:10px; padding:10px 6px 9px; text-align:center; font-size:10.5px; color:#cbd5e1; line-height:1.25; min-width:0; }
@@ -117,10 +121,11 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261030bn"></script>
+<script src="korehan-shared.js?v=20261030d"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261030fx"></script>
-<script src="js/features/room-view.js?v=20261029ra"></script>
+<script src="js/features/room-view.js?v=20261030rm"></script>
+<script src="js/features/avatar-art.js?v=20261030rm"></script>
 <script>
 // Public profile page (dark redesign, mockup ① 2026-10-29)
 //
@@ -312,12 +317,36 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
     var d = r.data;
     host.className = '';
     host.textContent = '';
-    if (window.khRoomView) {
-      await khRoomView.render(host, {
-        layout: d.layout, owned: d.owned, theme: d.prefs && d.prefs.theme,
-        emptyText: isSelf() ? 'Your room is empty — decorate it in My Room.' : 'Nothing placed in this room yet.'
-      });
+    // One tab per room (get_public_room returns only the rooms this learner's plan shows).
+    var rooms = (d.prefs && Array.isArray(d.prefs.rooms) && d.prefs.rooms.length) ? d.prefs.rooms
+      : [{ id: 'main', name: 'Room', theme: d.prefs && d.prefs.room_theme }];
+    var mainId = rooms[0].id;
+    var showRoom = async function (i) {
+      var room = rooms[i] || rooms[0];
+      var tabs = document.getElementById('pf-room-tabs');
+      if (tabs) tabs.querySelectorAll('button').forEach(function (b, j) { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i ? 'true' : 'false'); });
+      var layout = (Array.isArray(d.layout) ? d.layout : []).filter(function (e) { return e && (e.room || mainId) === room.id; });
+      host.className = ''; host.textContent = ''; host.removeAttribute('style');
+      if (window.khRoomView) {
+        await khRoomView.render(host, {
+          layout: layout, owned: d.owned, theme: d.prefs && d.prefs.theme,
+          roomTheme: room.theme, avatar: d.prefs && d.prefs.avatar,
+          emptyText: isSelf() ? 'This room is empty — decorate it in My Room.' : 'Nothing placed in this room yet.'
+        });
+      }
+    };
+    if (rooms.length > 1) {
+      var bar = document.createElement('div');
+      bar.id = 'pf-room-tabs'; bar.className = 'pf-rtabs'; bar.setAttribute('role', 'tablist');
+      bar.innerHTML = rooms.map(function (rm, i) {
+        return '<button type="button" role="tab" data-i="' + i + '">' + esc(rm.name || ('Room ' + (i + 1))) + '</button>';
+      }).join('');
+      host.parentNode.insertBefore(bar, host);
+      bar.addEventListener('click', function (e) { var b = e.target.closest('button[data-i]'); if (b) showRoom(Number(b.dataset.i)); });
     }
+    await showRoom(0);
+    // Character as profile picture (owner's choice, items filtered on the server).
+    if (window.khAvatar && d.prefs && d.prefs.avatar && d.prefs.avatar.profile) khAvatar.setFace(document.querySelector('.pf-av'), d.prefs.avatar);
   }
 
   // ── Header actions ──────────────────────────────────────────────
