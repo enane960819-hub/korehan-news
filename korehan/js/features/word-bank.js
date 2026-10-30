@@ -197,7 +197,7 @@
       b.onclick = function () {
         var r = S.rows[+b.getAttribute('data-save')];
         if (isSaved(r.word_ko)) return;
-        save(r); b.classList.add('sv'); b.innerHTML = ico('check'); icons();
+        save(r); b.classList.add('sv'); b.setAttribute('aria-label', 'Saved'); b.innerHTML = ico('check'); icons();
       };
     });
     var more = $('wb-more'); if (more) more.onclick = loadMore;
@@ -315,6 +315,10 @@
     var q = D.qs[D.i];
     if (!q) return finish();
     D.answered = false; D.flipped = false;
+    // The second tap of a double tap on Next lands on the freshly drawn card
+    // (skipping a word) or on an option (answering blind) — ignore taps that
+    // come right after a redraw.
+    D.at = Date.now();
     var top = '<div class="wb-qk"><span>' + levelLabel(S.level) + ' · ' + (S.tag === 'all' ? 'All' : cap(S.tag)) + '</span><span>' + (D.i + 1) + ' / ' + D.qs.length + '</span></div>'
       + '<div class="wb-prog"><i style="width:' + Math.round(D.i / D.qs.length * 100) + '%"></i></div>';
     if (D.kind === 'cards') {
@@ -328,7 +332,7 @@
       };
       $('wb-say').onclick = function () { say(q.word_ko, this); };
       $('wb-sv').onclick = function () { if (!isSaved(q.word_ko)) { save(q); this.innerHTML = ico('check') + 'Saved'; icons(); } };
-      $('wb-next').onclick = function () { D.i++; step(); };
+      $('wb-next').onclick = function () { if (Date.now() - D.at < 400) return; D.i++; step(); };
       say(q.word_ko); icons(); return;
     }
     var opts = options(q);
@@ -344,7 +348,7 @@
     if (D.kind === 'listen') setTimeout(function () { say(q.word_ko); }, 250);
     document.querySelectorAll('.wb-opt').forEach(function (b) {
       b.onclick = function () {
-        if (D.answered) return; D.answered = true;
+        if (D.answered || Date.now() - D.at < 400) return; D.answered = true;
         var o = opts[+b.getAttribute('data-o')], ok = o.word_ko === q.word_ko;
         if (ok) D.right++; else D.missed.push(q);
         document.querySelectorAll('.wb-opt').forEach(function (x) {
@@ -423,14 +427,16 @@
     function q() {
       var c = qs[i];
       if (!c) { openOverlay('<div class="wb-done"><b>' + right + ' / ' + qs.length + '</b><small>letters</small></div><div class="wb-actions"><button type="button" class="wb-ghost" onclick="khWordBank.hangulQuiz()">Again</button><button type="button" class="wb-next" onclick="khWordBank.close()">Done</button></div>'); return; }
-      var opts = shuffle([c].concat(shuffle(all.filter(function (x) { return x !== c; })).slice(0, 3)));
+      // No distractor that shares a sound with the answer (ㅌ "t" next to ㄷ "d/t").
+      var snd = c[1].split('/');
+      var opts = shuffle([c].concat(shuffle(all.filter(function (x) { return x !== c && !x[1].split('/').some(function (p) { return snd.indexOf(p) >= 0; }); })).slice(0, 3)));
       openOverlay('<div class="wb-qk"><span>Hangul</span><span>' + (i + 1) + ' / ' + qs.length + '</span></div><div class="wb-prog"><i style="width:' + i * 10 + '%"></i></div>'
         + '<div class="wb-card static"><span class="big xl">' + c[0] + '</span><span class="rom">What sound is this?</span></div>'
         + '<div class="wb-g2">' + opts.map(function (o, k) { return '<button type="button" class="wb-opt" data-o="' + k + '">' + o[1] + '</button>'; }).join('') + '</div><div id="wb-fb"></div>' + closeBtn());
-      var done = false;
+      var done = false, at = Date.now();
       document.querySelectorAll('.wb-opt').forEach(function (b) {
         b.onclick = function () {
-          if (done) return; done = true;
+          if (done || Date.now() - at < 400) return; done = true;
           var o = opts[+b.getAttribute('data-o')];
           if (o === c) right++;
           document.querySelectorAll('.wb-opt').forEach(function (x) { var oo = opts[+x.getAttribute('data-o')]; if (oo === c) x.classList.add('ok'); else if (x === b) x.classList.add('no'); });
