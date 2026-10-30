@@ -210,6 +210,9 @@ function markStageDone(stage) {
 async function syncStudyProgress(stage) {
   var sb = getSupa();
   if (!sb || !supaUser) return;
+  // Past-week practice: the row would be dated today, so it marked THIS
+  // week's step done. Practice progress stays on this device.
+  if (khPracticeWeek()) return;
   var patch = { user_id:supaUser.id, study_date:kstDateKey(), level:(_currentLevel || 'Beginner'), updated_at:new Date().toISOString() };
   if (stage === 'topic') patch.topic_done = true;
   if (stage === 'grammar') patch.grammar_done = true;
@@ -864,6 +867,15 @@ function resetWordOrder() {
 function loadStudyAccessGate() { /* no-op */ }
 function ensureStudyUnlocked() { return true; }
 
+// Lesson steps a Free learner can't open (each opener shows the upgrade
+// modal): Topic Yum Yum is the weekly writing flow (express_writing, owner
+// 2026-10-28) and Speaking Practice is Premium (owner 2026-10-30). They are
+// tagged and left out of the "x/N steps" counts, so a Free week can finish.
+function _srLockedSteps() {
+  var can = function(f){ return typeof canAccess !== 'function' || canAccess(f); };
+  return { topic: !can('express_writing'), picture: !can('speaking_practice') };
+}
+
 function renderStudyChecklist() {
   var box = document.getElementById('sr-checklist-box');
   if (!box) return;
@@ -878,10 +890,11 @@ function renderStudyChecklist() {
     { k:'sentence',    label:'Dictation',          sub:'Listen & type' },
     { k:'expressions', label:'Key Expressions',    sub:'Expressions in context' }
   ];
-  // Speaking Practice is Premium: Free learners see it tagged and their week
-  // counts the other four steps.
+  // Speaking Practice and Topic Yum Yum (the weekly writing flow) are
+  // Premium: Free learners see them tagged and their week counts the rest.
   var canSpeak = typeof canAccess !== 'function' || canAccess('speaking_practice');
-  items.forEach(function(i){ if (i.k === 'picture' && !canSpeak) i.locked = true; });
+  var locked = _srLockedSteps();
+  items.forEach(function(i){ if (locked[i.k]) i.locked = true; });
   var counted = items.filter(function(i){ return !i.locked; });
   var doneCnt = counted.filter(function(i){ return !!_studyDone[i.k]; }).length;
   var pd = document.getElementById('sr-done-picture');
@@ -923,7 +936,8 @@ function renderTodayPlan() {
     { k:'picture', label:'Speaking Practice' }, { k:'sentence', label:'Dictation' },
     { k:'expressions', label:'Key Expressions' }
   ];
-  if (typeof canAccess === 'function' && !canAccess('speaking_practice')) stages = stages.filter(function(x){ return x.k !== 'picture'; });
+  var lockedSteps = _srLockedSteps();
+  stages = stages.filter(function(x){ return !lockedSteps[x.k]; });
   var lessonDone = stages.filter(function(x){ return !!_studyDone[x.k]; }).length;
   var nextStage = stages.filter(function(x){ return !_studyDone[x.k]; })[0];
   var reviewDone = false;
@@ -938,7 +952,7 @@ function renderTodayPlan() {
       fn: 'openLearningSelector()' },
     { done: (typeof _wmWeekSubmitted === 'function') && !!_wmWeekSubmitted(), label: 'Write & get feedback',
       sub: ((typeof _wmWeekSubmitted === 'function') && _wmWeekSubmitted()) ? 'Submitted this week'
-        : ((typeof canAccess === 'function' && !canAccess('express_writing')) ? 'Premium · AI + tutor feedback'
+        : ((typeof canAccess === 'function' && !canAccess('express_writing')) ? 'Premium · feedback + tutor review'
         : (lessonDone >= 4 ? 'Ready — write about the topic' : 'After 4 lesson steps')),
       fn: 'lsStartWriting()' }
   ];
@@ -1559,8 +1573,11 @@ function _pregenTomorrow() {
     try {
       var nextWeek = kstAddDays(kstWeekKey(), 7);
       var sb = getSupa(); if (!sb || !supaUser) return;
-      sb.from('study_daily_content').select('id,vocab').eq('scheduled_date', nextWeek).eq('level', _currentLevel).maybeSingle()
+      // study_daily_content has no `id` column — selecting it 400'd, so every
+      // Fri–Sun visit read "missing" and paid for a full AI generation.
+      sb.from('study_daily_content').select('scheduled_date,vocab').eq('scheduled_date', nextWeek).eq('level', _currentLevel).maybeSingle()
         .then(function(r) {
+          if (!r || r.error) return;   // unknown state — never generate on an error
           var hasVocab = r.data && r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : true);
           if (!hasVocab) {
             khLog('[pregenNextWeek] fallback — generating for', nextWeek, _currentLevel);
@@ -2984,12 +3001,18 @@ function _updateLSSelectorBadges() {
   var types = ['topic','grammar','picture','sentence','expressions'];
   var doneCount = 0;
   var totalPts = 0;
+  // Premium-only steps for this learner: tagged, and not part of the count.
+  var locked = _srLockedSteps();
+  var shownDone = 0, shownTotal = 0;
   types.forEach(function(t) {
     var node = document.getElementById('ls-card-' + t);
     if (!node) return;
+    node.classList.toggle('ls-node-locked', !!locked[t] && !_studyDone[t]);
+    if (!locked[t]) shownTotal++;
     if (_studyDone[t]) {
       node.classList.add('ls-node-done');
       doneCount++;
+      if (!locked[t]) shownDone++;
     } else {
       node.classList.remove('ls-node-done');
     }
@@ -2997,18 +3020,20 @@ function _updateLSSelectorBadges() {
   // Update orb
   var orbCount = document.getElementById('ls-orb-count');
   var orbPts   = document.getElementById('ls-orb-pts');
-  if (orbCount) orbCount.textContent = doneCount;
-  if (orbPts)   orbPts.textContent = doneCount + ' / 5 steps';
+  var orbTotal = document.querySelector('.ls-orb-total');
+  if (orbCount) orbCount.textContent = shownDone;
+  if (orbTotal) orbTotal.textContent = '/ ' + shownTotal + ' done';
+  if (orbPts)   orbPts.textContent = shownDone + ' / ' + shownTotal + ' steps';
   // Update CSS progress variable for the orb halo ring + Tarot top
   // bar (Tarot reads --ls-progress off the .ls-mindmap, not the
   // orb-wrap, so set it on both).
   var orbWrap = document.querySelector('.ls-orb-wrap');
-  var pctVar = String((doneCount / 5) * 100);
+  var pctVar = String((shownDone / Math.max(1, shownTotal)) * 100);
   if (orbWrap) orbWrap.style.setProperty('--ls-progress', pctVar);
   var mmEl = document.getElementById('ls-mindmap');
   if (mmEl) mmEl.style.setProperty('--ls-progress', pctVar);
   // Set target fill for canvas orb
-  if (typeof _lsOrbTargetFill !== 'undefined') _lsOrbTargetFill = Math.max(0.12, doneCount / 5);
+  if (typeof _lsOrbTargetFill !== 'undefined') _lsOrbTargetFill = Math.max(0.12, shownDone / Math.max(1, shownTotal));
   // Update line done states for canvas
   if (typeof _lsLineDone !== 'undefined') {
     types.forEach(function(t){ _lsLineDone[t] = !!_studyDone[t]; });
@@ -3020,7 +3045,15 @@ function _updateLSSelectorBadges() {
   var hasAny = doneCount >= 4; // same threshold as canEnterWritingRoom()
   var LS_LOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
   var LS_UNLOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.5-1.5"/></svg>';
-  if (wpBtn) {
+  var canWrite = typeof canAccess !== 'function' || canAccess('express_writing');
+  if (wpBtn && !canWrite) {
+    // Free: writing is Premium — keep the button tappable so it opens the
+    // upgrade modal (lsStartWriting → canEnterWritingRoom → requirePlan).
+    wpBtn.classList.remove('ls-wp-unlocked');
+    wpBtn.disabled = false;
+    if (wpLock) wpLock.innerHTML = LS_LOCK_SVG;
+    if (wpSub)  wpSub.textContent  = 'Premium · write and get feedback';
+  } else if (wpBtn) {
     if (hasAny) {
       wpBtn.classList.add('ls-wp-unlocked');
       wpBtn.disabled = false;
@@ -3030,7 +3063,7 @@ function _updateLSSelectorBadges() {
       wpBtn.classList.remove('ls-wp-unlocked');
       wpBtn.disabled = true;
       if (wpLock) wpLock.innerHTML = LS_LOCK_SVG;
-      if (wpSub)  wpSub.textContent  = 'Unlocks after you finish at least 1 activity';
+      if (wpSub)  wpSub.textContent  = 'Unlocks after 4 of the 5 steps (' + doneCount + '/5 done)';
     }
   }
 }
@@ -3625,6 +3658,10 @@ async function openPhraseMunch() {
     return;
   }
 
+  // Drop the per-lesson choice shuffles from the last session — after a level
+  // switch they were the OLD lessons' choices, so the right answer wasn't
+  // even on screen.
+  Object.keys(_pm).forEach(function(k){ if (k.indexOf('_pm_shuffle_') === 0) delete _pm[k]; });
   _pm.lessons = lessons.slice(0, 3);
   _pm.idx = 0;
   _pm.phase = 'vocab';
@@ -3924,7 +3961,7 @@ function _pmRenderResult() {
     +   '<div class="pm-result-icon"><span style="display:inline-flex;width:48px;height:48px;color:#fbbf24">'+BM_ICON_SPARKLE+'</span></div>'
     +   '<div class="pm-result-score">' + correct + ' / ' + total + '</div>'
     +   '<div class="pm-result-pct">' + pct + '% correct</div>'
-    +   '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="closePhraseMunch()">Done</button></div>'
+    +   '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="returnToActivities(closePhraseMunch)">Done</button></div>'
     + '</div>';
   // Mark the slot done in the learning selector — uses the existing
   // `grammar` key for storage compat (renamed visible label only).
@@ -4627,6 +4664,7 @@ function _keStartFillQuiz() {
   window._kePhase = 'fill';
   window._keFillIdx = 0;
   window._keFillScore = 0;
+  window._keFillAsked = 0;   // expressions with no clean blank are skipped
   _keRenderFillQuiz();
 }
 
@@ -4677,6 +4715,7 @@ function _keRenderFillQuiz() {
   // sentence was now complete.
   var BLANK = '<span class="ke-fill-blank" style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800;transition:all .25s">___</span>';
   var blankedDisplay = exampleKo.split(correctChunk).join(BLANK);
+  window._keFillAsked = (window._keFillAsked || 0) + 1;
 
   // Build distractor pool from OTHER expressions' answer cores so the
   // wrong choices are plausibly Korean-shaped, not random fluff.
@@ -4969,7 +5008,7 @@ function _keSituationAnswer(btn, chosenIdx, correctIdx, why) {
   var fb = document.getElementById('ke-sit-fb');
   if (fb) {
     fb.innerHTML = '<div style="padding:10px 12px;background:' + (isCorrect ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.08)') + ';border-radius:8px;font-size:12px">'
-      + '<div style="font-weight:800;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';margin-bottom:4px">' + (isCorrect ? '&#9989; \uc815\ub2f5!' : '&#10060; \uc624\ub2f5 \u2014 Correct: ' + escapeHTML(correctKo)) + '</div>'
+      + '<div style="font-weight:800;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';margin-bottom:4px;display:flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">' + (isCorrect ? BM_ICON_CHECK : BM_ICON_X) + '</span><span>' + (isCorrect ? 'Correct!' : 'Not quite \u2014 answer: ' + escapeHTML(correctKo)) + '</span></div>'
       + (why ? '<div style="color:rgba(255,255,255,.5)">' + why + '</div>' : '')
       + '</div>'
       + '<button onclick="_keSitNext()" style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
@@ -4992,7 +5031,10 @@ function _keShowFinalScore() {
   var fillScore = window._keFillScore || 0;
   var sitScore = window._keSitScore || 0;
   var recogTotal = exps.length;
-  var fillTotal = exps.length;
+  // Only the fill questions that were actually shown count — expressions
+  // whose dictionary form isn't in the example are skipped, and scoring
+  // them as misses put a learner with every answer right on "Keep going 50%".
+  var fillTotal = window._keFillAsked || 0;
   var sitTotal = situations.length;
 
   // The Recognition MCQ step was cut (see _keRenderStudyPhase) — it no
@@ -5018,10 +5060,10 @@ function _keShowFinalScore() {
     + '<div><div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.5px">Recognition (MCQ)</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Pick the right expression</div></div>'
     + '<div style="font-size:18px;font-weight:900;color:#fbbf24">' + recogScore + '/' + recogTotal + '</div>'
     + '</div>' : '')
-    + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + (fillTotal ? '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
     + '<div><div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
     + '<div style="font-size:18px;font-weight:900;color:#a78bfa">' + fillScore + '/' + fillTotal + '</div>'
-    + '</div>'
+    + '</div>' : '')
     + '<div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
     + '<div><div style="font-size:11px;font-weight:800;color:#fb923c;text-transform:uppercase;letter-spacing:.5px">Situational Mapping</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Match expression to context</div></div>'
     + '<div style="font-size:18px;font-weight:900;color:#fb923c">' + sitScore + '/' + sitTotal + '</div>'
@@ -8037,10 +8079,10 @@ async function _srRenderLiveClassCard() {
     var start = new Date(s.scheduled_at).getTime(), now = Date.now();
     var live = now >= start && now < start + 90 * 60000;
     var mins = Math.max(0, Math.round((start - now) / 60000));
-    var when = live ? 'Live now' : (mins < 60 ? 'Starts in ' + mins + ' min' : (mins < 1440 ? 'In ' + Math.round(mins / 60) + ' h' : new Date(start).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })));
+    var when = live ? 'Live now' : (mins < 60 ? 'Starts in ' + mins + ' min' : (mins < 1440 ? 'In ' + Math.round(mins / 60) + ' h' : new Date(start).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })));
     // Seat included in Premium Live only (owner, 2026-10-29).
     var hasLive = typeof khHasLive === 'function' && khHasLive();
-    document.getElementById('sr-notif-live-title').textContent = (live ? '🔴 ' : '') + (s.title || 'Weekend Live Class');
+    document.getElementById('sr-notif-live-title').textContent = (live ? 'LIVE · ' : '') + (s.title || 'Weekend Live Class');
     document.getElementById('sr-notif-live-sub').textContent = when + ' · Zoom · 60 min' + (hasLive ? ' · seat included' : ' · Premium Live');
     document.getElementById('sr-notif-live-cta').textContent = hasLive ? (live ? 'Join →' : 'Reserve my seat →') : 'See Premium Live →';
     card.style.display = '';
@@ -8191,13 +8233,18 @@ async function loadStudyDoneFromDB() {
   if (!sb || !supaUser) return;
   try {
     var wk = kstWeekKey();
+    var lvl = _currentLevel || 'Beginner';
+    var key = studyDoneKey();
     var r = await sb.from('user_daily_progress')
       .select('*')
       .eq('user_id', supaUser.id)
-      .eq('level', (_currentLevel || 'Beginner'))
+      .eq('level', lvl)
       .gte('study_date', wk)
       .lte('study_date', kstAddDays(wk, 6));
     if (r.error || !r.data || !r.data.length) return;
+    // The learner switched level while this was in flight: these rows belong
+    // to the old level — merging them marked Tree steps done from Sprout rows.
+    if ((_currentLevel || 'Beginner') !== lvl || studyDoneKey() !== key) return;
     r.data.forEach(function(d) {
       if (d.topic_done)       _studyDone.topic       = true;
       if (d.grammar_done)     _studyDone.grammar     = true;
@@ -12477,13 +12524,17 @@ function openSpeakingPractice() {
   _spSentences = [];
 
   // Build sentence list
-  var bmSents = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.sentences)) ? _bm.sentences : [];
+  // _bm keeps the sentences of the topic it was built for — after a level
+  // switch they belong to the other level's topic.
+  var _spTopicId = (_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || '';
+  var bmSents = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.sentences) && _bm.topicId === _spTopicId) ? _bm.sentences : [];
   if (bmSents.length) {
     _spSentences = bmSents.filter(function(s){ return s && s.ko; }).map(function(s){
       return { ko: s.ko, en: s.en || '', rom: s.rom || '' };
     });
   }
-  if (!_spSentences.length && _wmExampleAnswer) {
+  // _wmExampleAnswer is built from the same _bm sentences — same staleness rule.
+  if (!_spSentences.length && _wmExampleAnswer && typeof _bm !== 'undefined' && _bm && _bm.topicId === _spTopicId) {
     _spSentences = [{ ko: _wmExampleAnswer, en: '', rom: '' }];
   }
   // Prefer REAL Korean sentences from today's daily content — they're
@@ -14490,7 +14541,9 @@ function bmNextWordOrder() {
 }
 
 function finishBMWordOrders() {
-  var correct = _bm.wordOrders.filter(function(wo){ return wo.result; }).length;
+  // wo.result is 'correct' | 'wrong' — both truthy, so counting truthy put
+  // every learner on 100% Word Order.
+  var correct = _bm.wordOrders.filter(function(wo){ return wo.result === 'correct'; }).length;
   _bm.score.order = Math.round(correct / _bm.wordOrders.length * 100);
   goToBMStep3();
 }
@@ -14794,51 +14847,34 @@ function renderBMWordSnap() {
   // Any card missing EN meaning? Batch-translate via Claude so the back of
   // the card never matches the front (the original bug: front & back both
   // showed just the Korean word because en was an empty string).
-  // Fill from the loaded dictionary first (free) — only leftovers go to the AI.
+  // Fill missing meanings from the loaded dictionary (free, no AI).
   vocab.forEach(function(v) {
     if (v.en || typeof VOCAB !== 'object' || !VOCAB) return;
     var d = VOCAB[v.ko] || VOCAB[v.ko + '다'];
     if (d && d.en) { v.en = (typeof khCleanMeaning === 'function' ? khCleanMeaning(d.en) : d.en); v.rom = v.rom || d.rom || ''; }
   });
-  var needsTranslation = vocab.some(function(v){ return !v.en; });
-  if (needsTranslation) {
-    document.getElementById('bm-body').innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px"><span style="display:inline-flex;width:18px;height:18px;color:#a78bfa;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span><span>Preparing word cards…</span></div>';
-    var words = vocab.map(function(v){ return v.ko; });
-    callClaude({
-      feature: 'word-snap-translate',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      messages: [{ role: 'user', content:
-        'Give short English meanings + romanization for these Korean words:\n'
-        + words.map(function(w){ return '- ' + w; }).join('\n')
-        + '\nReturn ONLY a JSON array: [{"ko":"word","rom":"romanization","en":"English meaning (1-4 words)"}]'
-      }]
-    }).then(function(res){
-      try {
-        var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
-        txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-        var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
-        if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
-        var gen = JSON.parse(txt);
-        if (Array.isArray(gen)) {
-          var byKo = {};
-          gen.forEach(function(g){ if (g && g.ko) byKo[g.ko] = g; });
-          _bm.snapCards = vocab.map(function(v){
-            var hit = byKo[v.ko];
-            return {
-              ko: v.ko,
-              rom: v.rom || (hit && hit.rom) || '',
-              en:  v.en  || (hit && hit.en)  || ''
-            };
-          }).filter(function(v){ return v.en; });
-          _bmAttachExamples(_bm.snapCards);
-        }
-      } catch(e){}
-      bmStartDictation();
-    }).catch(function(){ bmStartDictation(); });
-    return;
-  }
-  bmStartDictation();
+  // Words still without a meaning (scraped from the sentences) are looked up
+  // in the reviewed word bank (vocabulary_bank). They used to go to a live AI
+  // translation (word-snap-translate) whose output learners saw without
+  // content-qa review — and it cost a call per open. Words the bank doesn't
+  // know stay in the dictation (Korean only) and drop out of Word Association.
+  var missing = vocab.filter(function(v){ return !v.en; });
+  var sbW = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!missing.length || !sbW) { bmStartDictation(); return; }
+  var keys = [];
+  missing.forEach(function(v){ keys.push(v.ko); if (!/다$/.test(v.ko)) keys.push(v.ko + '다'); });
+  Promise.resolve(sbW.from('vocabulary_bank').select('word_ko, word_en, word_rom').in('word_ko', keys).limit(50))
+    .then(function(r) {
+      var byKo = {};
+      ((r && r.data) || []).forEach(function(w){ if (w.word_ko && w.word_en && !byKo[w.word_ko]) byKo[w.word_ko] = w; });
+      missing.forEach(function(v) {
+        var w = byKo[v.ko] || byKo[v.ko + '다'];
+        if (!w) return;
+        v.en = (typeof khCleanMeaning === 'function') ? khCleanMeaning(w.word_en) : w.word_en;
+        v.rom = v.rom || w.word_rom || '';
+      });
+    }, function(){})
+    .then(function(){ if (_bm.snapCards === vocab) bmStartDictation(); });
 }
 
 // ── Step 4: redesigned ── Audio Dictation → Word Association
@@ -15306,6 +15342,9 @@ function goToBMStep3Back() { _bm.step = 3; updateBMHeader(); renderBMStep3(); }
 
 function finishBeginner() {
   markStageDone('topic');
+  // The saved step (4) would otherwise reopen Topic Yum Yum in the middle of
+  // Step 4 after it was finished.
+  try { localStorage.removeItem(_bmProgressKey()); } catch (_) {}
 
   // Listen-and-write (dictation) counts too — it used to be left out, so a
   // missed word still ended on 100%.
@@ -16227,6 +16266,9 @@ function getNextCurriculumPattern() {
 function renderGrammarPathBanner() {
   var banner = document.getElementById('grammar-path-banner');
   if (!banner) return;
+  // Init runs while this file is still executing (line ~590), before the
+  // `var _GC_LEVELS = [...]` below has been assigned — the post-DB call renders it.
+  if (typeof _GC_LEVELS === 'undefined' || !_GC_LEVELS) return;
   var stats = getGrammarMasteryStats();
   var next  = getNextCurriculumPattern();
   var allDone = stats.mastered >= stats.total;
