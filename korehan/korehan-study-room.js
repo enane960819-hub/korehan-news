@@ -7635,100 +7635,16 @@ function switchSrTab(tab, btn) {
 // ── Word Book (단어장) ──
 var _wbData = [];
 var _wbCategory = 'all';
-async function loadWordBook() {
-  var list = document.getElementById('wb-list');
-  if (!list) return;
-  if (!supaUser) { list.innerHTML = '<div class="wb-empty">Sign in to view your saved words</div>'; return; }
-  list.innerHTML = '<div class="wb-empty">Loading your saved words…</div>';
-  try {
-    var sb = getSupa();
-    if (!sb) return;
-    var results = [];
-    // user_saved_words (primary word storage) — include review stats for SRS
-    try {
-      var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at, review_count, correct_count, wrong_count').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
-      if (usw) usw.forEach(function(w) {
-        var en = w.word_en || '';
-        var cat = 'word';
-        if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
-        else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
-        else if (en.indexOf('[교정]') === 0) { cat = 'correction'; en = en.replace('[교정] ',''); }
-        var total = (w.correct_count||0) + (w.wrong_count||0);
-        var accuracy = total > 0 ? Math.round((w.correct_count||0) / total * 100) : -1;
-        results.push({ ko:w.word_ko, rom:(window.khRomanize && khRomanize(w.word_ko))||w.word_rom||'', en:en, date:w.created_at, cat:cat,
-          reviewCount:w.review_count||0, correctCount:w.correct_count||0, wrongCount:w.wrong_count||0, accuracy:accuracy });
-      });
-    } catch(e){}
-    // Only user_saved_words — no vocabulary_bank or fast_track_progress
-    // Deduplicate
-    var seen = {};
-    _wbData = results.filter(function(w){ if (!w.ko || seen[w.ko]) return false; seen[w.ko]=true; return true; });
-    renderWordBook(_wbData);
-    renderWbCounts();
-  } catch(e) {
-    console.warn('[WordBook]', e);
-    list.innerHTML = '<div class="wb-empty">Couldn\'t load your words. <button onclick="loadWordBook&&loadWordBook()" style="margin-top:10px;padding:7px 16px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Retry</button></div>';
-  }
-}
+// loadWordBook / renderWordBook / renderWbCounts live in js/features/sr-home.js
+// (My Words). They are NOT declared here: the production build wraps each
+// file in its own scope, so a copy here would shadow sr-home's for every
+// call made from this file and draw the old Word Book list.
 function setWbCategory(cat, btn) {
   _wbCategory = cat;
   document.querySelectorAll('.wb-cat-btn').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
   var q = document.querySelector('.wb-search');
   filterWordBook(q ? q.value : '');
-}
-function renderWbCounts() {
-  var counts = { all:_wbData.length, word:0, slang:0, expression:0, correction:0 };
-  _wbData.forEach(function(w){ counts[w.cat] = (counts[w.cat]||0) + 1; });
-  ['all','word','slang','expression','correction'].forEach(function(k){
-    var el = document.getElementById('wb-cnt-' + k);
-    if (el) el.textContent = counts[k];
-  });
-}
-function renderWordBook(data) {
-  var list = document.getElementById('wb-list');
-  var filtered = _wbCategory === 'all' ? data : data.filter(function(w){ return w.cat === _wbCategory; });
-  if (!filtered.length) {
-    var catNames = { all:'words', word:'words', slang:'slang', expression:'expressions', correction:'corrections' };
-    var hint = _wbCategory === 'correction'
-      ? 'Open any feedback card, tap 🔖 on a correction. They\'ll land here for spaced review.'
-      : 'Tap words while studying to save them here';
-    list.innerHTML = '<div class="wb-empty">No saved '+catNames[_wbCategory]+' yet<br><span style="font-size:12px;margin-top:8px;display:block;color:rgba(255,255,255,.2)">' + hint + '</span></div>';
-    return;
-  }
-  var catBadge = {
-    word:'',
-    slang:      '<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(139,92,246,.15);color:#c4b5fd;font-size:9px;font-weight:700;margin-left:6px">SLANG</span>',
-    expression: '<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(5,150,105,.12);color:#34d399;font-size:9px;font-weight:700;margin-left:6px">EXPR</span>',
-    correction: '<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(251,191,36,.18);color:#fde68a;font-size:9px;font-weight:700;margin-left:6px">🔖 FIX</span>'
-  };
-  list.innerHTML = filtered.map(function(w) {
-    var dateStr = w.date ? new Date(w.date).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
-    // For corrections, surface the original (wrong) form as a small
-    // strike-through hint above the corrected headword so the
-    // flashcard reads "wrong → right" at a glance. exKo is parsed
-    // from word_en via splitWordEnMeaning.
-    var parsedEx = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.en) : null;
-    var origLine = '';
-    var displayEn = w.en;
-    if (w.cat === 'correction' && parsedEx) {
-      displayEn = parsedEx.meaning || w.en;
-      if (parsedEx.exKo) {
-        origLine = '<div style="font-size:11px;color:#f87171;text-decoration:line-through;font-family:\'Noto Sans KR\',sans-serif;margin-bottom:2px;opacity:.85">' + escapeHtml(parsedEx.exKo) + '</div>';
-      }
-    }
-    return '<div class="wb-entry">'
-      + '<div style="min-width:0">'
-      +   origLine
-      +   '<div class="wb-entry-ko">' + escapeHtml(w.ko) + (catBadge[w.cat]||'') + '</div>'
-      +   (w.rom ? '<div class="wb-entry-rom">' + escapeHtml(w.rom) + '</div>' : '')
-      + '</div>'
-      + '<div class="wb-entry-en">' + escapeHtml(displayEn)
-      + (w.accuracy >= 0 ? '<div style="font-size:9px;margin-top:2px;color:'+(w.accuracy>=70?'#4ade80':w.accuracy>=40?'#fbbf24':'#f87171')+'">'+w.accuracy+'% accuracy</div>' : '')
-      + '</div>'
-      + (dateStr ? '<div class="wb-entry-date">' + dateStr + '</div>' : '')
-      + '</div>';
-  }).join('');
 }
 function filterWordBook(q) {
   if (!q) { renderWordBook(_wbData); return; }

@@ -369,6 +369,11 @@ supabase functions deploy claude-proxy
   was uploaded stays broken on that device. Bump `KH_ROOM_ART_V` (and shared.js `?v=`) whenever art is added.
   The props catalogue migration (`20261029_room_props.sql`, written by `scripts/room-art/catalog.py`) ships
   together with its art.
+- **Production wraps every .js file in its own scope** (`vite build` on Cloudflare Pages → `isolateMinifiedBundle`
+  in vite.config.js; top-level names are re-exported onto window). So a later file's `function foo` does NOT
+  replace calls to `foo` made inside an earlier file that also declares it — raw local serving hides this (My
+  Words drew the old Word Book list, 2026-10-30). To override a function, delete the old declaration. Run the
+  click-through QA (`scripts/qa/*.mjs`) against `node scripts/qa/prodlike.mjs` output, not raw `korehan/`.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 
