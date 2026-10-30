@@ -45,8 +45,11 @@ function computeStreakFromDateKeys(keys) {
   var d = new Date(Date.now() + 9*60*60*1000);
   for (var i = 0; i < 400; i++) {
     var key = d.toISOString().slice(0,10);
-    if (seen[key]) { streak++; d.setDate(d.getDate()-1); }
-    else if (i === 0) { d.setDate(d.getDate()-1); }
+    // Step back a fixed 24 h on the KST-shifted instant. setDate() works in
+    // the browser's local calendar, so across a DST change it moved the
+    // instant by 23/25 h and could repeat or skip a KST day key.
+    if (seen[key]) { streak++; d = new Date(d.getTime() - 86400000); }
+    else if (i === 0) { d = new Date(d.getTime() - 86400000); }
     else break;
   }
   return streak;
@@ -54,21 +57,22 @@ function computeStreakFromDateKeys(keys) {
 async function fetchActivityStreakFromDB(sb, userId) {
   if (!sb || !userId) return 0;
   try {
-    var since = new Date(Date.now() - 120*86400000).toISOString().slice(0,10);
+    var since = new Date(Date.now() + 9*3600000 - 400*86400000).toISOString().slice(0,10);
     var res = await sb.from('daily_missions')
       .select('date, articles, words, quizzes, fill')
       .eq('user_id', userId)
       .gte('date', since)
       .order('date', { ascending: false })
-      .limit(120);
+      .limit(400);
+    if (res.error) return null;
     var keys = (res.data || []).filter(function(row){
       return ((row.articles||0) + (row.words||0) + (row.quizzes||0) + (row.fill||0)) > 0;
     }).map(function(row){ return row.date; });
-    var streak = computeStreakFromDateKeys(keys);
-    if (streak > 0) lsSet('kh_synced_activity_streak', streak);
-    return streak;
+    // Returns null (not 0) when the read failed, so callers can tell
+    // "no streak" from "couldn't check" and fall back.
+    return computeStreakFromDateKeys(keys);
   } catch(e) {
-    return 0;
+    return null;
   }
 }
 
@@ -304,14 +308,9 @@ function renderDailyMission() {
     { id:'fill',     icon:'pencil', label:'Fill-in-Blank', cur:d.fill||0,     goal:1,  color:'#10b981' },
   ];
 
-  var totalXP = 0;
-  var allDone = true;
-  missions.forEach(function(m) {
-    var earned = Math.min(m.cur, m.goal);
-    var xpMap = { articles:10, words:5, quizzes:20, fill:15 };
-    totalXP += earned * (xpMap[m.id] || 10);
-    if (m.cur < m.goal) allDone = false;
-  });
+  // Same XP table as Home's Today card / weekly summary (dmXPFromData).
+  var totalXP = dmXPFromData(d);
+  var allDone = missions.every(function(m) { return m.cur >= m.goal; });
 
   var today = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', weekday:'short' });
 
@@ -344,7 +343,7 @@ function renderDailyMission() {
       + '<span class="dm-xp-label">Today\'s XP</span>'
       + '<span class="dm-xp-val">+' + totalXP + ' XP</span>'
       + '</div>'
-      + (allDone ? '<div class="dm-complete">🎉 All done!</div>' : '')
+      + (allDone ? '<div class="dm-complete"><i data-lucide="party-popper" style="width:14px;height:14px;vertical-align:-2px" aria-hidden="true"></i> All done!</div>' : '')
       + '</div>';
 }
 
@@ -361,6 +360,9 @@ function injectDailyMission() {
   // Skip on study room — the daily mission widget competes for screen
   // space with the in-room missions and was reported as distracting.
   if (page === 'korehan-study-room') return;
+  // Pages with their own fixed bottom dock: Word Bank (drill dock) and the
+  // article reader (action bar) — the pill covered their buttons.
+  if (page === 'korehan-learn' || page === 'korehan-article') return;
   if (document.getElementById('kh-daily-mission')) return;
   var el = document.createElement('div');
   el.id = 'kh-daily-mission';

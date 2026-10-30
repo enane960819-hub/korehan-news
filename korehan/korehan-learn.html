@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Word Bank — KoreHani</title>
-<meta name="description" content="10,000+ Korean words by level and topic, with audio, example sentences, quizzes and Hangul basics.">
+<meta name="description" content="15,000+ Korean words by level and topic, with audio, example sentences, quizzes and Hangul basics.">
 <link rel="canonical" href="https://korehani.com/korehan-learn.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Word Bank — KoreHani">
-<meta property="og:description" content="10,000+ Korean words by level and topic, with audio, example sentences, quizzes and Hangul basics.">
+<meta property="og:description" content="15,000+ Korean words by level and topic, with audio, example sentences, quizzes and Hangul basics.">
 <meta property="og:image" content="https://korehani.com/img/guide/hero-express.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
+<link rel="stylesheet" href="korehan-shared.css?v=20261030fx">
 <style>
 /* Word Bank (mockup G, 2026-10-28) — dark study surface like Study Room. */
 html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
@@ -54,11 +54,15 @@ body.wb-locked { overflow:hidden; }
 .wb-empty { text-align:center; color:rgba(255,255,255,.55); font-size:13px; padding:30px 0; }
 .wb-src { margin-top:26px; font-size:11px; color:rgba(255,255,255,.4); line-height:1.5; }
 .wb-src a { color:rgba(147,197,253,.8); }
-/* Phones: leave room on the right for the floating Daily Mission button. */
-.wb-dock { position:fixed; left:12px; right:66px; bottom:calc(84px + env(safe-area-inset-bottom)); display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:7px; z-index:40; }
+/* The Daily Mission / First Journey chips are not shown on this page (they
+   covered the dock), so the dock spans the width. */
+.wb-dock { position:fixed; left:12px; right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:7px; z-index:40; }
 .wb-dock button { display:flex; align-items:center; justify-content:center; gap:6px; padding:12px 6px; border-radius:13px; border:1px solid rgba(255,255,255,.12); background:#1e293b; color:#fff; font:inherit; font-size:12.5px; font-weight:800; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,.3); }
 .wb-dock button.p { background:linear-gradient(135deg,#2563eb,#7c3aed); border:0; }
 @media (min-width:900px) { .wb-dock { left:50%; right:auto; transform:translateX(-50%); width:min(728px, calc(100% - 180px)); bottom:22px; } }
+/* Room under the last row / footer Subscribe for the dock (+ tab bar on phones). */
+body:has(#wb-dock) #kh-footer > footer { padding-bottom:calc(170px + env(safe-area-inset-bottom, 0px)) !important; }
+@media (min-width:900px) { body:has(#wb-dock) #kh-footer > footer { padding-bottom:96px !important; } }
 /* Hangul */
 .wb-hg { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin:4px 0 12px; }
 .wb-hg button { aspect-ratio:1/1.05; border-radius:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Noto Sans KR',sans-serif; font-size:22px; font-weight:800; color:#fff; cursor:pointer; }
@@ -121,14 +125,14 @@ body.wb-locked { overflow:hidden; }
 <script src="js/core/user-analytics.js?v=20261014a"></script>
 <script src="js/core/plans.js?v=20261029pl"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
-<script src="js/core/saved-words.js?v=20261013a"></script>
+<script src="js/core/saved-words.js?v=20261030fx"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
-<script src="js/features/daily-mission.js?v=20261029s"></script>
+<script src="js/features/daily-mission.js?v=20261030fx"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
-<script src="js/features/sidebar.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261030b"></script>
+<script src="js/features/sidebar.js?v=20261030fx"></script>
+<script src="korehan-shared.js?v=20261030c"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
-<script src="js/features/review-queue.js?v=20261028c"></script>
+<script src="js/features/review-queue.js?v=20261030fx"></script>
 <script src="js/features/word-bank.js?v=20261029v"></script>
 </body>
 </html>

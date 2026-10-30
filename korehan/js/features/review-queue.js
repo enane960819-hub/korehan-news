@@ -313,10 +313,10 @@
     try { localStorage.setItem('kh_daily_review_done_' + kstToday(), '1'); } catch (_) {}
 
     var streak = 0;
-    try { streak = (typeof getCurrentStreak === 'function') ? (getCurrentStreak() || 0) : 0; } catch (_) {}
+    try { streak = (typeof khStreakNow === 'function') ? (khStreakNow() || 0) : ((typeof getCurrentStreak === 'function') ? (getCurrentStreak() || 0) : 0); } catch (_) {}
     el.innerHTML = '<div class="rq-in"><div class="rq-top"><button class="rq-x" aria-label="Close" onclick="khReviewQueue.close()">' + icon('x') + '</button><div style="flex:1"></div></div>'
       + '<div class="rq-dn"><div class="rq-ring" style="background:conic-gradient(#34d399 0 ' + pct + '%,rgba(255,255,255,.1) ' + pct + '% 100%)"><div><b>' + right + '/' + total + '</b><small>correct</small></div></div>'
-      + '<h2>Review done</h2><p>' + (streak > 0 ? 'Streak ' + streak + ' day' + (streak === 1 ? '' : 's') : 'Nice work') + '</p></div>'
+      + '<h2>Review done</h2><p id="rq-dn-streak">' + (streak > 0 ? 'Streak ' + streak + ' day' + (streak === 1 ? '' : 's') : 'Nice work') + '</p></div>'
       + (missed.length ? '<div class="rq-box"><h4>Missed today</h4>' + missed.map(function (it) {
           return '<div class="rq-w"><b>' + esc(it.ko) + '</b><span>' + esc(it.en) + '</span><em>' + (it.kind === 'saved' ? 'back tomorrow' : 'not saved') + '</em></div>';
         }).join('') + (toSave.length ? '<button class="rq-save" id="rq-save" onclick="khReviewQueue._saveMissed()">Save ' + toSave.length + ' missed word' + (toSave.length === 1 ? '' : 's') + ' to My Words</button>' : '') + '</div>' : '')
@@ -324,6 +324,15 @@
       + '<div class="rq-nx"><div><b id="rq-tmr">–</b><small>due tomorrow</small></div><div><b id="rq-all">–</b><small>words in your queue</small></div></div>'
       + '<button class="rq-next" style="margin-top:14px" onclick="khReviewQueue.close()">Done</button></div>';
     if (window.renderKhLucideIcons) { try { renderKhLucideIcons(); } catch (_) {} }
+    // Server streak (kh_user_streak) once today's activity has been logged.
+    if (typeof khActivityStreakRefresh === 'function') {
+      setTimeout(function () {
+        khActivityStreakRefresh().then(function (n) {
+          var p = document.getElementById('rq-dn-streak');
+          if (p && typeof n === 'number') p.textContent = n > 0 ? 'Streak ' + n + ' day' + (n === 1 ? '' : 's') : 'Nice work';
+        }, function () {});
+      }, 1500);
+    }
 
     // Counts after this session's grades have landed.
     try {
@@ -351,7 +360,7 @@
       localStorage.setItem('kh_premium_nudge_at', String(Date.now()));
     } catch (_) { return ''; }
     var streak = 0;
-    try { streak = (typeof getCurrentStreak === 'function') ? (getCurrentStreak() || 0) : 0; } catch (_) {}
+    try { streak = (typeof khStreakNow === 'function') ? (khStreakNow() || 0) : ((typeof getCurrentStreak === 'function') ? (getCurrentStreak() || 0) : 0); } catch (_) {}
     return '<div class="rq-nud"><b>' + (streak >= 2 ? 'You’re on a ' + streak + '-day streak' : 'Nice review') + '</b>'
       + '<p>Keep the momentum: Premium turns today’s news into a 10-minute lesson and gives your weekly writing a tutor review.</p>'
       + '<div class="rq-nud-row"><button type="button" class="a1" onclick="khReviewQueue.close();showUpgradeModal(\'article_study\',\'premium\')">See Premium</button>'
