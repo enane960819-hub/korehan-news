@@ -86,7 +86,9 @@
     }
     var w = S.word;
     return '<button type="button" class="rw-x" aria-label="Hide today\'s word" onclick="khRoomLearn.minimize(true)">' + icon('x') + '</button>'
-      + '<div class="rw-tag">Today\'s word · ' + (w.due ? 'due for review' : 'from your word book') + '</div>'
+      // The pick (and its "due" flag) is cached for the day; once every due
+      // word has been reviewed (S.due = 0, read live) it's no longer due.
+      + '<div class="rw-tag">Today\'s word · ' + (w.due && S.due > 0 ? 'due for review' : 'from your word book') + '</div>'
       + '<div class="rw-k"><span lang="ko">' + esc(w.ko) + '</span>'
       + '<button type="button" class="rw-say" aria-label="Listen" onclick="khRoomLearn.say(this)">' + icon('volume-2') + '</button></div>'
       + (w.en ? '<div class="rw-e">' + esc(w.en) + '</div>' : '')

@@ -41,7 +41,9 @@ jobs:
           for f in $FILES; do
             head -n1 "$f" | grep -q '^-- auto-apply' || { echo "skip (no marker): $f"; continue; }
             echo "::group::apply $f"
-            CODE=$(jq -Rs '{query: .}' "$f" | curl -sS -o /tmp/out.json -w '%{http_code}' -X POST \
+            # -a: send pure ASCII (\uXXXX escapes). Raw UTF-8 bodies reached the DB with
+            # a broken Korean character in ~1 of every large migration (2026-10-30).
+            CODE=$(jq -Rsa '{query: .}' "$f" | curl -sS -o /tmp/out.json -w '%{http_code}' -X POST \
               "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
               -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data-binary @-)
             head -c 2000 /tmp/out.json; echo

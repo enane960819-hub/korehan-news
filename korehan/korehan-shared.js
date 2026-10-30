@@ -6839,51 +6839,19 @@ function openArticleVocabAddModal(article) {
 
 async function _saveArticleVocabAppend(article, entry) {
   if (!article || !article.id || !entry || !entry.ko) return false;
-  if (typeof getSupa !== 'function') return false;
-  var sb = getSupa();
-  if (!sb) return false;
-  try {
-    // 1) Fetch current article_cache.vocab via getFromCache so we handle
-    // both "wide" and "kv" schemas the same way downstream code does.
-    var cached = (typeof getFromCache === 'function')
-      ? await getFromCache('article', article.id, 'ai_analysis')
-      : null;
-    var current = (cached && Array.isArray(cached.vocab)) ? cached.vocab.slice() : [];
-    // 2) Dedup on dictionary form
-    var has = current.some(function(v){
-      var key = (v.word || v.ko || v.word_ko || '');
-      return key === entry.ko;
-    });
-    if (has) {
-      if (typeof showToast === 'function') showToast('"' + entry.ko + '" already in the list');
-      return true;
-    }
-    // 3) Append in the shape the renderer + validator expect
-    current.push({ word: entry.ko, reading: entry.rom || '', meaning: entry.en || '', context: '' });
-    // 4) Persist via shared upsertArticleCacheRow (handles both schemas)
-    if (typeof upsertArticleCacheRow === 'function') {
-      await upsertArticleCacheRow(article.id, { vocab: JSON.stringify(current) });
-    } else {
-      await sb.from('article_cache').upsert({
-        article_id: String(article.id),
-        vocab: JSON.stringify(current),
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'article_id' });
-    }
-    // 5) Update in-memory article object so the renderer's first-pass
-    // inline path (a.vocab) shows the new word on next render.
-    if (Array.isArray(article.vocab)) {
-      article.vocab.push({ ko: entry.ko, rom: entry.rom || '', en: entry.en || '' });
-    }
-    // 6) Also drop into sitewide VOCAB so hover tooltips catch it.
-    if (typeof VOCAB === 'object' && VOCAB && !VOCAB[entry.ko]) {
-      VOCAB[entry.ko] = { rom: entry.rom || '', en: entry.en || '' };
-    }
-    return true;
-  } catch (e) {
-    console.warn('[_saveArticleVocabAppend]', e);
-    return false;
+  // article_cache is server-write only (20261028_cache_write_server_only.sql):
+  // the old direct browser upsert was refused silently, so "+ Add word"
+  // said "added" and the word was gone after a reload (no list entry, no
+  // hover). Admins save to the sitewide bank (hover everywhere) and patch this
+  // article's cached Vocab list, both through admin-api.
+  if (!window._isAdmin || typeof saveVocabToDB !== 'function') throw new Error('Admin only');
+  await saveVocabToDB(entry.ko, entry.rom || '', entry.en || '', false);
+  _khRememberAdminWord(entry.ko, entry.rom || '', entry.en || '');
+  if (Array.isArray(article.vocab) && !article.vocab.some(function(v){ return v && (v.ko || v.word_ko || v.word) === entry.ko; })) {
+    article.vocab.push({ ko: entry.ko, rom: entry.rom || '', en: entry.en || '' });
   }
+  await _khPatchArticleVocabCache(entry.ko, entry.rom || '', entry.en || '', false, true);
+  return true;
 }
 
 function _addWordToKeyVocabList(ko, rom, en) {
@@ -7339,15 +7307,20 @@ function openVocabEditModal(word) {
   modal.querySelector('#ve-cancel').onclick = function() { modal.remove(); };
   modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
 
-  // ── Auto-fill rom + en when admin types Korean (Add-mode only).
-  // Lookup order: hover_vocab_master → vocabulary_bank → Claude Haiku.
-  // Never overwrites a field the admin already typed into.
-  if (isNew) {
+  // ── Auto-fill rom + en for a word the dictionary doesn't have yet: typed in
+  // "+ New Word" mode, or picked by drag-select (that path passes the word, so
+  // it used to skip auto-fill entirely). Romanization is rule-based
+  // (khRomanize); the meaning comes from hover_vocab_master → vocabulary_bank →
+  // Claude Haiku. Only fields the admin hasn't typed into are filled; a value
+  // filled for a half-typed word (IME) is replaced when the word changes.
+  if (isNew || !VOCAB[word]) {
     var _veFillTimer = null;
     var _veLastQ = '';
     var wordEl = modal.querySelector('#ve-word');
     var romEl  = modal.querySelector('#ve-rom');
     var enEl   = modal.querySelector('#ve-en');
+    var _veFree = function(el) { return !el.value.trim() || el.value === el.dataset.auto; };
+    var _vePut = function(el, v) { if (v && _veFree(el)) { el.value = v; el.dataset.auto = v; } };
     if (wordEl) {
       wordEl.addEventListener('input', function() {
         if (_veFillTimer) clearTimeout(_veFillTimer);
@@ -7355,40 +7328,34 @@ function openVocabEditModal(word) {
         _veFillTimer = setTimeout(function(){ _veAutoFill(w); }, 600);
       });
     }
-    async function _veAutoFill(word) {
-      if (!word || word === _veLastQ) return;
-      if (!/[가-힣]/.test(word)) return;
-      _veLastQ = word;
-      var needRom = !romEl.value.trim();
-      var needEn  = !enEl.value.trim();
-      if (!needRom && !needEn) return;
-
+    async function _veAutoFill(q) {
+      if (!q || q === _veLastQ) return;
+      if (!/[가-힣]/.test(q)) return;
+      _veLastQ = q;
+      var stale = function() { return _veLastQ !== q; };
+      if (typeof khRomanize === 'function') _vePut(romEl, khRomanize(q));
+      if (!_veFree(enEl) && !_veFree(romEl)) return;
       var sb = (typeof getSupa === 'function') ? getSupa() : null;
-      // 1) hover_vocab_master
       if (sb) {
+        // 1) hover_vocab_master
         try {
           var r1 = await sb.from('hover_vocab_master')
             .select('reading,meaning_en')
-            .eq('word_ko', word).maybeSingle();
-          if (r1.data && (r1.data.reading || r1.data.meaning_en)) {
-            if (needRom && r1.data.reading)    romEl.value = r1.data.reading;
-            if (needEn  && r1.data.meaning_en) enEl.value  = r1.data.meaning_en;
-            return;
-          }
+            .eq('word_ko', q).maybeSingle();
+          if (stale()) return;
+          if (r1.data && r1.data.meaning_en) { _vePut(enEl, r1.data.meaning_en); _vePut(romEl, r1.data.reading); return; }
         } catch(_) {}
         // 2) vocabulary_bank
         try {
           var r2 = await sb.from('vocabulary_bank')
             .select('word_rom,word_en')
-            .eq('word_ko', word).maybeSingle();
-          if (r2.data && (r2.data.word_rom || r2.data.word_en)) {
-            if (needRom && r2.data.word_rom) romEl.value = r2.data.word_rom;
-            if (needEn  && r2.data.word_en)  enEl.value  = r2.data.word_en;
-            return;
-          }
+            .eq('word_ko', q).limit(1).maybeSingle();
+          if (stale()) return;
+          if (r2.data && r2.data.word_en) { _vePut(enEl, r2.data.word_en); _vePut(romEl, r2.data.word_rom); return; }
         } catch(_) {}
       }
-      // 3) Claude AI fallback
+      // 3) Claude AI fallback (meaning only — romanization stays rule-based)
+      if (!_veFree(enEl)) return;
       try {
         var resp = await callClaude({
           feature: 'inline-vocab-autofill',
@@ -7396,19 +7363,20 @@ function openVocabEditModal(word) {
           max_tokens: 200,
           messages: [{
             role: 'user',
-            content: 'Korean word: "' + word + '"\n\n'
+            content: 'Korean word: "' + q + '"\n\n'
               + 'Return ONLY JSON, no markdown:\n'
-              + '{"reading":"Revised romanization with hyphens between syllables (e.g. gam-gi, an-nyeong-ha-se-yo)","meaning":"Concise English gloss, 1-5 words, no parentheses"}'
+              + '{"meaning":"Concise English gloss, 1-5 words, no parentheses"}'
           }]
         });
+        if (stale()) return;
         var raw = (resp.content || []).map(function(c){ return c.text || ''; }).join('');
         var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
         if (s < 0 || e <= s) return;
         var parsed = JSON.parse(raw.slice(s, e + 1));
-        if (needRom && parsed.reading && !romEl.value.trim()) romEl.value = parsed.reading;
-        if (needEn  && parsed.meaning && !enEl.value.trim())  enEl.value  = parsed.meaning;
+        _vePut(enEl, parsed.meaning);
       } catch(_) { /* silent — admin can still type manually */ }
     }
+    if (!isNew) _veAutoFill(word);   // drag-selected word: fill right away
   }
 
   var delBtn = modal.querySelector('#ve-del');
@@ -7483,43 +7451,7 @@ function openVocabEditModal(word) {
       // this. Vocab tab visibility is now driven by VOCAB +
       // fromAdminAdds() (PR #374 sidecar) and the per-article cache,
       // none of which need a per-user row.
-      VOCAB[finalWord] = { rom: rom, en: en };
-      // Persist into the warm VOCAB snapshot so hover survives a
-      // refresh even if the next loadVocabFromDB() comes back
-      // empty (RLS asymmetry between admin-api writes and the
-      // anon/authenticated read path was the root cause of "saved
-      // to My Words but hover doesn't pick it up").
-      try {
-        var _vKey = (typeof KH_VOCAB_LS_KEY !== 'undefined') ? KH_VOCAB_LS_KEY : 'kh_vocab_dict_v1';
-        var _raw = localStorage.getItem(_vKey);
-        var _snap = (_raw && JSON.parse(_raw)) || {};
-        if (!_snap.dict || typeof _snap.dict !== 'object') _snap.dict = {};
-        _snap.dict[finalWord] = { rom: rom || '', en: en || '' };
-        _snap.savedAt = Date.now();
-        localStorage.setItem(_vKey, JSON.stringify(_snap));
-        localStorage.removeItem('kh_vbank_rows_v2');   // refetch the shared bank copy
-      } catch (_) {}
-      // Sidecar so renderArticleVocab's fromAdminAdds() can surface
-      // this word in the Vocab tab on every article whose body matches
-      // — even when the article's AI cache already has 12+ entries
-      // and would otherwise saturate the merge.
-      try {
-        var _kAdd = 'kh_admin_added_vocab';
-        var _existing = [];
-        try { _existing = JSON.parse(localStorage.getItem(_kAdd) || '[]') || []; } catch (_) {}
-        if (!Array.isArray(_existing)) _existing = [];
-        var _has = false;
-        for (var _i = 0; _i < _existing.length; _i++) {
-          if (_existing[_i] && _existing[_i].ko === finalWord) {
-            _existing[_i].rom = rom; _existing[_i].en = en; _has = true; break;
-          }
-        }
-        if (!_has) _existing.push({ ko: finalWord, rom: rom, en: en, t: Date.now() });
-        // Cap at 500 most-recent so the localStorage entry doesn't
-        // grow unbounded over time.
-        if (_existing.length > 500) _existing = _existing.slice(_existing.length - 500);
-        localStorage.setItem(_kAdd, JSON.stringify(_existing));
-      } catch (_) {}
+      _khRememberAdminWord(finalWord, rom, en);
       // 로컬 변수 word를 finalWord로 덮어씌워 이하 코드가 올바른 단어를 참조
       word = finalWord;
 
@@ -7551,12 +7483,55 @@ function openVocabEditModal(word) {
   };
 }
 
+// After an admin saves a word to vocabulary_bank: put it in VOCAB now, in the
+// warm VOCAB snapshot, drop the cached bank copy, and record it in the admin
+// sidecar list the Vocab tab merges in.
+function _khRememberAdminWord(ko, rom, en) {
+  VOCAB[ko] = { rom: rom, en: en };
+  // Persist into the warm VOCAB snapshot so hover survives a
+  // refresh even if the next loadVocabFromDB() comes back
+  // empty (RLS asymmetry between admin-api writes and the
+  // anon/authenticated read path was the root cause of "saved
+  // to My Words but hover doesn't pick it up").
+  try {
+    var _vKey = (typeof KH_VOCAB_LS_KEY !== 'undefined') ? KH_VOCAB_LS_KEY : 'kh_vocab_dict_v1';
+    var _raw = localStorage.getItem(_vKey);
+    var _snap = (_raw && JSON.parse(_raw)) || {};
+    if (!_snap.dict || typeof _snap.dict !== 'object') _snap.dict = {};
+    _snap.dict[ko] = { rom: rom || '', en: en || '' };
+    _snap.savedAt = Date.now();
+    localStorage.setItem(_vKey, JSON.stringify(_snap));
+    localStorage.removeItem('kh_vbank_rows_v2');   // refetch the shared bank copy
+  } catch (_) {}
+  // Sidecar so renderArticleVocab's fromAdminAdds() can surface
+  // this word in the Vocab tab on every article whose body matches
+  // — even when the article's AI cache already has 12+ entries
+  // and would otherwise saturate the merge.
+  try {
+    var _kAdd = 'kh_admin_added_vocab';
+    var _existing = [];
+    try { _existing = JSON.parse(localStorage.getItem(_kAdd) || '[]') || []; } catch (_) {}
+    if (!Array.isArray(_existing)) _existing = [];
+    var _has = false;
+    for (var _i = 0; _i < _existing.length; _i++) {
+      if (_existing[_i] && _existing[_i].ko === ko) {
+        _existing[_i].rom = rom; _existing[_i].en = en; _has = true; break;
+      }
+    }
+    if (!_has) _existing.push({ ko: ko, rom: rom, en: en, t: Date.now() });
+    // Cap at 500 most-recent so the localStorage entry doesn't
+    // grow unbounded over time.
+    if (_existing.length > 500) _existing = _existing.slice(_existing.length - 500);
+    localStorage.setItem(_kAdd, JSON.stringify(_existing));
+  } catch (_) {}
+}
+
 // Vocab Edit Mode on an article page: the Vocab tab shows the article's own
 // cached vocab (article_cache 'vocab') ahead of the sitewide bank, so an edit
 // saved only to vocabulary_bank came back with the old meaning after a reload
 // ("저장이 안 된다", owner 2026-10-30). Patch that article's cached entry too
 // (remove on delete; append a new word that appears in the body).
-async function _khPatchArticleVocabCache(word, rom, en, remove) {
+async function _khPatchArticleVocabCache(word, rom, en, remove, forceAppend) {
   var art = window._currentArticle;
   var artId = (art && art.id) || new URLSearchParams(location.search).get('id');
   if (!artId || !word) return;
@@ -7593,7 +7568,7 @@ async function _khPatchArticleVocabCache(word, rom, en, remove) {
       });
     } else {
       var body = (art && (art.body || art.full)) || '';
-      if (body.indexOf(word) < 0) return;
+      if (!forceAppend && body.indexOf(word) < 0) return;
       list.push({ ko: word, rom: rom || '', en: en });
     }
     var data = {}; data[col] = (typeof r.data[col] === 'string') ? JSON.stringify(list) : list;
