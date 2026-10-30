@@ -635,9 +635,10 @@
             .maybeSingle();
           if (r.error || !r.data) return null;
           var d = r.data;
+          var act = (typeof khActivityStreak === 'function') ? await khActivityStreak() : null;
           return {
             xp: d.xp || 0,
-            streak: Math.max(d.streak || 0, d.mission_streak || 0),
+            streak: (typeof act === 'number') ? act : Math.max(d.streak || 0, d.mission_streak || 0),
             articles: d.articles_read || 0,
             words: d.words_saved || 0,
             quizzes: d.quizzes_done || 0
@@ -1283,7 +1284,7 @@
   <script src="js/features/analyze-mode.js?v=20261029s"></script>
   <script src="js/features/translation.js?v=20261027a"></script>
   <script src="js/features/fill-blank.js?v=20261029s"></script>
-  <script src="korehan-shared.js?v=20261029rc"></script>
+  <script src="korehan-shared.js?v=20261030a"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
   <!-- kh-universe.js (~117KB) lazy-loaded by _glEnsureUniverse() above on first click. -->
   <script src="js/kh-curriculum.js?v=20261016a"></script>
@@ -1988,7 +1989,8 @@
         .select('xp, streak, mission_streak, articles_read, words_saved, quizzes_done')
         .eq('user_id', userId).maybeSingle();
       if (stats) {
-        snap.streak = stats.mission_streak || stats.streak || 0;
+        var actS = (typeof khActivityStreak === 'function') ? await khActivityStreak() : null;
+        snap.streak = (typeof actS === 'number') ? actS : (stats.mission_streak || stats.streak || 0);
         snap.scores.vocabulary = Math.min(100, Math.round((stats.words_saved || 0) / 2));
         snap.scores.reading    = Math.min(100, (stats.articles_read || 0) * 3);
         snap.cumulative_quizzes = stats.quizzes_done || 0;
@@ -4468,6 +4470,6 @@
   #pg-root .pg-reuse [style*="color:#64748b"], #pg-root .pg-reuse [style*="color:#94a3b8"], #pg-root .pg-reuse [style*="color:#8b8b8b"] { color:rgba(255,255,255,.55) !important; }
   </style>
 <script src="js/features/review-queue.js?v=20261028c"></script>
-<script src="js/features/progress-home.js?v=20261027c"></script>
+<script src="js/features/progress-home.js?v=20261030a"></script>
 </body>
 </html>

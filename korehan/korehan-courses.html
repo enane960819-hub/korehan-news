@@ -416,7 +416,7 @@ html body.mobile-light .plan-card.live, html body.mobile-redesign .plan-card.liv
             <div class="plan-price" id="prem-price">$8.99</div>
             <div class="plan-per" id="prem-per">/month</div>
           </div>
-          <div class="plan-original" id="prem-original">&nbsp;</div>
+          <div class="plan-original" id="prem-original" style="visibility:hidden">&nbsp;</div>
           <div class="plan-saving" id="prem-saving">&nbsp;</div>
           <div class="plan-desc">The full self-study system &mdash; structured, reviewed, and tracked.</div>
           <ul class="plan-features">
@@ -737,7 +737,7 @@ html body.mobile-light .plan-card.live, html body.mobile-redesign .plan-card.liv
   <div class="live-hero">
     <span class="live-pill"><span class="live-dot"></span> Live on Zoom</span>
     <h2>Weekend <em>Live Class</em></h2>
-    <p>Every Sunday 21:00 KST, Han takes this week's topic and the articles you already read and goes through them live on Zoom — the tricky grammar, the words people really use, and your questions. 60 minutes, 8 seats. <b>A seat every week is included in Premium Live ($27.99/month).</b></p>
+    <p>Every Sunday 21:00 KST, Han takes this week's topic and the articles you already read and goes through them live on Zoom — the tricky grammar and the words people really use. 60 minutes, 8 seats. <b>A seat every week is included in Premium Live ($27.99/month).</b></p>
   </div>
 
   <div class="live-section">
@@ -799,7 +799,7 @@ html body.mobile-light .plan-card.live, html body.mobile-redesign .plan-card.liv
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261029s"></script>
-<script src="korehan-shared.js?v=20261029rc"></script>
+<script src="korehan-shared.js?v=20261030a"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
 // Premium / Premium Live checkout + management via the billing Edge Function
@@ -819,12 +819,13 @@ function setBilling(mode, btn) {
   if (_billingInterval === 'year') {
     if (priceEl) priceEl.textContent = '$' + (PREMIUM_PRICES.year / 12).toFixed(2);
     if (perEl) perEl.textContent = '/month';
-    if (origEl) origEl.textContent = '$' + PREMIUM_PRICES.month.toFixed(2) + '/month';
+    if (origEl) { origEl.textContent = '$' + PREMIUM_PRICES.month.toFixed(2) + '/month'; origEl.style.visibility = ''; }
     if (saveEl) saveEl.textContent = 'Save 36% — billed $' + PREMIUM_PRICES.year + '/year';
   } else {
     if (priceEl) priceEl.textContent = '$' + PREMIUM_PRICES.month.toFixed(2);
     if (perEl) perEl.textContent = '/month';
-    if (origEl) origEl.innerHTML = '&nbsp;';
+    // The struck-through slot would draw a lone dash over the blank: hide it, keep its height.
+    if (origEl) { origEl.innerHTML = '&nbsp;'; origEl.style.visibility = 'hidden'; }
     if (saveEl) saveEl.innerHTML = '&nbsp;';
   }
 }
