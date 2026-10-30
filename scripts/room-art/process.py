@@ -174,10 +174,12 @@ def find_items(im, gap=4, tol=60):
     ordered = [c for _, r in rows for c in sorted(r, key=lambda c: c[2][0])]
     return ordered, lab, s
 
-def clear_background_safe(im, tol=36, r=2, hole=400):
+def clear_background_safe(im, tol=36, r=2, hole=400, hole_min=6, pocket_ring=120):
     """Background removal that can't leak through thin gaps in an outline: the fill runs on
     the background eroded by `r` px and is grown back afterwards. Pure background trapped
-    inside a ring (a wreath, a hanging cord) is cleared too when larger than `hole` px."""
+    inside a ring (a wreath, a hanging cord) or framed by dark outline is cleared too.
+    Check the result on a dark background: a white stripe inside a mid-dark fill (medal ribbons)
+    looks like a gap to this rule and has to be put back by hand."""
     import numpy as np
     a = np.array(im.convert('RGBA'))
     rgb = a[:, :, :3].astype(int)
@@ -202,10 +204,13 @@ def clear_background_safe(im, tol=36, r=2, hole=400):
         if (n == reach).all(): break
         reach = n
     for _ in range(r + 1): reach = shift_all(reach, np.logical_or) & near
-    # trapped pure-background pockets
-    pure = (np.abs(rgb - bg).sum(2) <= 9) & ~reach
+    # Background trapped between leaves / petals / a box and its lid: white pockets the outside
+    # fill can't reach. Cleared when framed by dark outline pixels (see pocket_ring).
+    pure = (np.abs(rgb - bg).sum(2) <= 15) & ~reach
     h, w = pure.shape
     seen = np.zeros_like(pure)
+    holes = np.zeros_like(pure)
+    big = max(hole, int(0.03 * h * w))
     for y, x in zip(*np.nonzero(pure)):
         if seen[y, x]: continue
         comp, q = [], deque([(y, x)]); seen[y, x] = True
@@ -214,8 +219,22 @@ def clear_background_safe(im, tol=36, r=2, hole=400):
             for ny, nx in ((cy + 1, cx), (cy - 1, cx), (cy, cx + 1), (cy, cx - 1)):
                 if 0 <= ny < h and 0 <= nx < w and pure[ny, nx] and not seen[ny, nx]:
                     seen[ny, nx] = True; q.append((ny, nx))
-        if len(comp) >= hole:
-            ys, xs = zip(*comp); reach[list(ys), list(xs)] = True
+        if len(comp) < hole_min: continue
+        ys, xs = zip(*comp)
+        m = np.zeros_like(pure); m[list(ys), list(xs)] = True
+        g = m.copy()
+        for _ in range(r + 2): g = shift_all(g, np.logical_or)
+        ring = g & ~near & ~m                       # first non-light pixels around the pocket
+        ring_lum = float(np.median(rgb[ring].mean(1))) if ring.any() else 255.0
+        if os.environ.get('KH_POCKET_DEBUG'):
+            print('  pocket', len(comp), 'ring', round(ring_lum), 'at', min(xs), min(ys))
+        # Real gaps are framed by the dark outline every pixel-art shape has; a highlight sits
+        # in a lighter fill (glass, cream, gold), so it stays.
+        if len(comp) >= big or ring_lum <= pocket_ring:
+            holes[list(ys), list(xs)] = True
+    # Grow each cleared pocket over its light anti-aliased rim so no pale outline is left.
+    for _ in range(r + 1): holes = shift_all(holes, np.logical_or) & near
+    reach |= holes
     a[reach, 3] = 0
     return Image.fromarray(a)
 
