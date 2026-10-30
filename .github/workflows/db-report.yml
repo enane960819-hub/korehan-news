@@ -33,7 +33,7 @@ jobs:
           if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then BEFORE="HEAD~1"; fi
           for f in $(git diff --name-only --diff-filter=AM "$BEFORE" HEAD -- 'supabase/reports/*.sql' | sort); do
             echo "::group::$f"
-            { echo "set default_transaction_read_only = on;"; cat "$f"; } | jq -Rs '{query: .}' | \
+            { echo "set default_transaction_read_only = on;"; cat "$f"; } | jq -Rsa '{query: .}' | \
               curl -sS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
                 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data-binary @- \
               | jq -c . | head -c 400000
