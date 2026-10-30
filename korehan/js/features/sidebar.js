@@ -149,6 +149,10 @@ function updateSidebarAuth() {
   var row = document.getElementById('kh-sb-auth-row');
   if (!row) return;
   var neon = '<button id="kh-sb-neon-toggle" class="kh-sb-a" onclick="toggleKhNeon(event)"><span class="kh-sb-ico">' + khIcon('zap') + '</span>Neon theme: OFF</button>';
+  // Phones only: the bottom tab bar can be switched off (korehan-shared.js).
+  var bnav = (typeof isMobileRedesign === 'function' && isMobileRedesign() && typeof khToggleBottomNav === 'function')
+    ? '<button class="kh-sb-a" onclick="khToggleBottomNav()"><span class="kh-sb-ico">' + khIcon('panel-bottom') + '</span>Bottom bar: ' + (khBottomNavOff() ? 'OFF' : 'ON') + '</button>'
+    : '';
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function(x){ return String(x == null ? '' : x); };
   if (supaUser) {
     var md = supaUser.user_metadata || {};
@@ -161,6 +165,7 @@ function updateSidebarAuth() {
       + '<div class="kh-sb-me-mail">' + esc(supaUser.email || '') + '</div></div>'
       + '<a href="korehan-mypage.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('circle-user-round') + '</span>My Page</a>'
       + '<a href="korehan-shop.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('shopping-bag') + '</span>Shop</a>'
+      + bnav
       + '<button class="kh-sb-a" onclick="signOut();khSbClose()"><span class="kh-sb-ico">' + khIcon('log-out') + '</span>Sign Out</button>';
     // Nickname from user_stats (shared with the desktop menu's request).
     try {
@@ -171,7 +176,7 @@ function updateSidebarAuth() {
       }, function(){});
     } catch(_) {}
   } else {
-    row.innerHTML = neon
+    row.innerHTML = neon + bnav
       + '<button class="kh-sb-a" onclick="openAuthModal(\'signin\');khSbClose()"><span class="kh-sb-ico">' + khIcon('log-in') + '</span>Sign In</button>'
       + '<button class="kh-sb-a kh-sb-join" onclick="openAuthModal(\'signup\');khSbClose()"><span class="kh-sb-ico">' + khIcon('sparkles') + '</span>Join Free</button>';
   }

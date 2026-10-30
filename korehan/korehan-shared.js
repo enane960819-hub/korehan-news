@@ -11549,11 +11549,47 @@ function markMobileBody() {
   document.body.classList.toggle('mobile-light', !isNeon && !isStudyRoom);
 }
 
+// Pages that don't get the bottom tab bar: games (fullscreen input), the
+// sign-up / intro flow and legal or one-off pages. Learners can also turn it
+// off from the menu (kh_bnav_off); while on, it slides away on scroll down.
+var KH_BNAV_SKIP = /^(korehan-fun-|landing$|korehan-onboarding$|privacy-policy|terms-of-service$|refund-policy$|unsubscribe$|confirm-subscription$|korehan-tutor-)/;
+function khBottomNavOff() { try { return localStorage.getItem('kh_bnav_off') === '1'; } catch (_) { return false; } }
+function khToggleBottomNav() {
+  var off = !khBottomNavOff();
+  try { localStorage.setItem('kh_bnav_off', off ? '1' : '0'); } catch (_) {}
+  if (off) {
+    var n = document.querySelector('.mobile-bottom-nav'); if (n) n.remove();
+    if (typeof toast === 'function') toast('Bottom bar hidden. Turn it back on from the menu.');
+  } else {
+    injectMobileBottomNav();
+  }
+  if (typeof updateSidebarAuth === 'function') updateSidebarAuth();
+}
+window.khToggleBottomNav = khToggleBottomNav;
+window.khBottomNavOff = khBottomNavOff;
+var _khBnavScrollBound = false;
+function _khBindBottomNavScroll() {
+  if (_khBnavScrollBound) return;
+  _khBnavScrollBound = true;
+  var lastY = window.scrollY || 0;
+  window.addEventListener('scroll', function () {
+    var nav = document.querySelector('.mobile-bottom-nav');
+    if (!nav) return;
+    var y = window.scrollY || 0, dy = y - lastY;
+    if (Math.abs(dy) < 8) return;
+    nav.classList.toggle('kh-bnav-away', dy > 0 && y > 120);
+    lastY = y;
+  }, { passive: true });
+}
+
 function injectMobileBottomNav() {
   if (!isMobileRedesign()) return;
   var page = pageName();
-  // Hide bottom nav on fullscreen game pages to avoid blocking input
-  if (page.indexOf('korehan-fun-') === 0) return;
+  if (KH_BNAV_SKIP.test(page) || khBottomNavOff()) {
+    var old = document.querySelector('.mobile-bottom-nav'); if (old) old.remove();
+    return;
+  }
+  _khBindBottomNavScroll();
   var nav = document.querySelector('.mobile-bottom-nav');
   if (!nav) {
     nav = document.createElement('nav');

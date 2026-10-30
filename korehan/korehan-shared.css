@@ -4719,6 +4719,11 @@ body.kh-reading-page .art-breadcrumb { display: none; }
    the right sidebar covers actions, the Next-article pill covers
    forward; the nav doesn't earn its screen real estate here. */
 body.kh-reading-page .mobile-bottom-nav { display: none !important; }
+/* Bottom tab bar: slides away while scrolling down, back on scroll up; never
+   over a page's own bottom dock (conversation steps). */
+body.mobile-redesign .mobile-bottom-nav { transition: transform .2s ease, opacity .2s ease; }
+body.mobile-redesign .mobile-bottom-nav.kh-bnav-away { transform: translateY(calc(100% + 24px)); opacity: 0; pointer-events: none; }
+body:has(.cv-dock) .mobile-bottom-nav { display: none !important; }
 
 /* Related Articles footer only competes with the next-article swipe
    on mobile — hide there, keep on desktop as a discovery surface. */
