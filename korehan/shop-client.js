@@ -639,6 +639,11 @@
     requestAnimationFrame(function(){ ov.classList.add('open'); });
   }
 
+  // Esc closes the open sheet (item, bought, how to earn) like the backdrop tap.
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('sh-ov')) window.shopClose();
+  });
+
   document.addEventListener('DOMContentLoaded', function(){
     // Tab click handlers
     document.querySelectorAll('.shop-tab').forEach(function(btn){
