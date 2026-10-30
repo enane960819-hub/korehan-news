@@ -110,7 +110,9 @@ for (const mobile of [true, false]) {
   if (await step() === '3') {
     await page.click('#art-listening-quiz .rv-start-btn'); await page.waitForTimeout(1500);   // let the smooth scroll to this step finish
     const lq0 = await page.evaluate(() => document.getElementById('art-listening-quiz').innerText.match(/\((\d+)\/(\d+)\)/));
-    await page.locator('#art-listening-quiz button').nth(1).dblclick(); await page.waitForTimeout(1300);
+    // two clicks on the same option in one go (a coordinate dblclick could land on Play
+    // while the step was still smooth-scrolling)
+    await page.locator('#art-listening-quiz button').nth(1).evaluate((el) => { el.click(); el.click(); }); await page.waitForTimeout(1300);
     const lqt = await page.evaluate(() => document.getElementById('art-listening-quiz').innerText);
     check(lq0 && new RegExp('\\(2/' + lq0[2] + '\\)').test(lqt), tag + ' article: double tap in listening quiz advances one question only', lqt.slice(0, 60));
     for (let i = 0; i < 6; i++) { const b = page.locator('#art-listening-quiz button').nth(1); if (!(await b.count())) break; await b.click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(1000); }

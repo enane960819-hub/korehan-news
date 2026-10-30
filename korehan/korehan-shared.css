@@ -5821,6 +5821,8 @@ body.kh-sb-open .mobile-bottom-nav,
 body:has(#kh-mobile-sidebar.on) .mobile-bottom-nav,
 body.kh-sb-open #kh-daily-mission,
 body.kh-sb-open #fj-resume { display: none !important; }
+/* The open Daily Mission panel sits where the First Journey chip is — hide the chip meanwhile. */
+body:has(#kh-daily-mission .dm-close) #fj-resume { display: none !important; }
 
 /* Bottom safe area. The mobile tab bar and the floating Daily Mission /
    First Journey chips sit over the end of every page, so the last content

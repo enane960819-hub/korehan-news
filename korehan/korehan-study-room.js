@@ -11573,7 +11573,7 @@ function quickSaveWord(ko, en, rom, source, btn) {
   }
   _qsMarkSaved(btn);
   sb.rpc('save_or_update_word', {
-    p_word_key: ko, p_word_ko: ko, p_word_en: en || null, p_word_rom: rom || null,
+    p_word_key: ko, p_word_ko: ko, p_word_en: en || null, p_word_rom: (typeof _khSavedRom === 'function' ? _khSavedRom(ko, rom) : rom) || null,
     p_source_kind: source || 'study_activity',
     p_review_delta: 0, p_correct_delta: 0, p_wrong_delta: 0
   }).then(function(r) {

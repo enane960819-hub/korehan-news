@@ -210,7 +210,7 @@ async function mwLoad() {
       var cat = _mwCat(en);
       var clean = (typeof khCleanMeaning === 'function') ? khCleanMeaning(en) : en.replace(/^\[[^\]]+\]\s*/, '');
       return {
-        ko: w.word_ko, rom: w.word_rom || '', en: clean, rawEn: en, cat: cat,
+        ko: w.word_ko, rom: (typeof _khSavedRom === 'function' ? _khSavedRom(w.word_ko, w.word_rom || '') : (w.word_rom || '')), en: clean, rawEn: en, cat: cat,
         stage: _mwStage(w), due: !!(w.srs_next_review && w.srs_next_review <= today && !w.mastered),
         reviews: w.srs_review_count || w.review_count || 0, src: _mwSource(w), date: w.created_at,
         // legacy Word Book quiz fields

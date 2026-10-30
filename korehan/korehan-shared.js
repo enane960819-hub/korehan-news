@@ -1116,6 +1116,14 @@ function openAuthModal(defaultTab) {
   }
 }
 
+// Escape closes the auth modal even when focus is outside it (e.g. after a
+// click on the backdrop text); the modal's own handler covers focus inside.
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  var m = document.getElementById('kh-auth-modal');
+  if (m && m.style.display === 'flex' && !m.contains(document.activeElement)) closeAuthModal();
+});
+
 function closeAuthModal() {
   var modal = document.getElementById('kh-auth-modal');
   if (modal) modal.style.display = 'none';
@@ -4401,7 +4409,7 @@ function renderArticlePage() {
     +   '</div>'
 
     +   '<div class="rv-check" data-step="4">'
-    +     '<div class="rv-check-head"><span>🔨 Build (Hangul jamo keyboard)</span><span class="rv-check-hint">Active recall</span></div>'
+    +     '<div class="rv-check-head"><span>Build (Hangul jamo keyboard)</span><span class="rv-check-hint">Active recall</span></div>'
     +     '<div class="rv-check-body"><div id="art-build-quiz"><button onclick="startArticleBuildQuiz()" class="rv-start-btn">Start Build Quiz</button></div></div>'
     +   '</div>'
 
@@ -8470,7 +8478,7 @@ async function khSaveWbWord(rowEl, ko, rom, en) {
       await saveWord(sb, { wordKey: ko, wordKo: ko, wordRom: rom, wordEn: en, sourceKind: 'manual' });
     } else {
       await sb.rpc('save_or_update_word', {
-        p_word_key: ko, p_word_ko: ko, p_word_rom: rom || null, p_word_en: en || null,
+        p_word_key: ko, p_word_ko: ko, p_word_rom: (typeof _khSavedRom === 'function' ? _khSavedRom(ko, rom) : rom) || null, p_word_en: en || null,
         p_source_kind: 'manual', p_source_content_type: null, p_source_content_id: null,
         p_interest_tag: null, p_review_delta: 0, p_correct_delta: 0, p_wrong_delta: 0
       });

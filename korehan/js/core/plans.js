@@ -177,7 +177,7 @@ function _updatePlanBadges() {
 // it again).
 var KH_FEATURE_COPY = {
   article_study:   { t: 'Turn today’s news into a lesson', d: 'Four short steps on a real article at your level — about 10 minutes.', steps: ['Words', 'Phrases', 'Read', 'Quiz'], ko: '태양광이 원자력을 <u>제치고</u> 가장 빠르게 성장하고 있어요.', en: '제치다 = to overtake' },
-  conversation_study: { t: 'Learn real conversations', d: 'Dialogue, word cards, your response and sentence building — step by step.', steps: ['Dialogue', 'Cards', 'Response', 'Build'], ko: '혹시 이 근처에 <u>약국</u> 있어요?', en: 'Is there a pharmacy near here?' },
+  conversation_study: { t: 'Role-play real conversations', d: 'You play one speaker: pick the reply that fits, then see why the others don\'t.', steps: ['Listen', 'Expressions', 'Role-play'], ko: '혹시 이 근처에 <u>약국</u> 있어요?', en: 'Is there a pharmacy near here?' },
   express_writing: { t: 'Write it, get it corrected', d: 'One short piece a week on the topic you studied, with instant AI feedback and a tutor review.', steps: ['Frames', 'Write', 'AI feedback', 'Tutor'], ko: '저는 아침에 커피를 <u>마시면서</u> 뉴스를 읽어요.', en: 'Line-by-line corrections on your own sentences' },
   fast_track:      { t: 'Practice real situations', d: 'Cafe, taxi, hospital and more — choose what to say and hear how it sounds.', steps: ['Listen', 'Choose', 'Say it'], ko: '<u>아이스 아메리카노</u> 한 잔 주세요.', en: 'One iced americano, please.' },
   phone_call:      { t: 'Get through a real phone call', d: 'Role-play calls with natural replies.', steps: ['Listen', 'Reply', 'Review'], ko: '<u>예약</u>을 바꾸고 싶은데요.', en: 'I’d like to change my reservation.' },
@@ -251,7 +251,7 @@ function showUpgradeModal(feature, minPlan) {
   if (existing) existing.remove();
   var esc = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); };
   var names = {
-    article_study: 'Article Study', conversation_study: 'Conversation Study', express_writing: 'Weekly Writing',
+    article_study: 'Article Study', conversation_study: 'Conversation Role-play', express_writing: 'Weekly Writing',
     slang_full: 'Slang Library', weekly_monthly_review: 'Weekly & Monthly Review', listening_quiz: 'Listening Quiz',
     tutor_review: 'Tutor Review', live_class: 'Live Class', fast_track: 'Fast Track', phone_call: 'Phone Call',
     monthly_report: 'Monthly Report', speaking_feedback: 'Speaking Feedback', speaking_practice: 'Speaking Practice', priority_feedback: 'Priority Feedback',

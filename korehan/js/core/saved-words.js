@@ -92,7 +92,7 @@ async function migrateAnonSavedWords() {
         user_id: supaUser.id,
         word_key: ko,
         word_ko: ko,
-        word_rom: w.rom || w.word_rom || w.reading || '',
+        word_rom: _khSavedRom(ko, w.rom || w.word_rom || w.reading || ''),
         word_en:  w.en  || w.word_en  || w.meaning || ''
       };
     })
@@ -136,11 +136,18 @@ async function _syncSavedWordsFromDB() {
     }
   }
 }
+// One romanizer for saved words: the rule-based khRomanize (korehan-shared.js),
+// so rows saved from different screens don't end up as "Jeolmeun" / "jeomsoo" /
+// "eun-ha". Falls back to the value we were given when it isn't loaded.
+function _khSavedRom(ko, given) {
+  try { if (ko && typeof khRomanize === 'function') { var r = khRomanize(ko); if (r) return r; } } catch (_) {}
+  return given || '';
+}
 function normalizeSavedWord(row) {
   if (!row) return null;
   return {
     ko: row.ko || row.word_ko || row.word || '',
-    rom: row.rom || row.word_rom || row.reading || '',
+    rom: _khSavedRom(row.ko || row.word_ko || row.word || '', row.rom || row.word_rom || row.reading || ''),
     en: row.en || row.word_en || row.meaning || ''
   };
 }
@@ -208,7 +215,7 @@ async function dbSaveWord(ko, rom, en) {
       user_id: supaUser.id,
       word_key: ko,
       word_ko: ko,
-      word_rom: rom || '',
+      word_rom: _khSavedRom(ko, rom || ''),
       word_en: en || ''
     }, { onConflict: 'user_id,word_key' });
 
