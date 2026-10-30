@@ -92,10 +92,20 @@ function startArticleListeningQuiz() {
         return '<button onclick="artListenPick(this,\''+o.replace(/'/g,"\\'")+'\',\''+v.en.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left">'+o+'</button>';
       }).join('')+'</div>';
   }
-  window.artListenPick = function(btn,picked,correct){
-    if(picked===correct){btn.style.background='#dcfce7';btn.style.borderColor='#22c55e';btn.style.fontWeight='700';}
-    else{btn.style.background='#fee2e2';btn.style.borderColor='#ef4444';}
-    qi++; setTimeout(renderQ,800);
+  var picked = false;
+  window.artListenPick = function(btn,choice,correct){
+    // One answer per question: a double tap used to advance twice and skip a word.
+    if (picked) return;
+    picked = true;
+    if(choice===correct){btn.style.background='#dcfce7';btn.style.borderColor='#22c55e';btn.style.fontWeight='700';}
+    else{
+      btn.style.background='#fee2e2';btn.style.borderColor='#ef4444';
+      // Show the right meaning too, so a miss still teaches something.
+      Array.prototype.forEach.call(btn.parentNode.querySelectorAll('button'), function(b){
+        if (b.textContent === correct) { b.style.background='#dcfce7'; b.style.borderColor='#22c55e'; b.style.fontWeight='700'; }
+      });
+    }
+    qi++; setTimeout(function(){ picked = false; renderQ(); },800);
   };
   renderQ();
 }
@@ -150,7 +160,7 @@ function startArticleBuildQuiz() {
     destroyKbd();
     if (qi >= items.length) {
       el.innerHTML = '<div style="text-align:center;padding:16px">'
-        + '<div style="font-size:18px;font-weight:800;color:#16a34a;margin-bottom:4px">🎉 Build Complete!</div>'
+        + '<div style="font-size:18px;font-weight:800;color:#16a34a;margin-bottom:4px">Build Complete!</div>'
         + '<div style="font-size:14px;color:#475569;margin-bottom:14px">Score: <b>' + score + ' / ' + items.length + '</b></div>'
         + '<button onclick="startArticleBuildQuiz()" style="padding:8px 18px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700">Build Again</button>'
         + '</div>';
@@ -172,7 +182,9 @@ function startArticleBuildQuiz() {
     var input = document.getElementById('art-build-input');
     if (input) jamoKbd = window.khAttachJamoKeyboard(input);
   }
+  var advancing = false;
   window._artBuildCheck = function() {
+    if (advancing) return;
     var input = document.getElementById('art-build-input');
     var status = document.getElementById('art-build-status');
     if (!input || !status) return;
@@ -185,7 +197,8 @@ function startArticleBuildQuiz() {
       input.style.borderColor = '#22c55e';
       score++;
       qi++;
-      setTimeout(renderQ, 1100);
+      advancing = true;
+      setTimeout(function(){ advancing = false; renderQ(); }, 1100);
     } else {
       status.innerHTML = '<span style="color:#dc2626">Not quite. You typed: <b>' + typed + '</b></span>';
       input.style.borderColor = '#ef4444';
@@ -194,11 +207,13 @@ function startArticleBuildQuiz() {
     }
   };
   window._artBuildSkip = function() {
+    if (advancing) return;
     var v = items[qi];
     var status = document.getElementById('art-build-status');
     if (status) status.innerHTML = '<span style="color:#64748b">Skipped. Answer was: <b>' + v.ko + '</b></span>';
     qi++;
-    setTimeout(renderQ, 1400);
+    advancing = true;
+    setTimeout(function(){ advancing = false; renderQ(); }, 1400);
   };
   renderQ();
 }
@@ -606,9 +621,12 @@ async function showFillResult() {
   var pct = Math.round(correct / total * 100);
 
   // 퀴즈 완료 뱃지/XP
+  // Reveal the next step first: dmTrackFill waits on two Supabase round
+  // trips, which left the finished exercise on screen for ~3 s with nothing
+  // happening.
+  _reviewFlowAdvance(2);
   if (typeof trackActivityOnQuizComplete === 'function') trackActivityOnQuizComplete(pct);
   await dmTrackFill();
-  _reviewFlowAdvance(2);
 }
 
 function resetFill() {
