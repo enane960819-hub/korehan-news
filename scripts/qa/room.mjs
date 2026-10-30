@@ -68,7 +68,7 @@ const DESKTOP = { viewport: { width: 1366, height: 900 } };
 
 let storage = null;   // auth-only storageState, made once
 async function newCtx(kind, fake) {
-  const ctx = await browser.newContext(Object.assign({}, kind === 'mobile' ? MOBILE : DESKTOP, storage ? { storageState: storage } : {}));
+  const ctx = await browser.newContext(Object.assign({ ignoreHTTPSErrors: !!launchOpts.proxy }, kind === 'mobile' ? MOBILE : DESKTOP, storage ? { storageState: storage } : {}));
   await ctx.addInitScript(() => { try { localStorage.setItem('kh_cookie_consent', 'essential'); } catch (_) {} });
   await policy(ctx, fake);
   return ctx;
