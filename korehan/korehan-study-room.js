@@ -561,6 +561,13 @@ function _khStudyRoomInit() {
         return;
       }
       if (!supaUser) { openAuthModal('signin'); return; }
+      // The plan loads after the session; opening now made requirePlan show
+      // "Checking your plan… tap again" and the modal never opened for Premium.
+      if (typeof _userPlanLoaded !== 'undefined' && !_userPlanLoaded && typeof loadUserPlan === 'function' && !waitAndOpenArticleStudy._planWait) {
+        waitAndOpenArticleStudy._planWait = true;
+        Promise.resolve(loadUserPlan()).then(waitAndOpenArticleStudy, waitAndOpenArticleStudy);
+        return;
+      }
       openArticleStudy();
       // _asLoadArticles 는 async. 목록 세팅 기다렸다가 자동 선택.
       var listTries = 0;
@@ -18000,6 +18007,7 @@ function closeArticleStudy() {
   var m = document.getElementById('as-modal');
   if (m) m.classList.add('hidden');
   document.body.style.overflow = '';
+  if (typeof window.khHideHoverTip === 'function') window.khHideHoverTip();   // a word tooltip opened inside the modal
 }
 function asBackToList() {
   document.getElementById('as-list-view').classList.remove('as-hidden');
