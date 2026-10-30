@@ -3775,6 +3775,47 @@ function khRoomImg(u) {
   return u + '?v=' + KH_ROOM_ART_V;
 }
 
+// Conversation scene pictures (owner option B, 2026-10-31): every conversation card shows a
+// small pixel-art scene (assets/convo/<scene>.webp, docs/reference/conversation-scene-prompts.md).
+// data.scene (set in the admin) wins; otherwise the first rule matching the title / situation,
+// then the category's scene. Order matters: specific places before people / general topics.
+var KH_CONV_SCENES = ['home-meal', 'phone-call', 'cafe', 'office', 'bbq-dinner', 'living-room', 'classroom',
+  'pharmacy', 'convenience-store', 'train-station', 'airport', 'clothing-shop', 'river-park', 'cinema',
+  'karaoke', 'hair-salon', 'date-table', 'moving-day'];
+var KH_CONV_SCENE_RULES = [
+  ['hair-salon', /\bhair|\bsalon|미용실|머리를 자르/i],
+  ['pharmacy', /medicine|pharmac|\bcold\b|\bsick\b|약국|감기|아파/i],
+  ['convenience-store', /convenience|\bsnacks?\b|편의점|과자/i],
+  ['karaoke', /karaoke|노래방/i],
+  ['cinema', /\bfilm|\bmovie|영화/i],
+  ['train-station', /\btrain|\bktx\b|\bbusan\b|기차|부산/i],
+  ['airport', /airport|\bflight|\btrip\b|\btravel|공항|여행|비행기/i],
+  ['clothing-shop', /shopping|\bclothes|\bmall\b|쇼핑|옷 가게|옷가게/i],
+  ['moving-day', /\bmov(e|es|ed|ing) (to|out|away)|military|이사|군대|부대|입대/i],
+  ['bbq-dinner', /team dinner|barbecue|\bbbq\b|restaurant|회식|고기|삼겹살|식당/i],
+  ['cafe', /\bcaf[eé]|coffee|bakery|카페|커피|빵집/i],
+  ['phone-call', /\bcall(s|ed|ing)?\b|\bphone|group chat|instagram|전화|단톡|카톡|인스타/i],
+  ['living-room', /holiday gathering|명절/i],
+  ['date-table', /\bdat(e|es|ing)\b|couple|relationship|marriage|데이트|연애|결혼|커플/i],
+  ['office', /interview|deadline|meeting|coworker|\bboss\b|salary|investor|pitch|회의|회사|면접|사장님|동료|연봉/i],
+  ['classroom', /student|classmate|\bschool|first day|학교에서|교실|학생|수업|반 친구/i],
+  ['home-meal', /dinner|breakfast|lunch|stew|meal|저녁|아침|점심|식사|찌개/i],
+  ['river-park', /\bwalk|\bpark\b|weekend|catching up|reunit|산책|공원|한강|주말/i]
+];
+var KH_CONV_SCENE_CAT = { everyday: 'cafe', food: 'home-meal', work: 'office', workplace: 'office', dating: 'date-table',
+  friends: 'river-park', family: 'living-room' };
+function khConvScene(c) {
+  c = c || {};
+  var d = c.data || {};
+  if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { d = {}; } }
+  var pick = c.scene || d.scene;
+  if (pick && KH_CONV_SCENES.indexOf(pick) !== -1) return pick;
+  var text = [c.title, c.ctx_en, c.ctx, d.topic, d.ctx_en, d.ctx].filter(Boolean).join(' · ');
+  for (var i = 0; i < KH_CONV_SCENE_RULES.length; i++) if (KH_CONV_SCENE_RULES[i][1].test(text)) return KH_CONV_SCENE_RULES[i][0];
+  return KH_CONV_SCENE_CAT[String(c.cat || d.cat || '').toLowerCase()] || 'living-room';
+}
+function khConvSceneUrl(c) { return khRoomImg('assets/convo/' + khConvScene(c) + '.webp'); }
+
 // Fake News (2026-10-29): openly made-up joke articles. They never mix into
 // real-news lists (All News, home News grid/hero, related, next article) —
 // only their own home rail and section page show them, always labelled.
