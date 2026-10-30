@@ -351,6 +351,13 @@ supabase functions deploy claude-proxy
   `owned` list. What's worn is client prefs (`prefs.avatar`, `prefs.rooms[].theme`) + layout entry `kh_avatar`;
   `get_public_room` drops worn items the owner doesn't own. Streak for unlocks = `kh_user_streak`. No placed-on
   hats (owner rule). New sprite/theme art: bump `KH_ROOM_ART_V`.
+- **Several rooms** (`js/features/room-tabs.js`, `20261030_room_slots.sql`): `prefs.rooms` = tab order (rooms[0]
+  id `main` = everyone's original room); all rooms share the one `layout` array and an entry's `room` field says
+  where it stands (none = room 1), so an item is in one room at a time. My Page's `getRoomLayout`/`setRoomLayout`
+  are the current room's view; sync with `_getRoomLayoutAll()`. Extra rooms = slots `room_slot_2..5` bought via
+  `buy_room_item` (2nd 600 / Premium included, 3rd 1,000, 4th-5th 1,500 Premium only); the count is
+  `kh_room_allowed()` on the server. Rooms past it (Premium lapsed) are hidden, never deleted; `get_public_room`
+  returns only allowed rooms. `buy_room_item` + `get_public_room` live in `20261030_room_slots.sql` only.
 - **Fake News** (ON HOLD since 2026-10-29: `KH_FAKE_NEWS_ON = false`, articles are drafts) (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
   openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —
   no crime, romance, health, death, politics or politicians, nobody in an active controversy; illustrations

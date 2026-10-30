@@ -8,12 +8,17 @@
    WHAT IS STORED (user_room_state.prefs — the client may write prefs and
    layout only; `owned` is server-only):
      prefs.avatar = { hair, outfit, acc: [ids], profile: bool }
-     prefs.rooms  = [{ id, name, theme }]   one entry per room; rooms[0] is
-                    today's single room, its layout stays in the `layout`
-                    column. A later multi-room feature keeps every further
-                    room's layout in its own entry.
-     layout entry { id: 'kh_avatar', x, y, scale, flipped } = the character
-                    standing in the room (draggable like any room piece).
+     prefs.rooms  = [{ id, name, theme }]   the learner's rooms in tab order;
+                    rooms[0] (id 'main') is the room everyone already had.
+     layout       one array for all rooms; an entry's `room` field names the
+                    room it stands in (no field = rooms[0]), so an item stands
+                    in one room at a time and old layouts are room 1 as is.
+                    My Page reads / writes only the current room's view of
+                    it (viewLayout / mergeLayout below).
+     layout entry { id: 'kh_avatar', x, y, scale, flipped, room } = the
+                    character standing in one room (draggable like any piece).
+   How many rooms show = kh_my_room_slots() (server: bought slots + Premium);
+   rooms past that count are hidden, never deleted.
    Server side: avatar_items (catalogue), buy_room_item (purchases, unlock-
    only / season checks), kh_claim_room_unlocks (study unlocks) and
    get_public_room (shows only worn items the owner owns or that are free)
@@ -205,17 +210,20 @@
     });
     return { hair: hair, outfit: outfit, acc: acc, profile: a.profile === true };
   }
+  var MAX_ROOMS = 5;
+  function cleanName(n, i) {
+    var t = String(n == null ? '' : n).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40);
+    return t || (i === 0 ? 'My Room' : 'Room ' + (i + 1));
+  }
   function cleanRooms(rooms) {
-    var out = [];
-    (Array.isArray(rooms) ? rooms : []).slice(0, 12).forEach(function (r, i) {
+    var out = [], seen = {};
+    (Array.isArray(rooms) ? rooms : []).slice(0, 12).forEach(function (r) {
       if (!r || typeof r !== 'object') return;
-      var o = {
-        id: String(r.id || (i === 0 ? 'main' : 'room' + i)).slice(0, 40),
-        name: String(r.name || (i === 0 ? 'My Room' : 'Room ' + (i + 1))).slice(0, 40),
-        theme: find('room', r.theme) ? r.theme : 'classic'
-      };
-      if (i > 0 && Array.isArray(r.layout)) o.layout = r.layout.slice(0, 80);   // later rooms (multi-room, not built yet)
-      out.push(o);
+      var i = out.length;
+      var id = i === 0 ? 'main' : String(r.id || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40);
+      if (!id || seen[id]) return;
+      seen[id] = 1;
+      out.push({ id: id, name: cleanName(r.name, i), theme: find('room', r.theme) ? r.theme : 'classic' });
     });
     if (!out.length) out.push({ id: 'main', name: 'My Room', theme: 'classic' });
     return out;
@@ -225,9 +233,61 @@
   // avatar: null until the learner saves a character once (nothing shown before).
   var S = (function () {
     var v = lsGet() || {};
-    return { avatar: v.avatar ? cleanAvatar(v.avatar) : null, rooms: cleanRooms(v.rooms) };
+    return { avatar: v.avatar ? cleanAvatar(v.avatar) : null, rooms: cleanRooms(v.rooms),
+             current: typeof v.current === 'string' ? v.current : 'main',
+             allowed: Math.max(1, Math.min(MAX_ROOMS, Number(v.allowed) || 1)) };
   })();
-  function persist() { lsSet({ avatar: S.avatar, rooms: S.rooms }); }
+  function persist() { lsSet({ avatar: S.avatar, rooms: S.rooms, current: S.current, allowed: S.allowed }); }
+
+  // ── Rooms (several per learner) ────────────────────────────────────
+  function visibleRooms() { return S.rooms.slice(0, Math.max(1, S.allowed)); }
+  function currentRoom() {
+    var v = visibleRooms();
+    for (var i = 0; i < v.length; i++) if (v[i].id === S.current) return v[i];
+    return v[0];
+  }
+  function roomById(id) { for (var i = 0; i < S.rooms.length; i++) if (S.rooms[i].id === id) return S.rooms[i]; return null; }
+  // Which room a layout entry stands in (no / unknown room = rooms[0]).
+  function roomIdOf(e) { return (e && e.room && roomById(e.room)) ? e.room : S.rooms[0].id; }
+  function viewLayout(all) {
+    var cur = currentRoom().id;
+    return (Array.isArray(all) ? all : []).filter(function (e) { return e && roomIdOf(e) === cur; });
+  }
+  // The current room's new entries replace its old ones; an item placed here
+  // leaves whatever room it stood in before (one room at a time).
+  function mergeLayout(all, arr) {
+    var cur = currentRoom().id, main = S.rooms[0].id, ids = {};
+    arr = Array.isArray(arr) ? arr : [];
+    arr.forEach(function (e) { if (e && e.id) ids[e.id] = 1; });
+    var others = (Array.isArray(all) ? all : []).filter(function (e) { return e && roomIdOf(e) !== cur && !ids[e.id]; });
+    var mine = arr.filter(function (e) { return e && e.id; }).map(function (e) {
+      var o = {}; Object.keys(e).forEach(function (k) { o[k] = e[k]; });
+      if (cur === main) delete o.room; else o.room = cur;
+      return o;
+    });
+    return others.concat(mine);
+  }
+  function whereIs(itemId, all) {
+    var list = Array.isArray(all) ? all : [];
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === itemId) return roomById(roomIdOf(list[i]));
+    return null;
+  }
+  function layoutAll() { return (typeof _getRoomLayoutAll === 'function') ? _getRoomLayoutAll() : []; }
+  function setLayoutAll(a) { if (typeof _setRoomLayoutAll === 'function') _setRoomLayoutAll(a); }
+  // Move a placed item (or the character) into a room, keeping its spot.
+  function moveTo(itemId, roomId) {
+    var all = layoutAll(), main = S.rooms[0].id, hit = false;
+    all.forEach(function (e) {
+      if (e && e.id === itemId && !hit) { hit = true; if (roomId === main) delete e.room; else e.room = roomId; }
+    });
+    if (hit) setLayoutAll(all);
+    return hit;
+  }
+  function newRoomId() {
+    var id;
+    do { id = 'r' + Date.now().toString(36).slice(-5) + Math.floor(Math.random() * 1296).toString(36); } while (roomById(id));
+    return id;
+  }
 
   // ── Images + compositing ───────────────────────────────────────────
   var _img = {};
@@ -402,7 +462,7 @@
   // My Page hook (end of _applyRoomTheme).
   function applyRoomTheme() {
     var room = document.getElementById('miniroom-container');
-    var pic = applyThemeBg(room, S.rooms[0].theme, document.getElementById('room-floor-layer'));
+    var pic = applyThemeBg(room, currentRoom().theme, document.getElementById('room-floor-layer'));
     // The wallpaper / floor drawer only matters for the Classic room.
     var btn = document.getElementById('room-theme-btn');
     if (btn) btn.style.display = pic ? 'none' : '';
@@ -413,7 +473,7 @@
   // ── Prefs sync (My Page hooks) ─────────────────────────────────────
   function extendPrefs(out) {
     if (!out || typeof out !== 'object') return out;
-    out.rooms = S.rooms.map(function (r) { var o = { id: r.id, name: r.name, theme: r.theme }; if (r.layout) o.layout = r.layout; return o; });
+    out.rooms = S.rooms.map(function (r) { return { id: r.id, name: r.name, theme: r.theme }; });   // hidden rooms too: never deleted
     if (S.avatar) out.avatar = { hair: S.avatar.hair, outfit: S.avatar.outfit, acc: S.avatar.acc.slice(0, 6), profile: !!S.avatar.profile };
     return out;
   }
@@ -495,16 +555,36 @@
     // state
     getAvatar: function () { return S.avatar ? cleanAvatar(S.avatar) : null; },
     getRooms: function () { return cleanRooms(S.rooms); },
-    getRoomTheme: function () { return S.rooms[0].theme; },
+    getRoomTheme: function () { return currentRoom().theme; },
     save: function (avatar, theme) {
       S.avatar = cleanAvatar(avatar);
-      if (theme && find('room', theme)) S.rooms[0].theme = theme;
+      if (theme && find('room', theme)) currentRoom().theme = theme;
       persist();
       applyProfile();
       if (typeof ROOM_ITEMS !== 'undefined' && Array.isArray(ROOM_ITEMS) && ROOM_ITEMS.indexOf(AV_DEF) === -1) ROOM_ITEMS.push(AV_DEF);
       try { if (typeof window._roomItemsIndexSource !== 'undefined') window._roomItemsIndexSource = null; } catch (_) {}
       return refreshDef();
     },
+    // rooms
+    MAX_ROOMS: MAX_ROOMS, visibleRooms: function () { return visibleRooms().map(function (r) { return { id: r.id, name: r.name, theme: r.theme }; }); },
+    allRooms: function () { return S.rooms.map(function (r) { return { id: r.id, name: r.name, theme: r.theme }; }); },
+    currentRoom: function () { var r = currentRoom(); return { id: r.id, name: r.name, theme: r.theme }; },
+    setCurrent: function (id) { if (roomById(id)) { S.current = id; persist(); } },
+    setAllowed: function (n) { n = Math.max(1, Math.min(MAX_ROOMS, Number(n) || 1)); if (n !== S.allowed) { S.allowed = n; persist(); } },
+    getAllowed: function () { return S.allowed; },
+    addRoom: function (name, theme) {
+      var r = { id: newRoomId(), name: cleanName(name, S.rooms.length), theme: find('room', theme) ? theme : 'classic' };
+      S.rooms.push(r); persist(); return r.id;
+    },
+    updateRoom: function (id, name, theme) {
+      var r = roomById(id); if (!r) return false;
+      var i = S.rooms.indexOf(r);
+      if (name != null) r.name = cleanName(name, i);
+      if (theme && find('room', theme)) r.theme = theme;
+      persist(); return true;
+    },
+    viewLayout: viewLayout, mergeLayout: mergeLayout, whereIs: whereIs, roomIdOf: roomIdOf, moveTo: moveTo,
+    avatarRoom: function () { var r = whereIs(AV_ID, layoutAll()); return r ? r.id : null; },
     // hooks
     ensureRoomItem: ensureRoomItem, extendPrefs: extendPrefs, applyServerPrefs: applyServerPrefs,
     applyRoomTheme: applyRoomTheme, applyThemeBg: applyThemeBg, applyProfile: applyProfile,

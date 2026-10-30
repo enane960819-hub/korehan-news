@@ -162,7 +162,16 @@
         + bg + badge('room', r, on)
         + '<span class="kav-rn">' + esc(r.name) + (r.classic ? '<small>your wallpaper</small>' : '') + '</span></button>';
     }).join('');
-    return '<div class="kav-sec"><b>Room</b><span>background picture for this room</span></div><div class="kav-g kav-g3">' + tiles + '</div>';
+    var rooms = A().visibleRooms ? A().visibleRooms() : [];
+    var here = '<div class="kav-sec"><b>This room</b><span>name and background</span></div>'
+      + '<input type="text" class="kav-rname" id="kav-rname" maxlength="40" aria-label="Room name" value="' + esc(E.roomName) + '">';
+    var stand = rooms.length > 1
+      ? '<div class="kav-sec"><b>Your character stands in</b></div><div class="kav-chips">' + rooms.map(function (r) {
+          var on = r.id === E.avRoom;
+          return '<button type="button" class="kav-chip' + (on ? ' on' : '') + '" data-act="avroom" data-id="' + esc(r.id) + '" aria-pressed="' + on + '">' + esc(r.name) + '</button>';
+        }).join('') + '</div>'
+      : '';
+    return here + '<div class="kav-g kav-g3" style="margin-top:10px">' + tiles + '</div>' + stand;
   }
   function panelHtml() {
     return E.tab === 'acc' ? accHtml() : E.tab === 'room' ? roomHtml() : lookHtml();
@@ -263,7 +272,7 @@
     if (t.dataset.tab) { E.tab = t.dataset.tab; renderPanel(); return; }
     var act = t.dataset.act, id = t.dataset.id;
     if (act === 'close') return close();
-    if (act === 'reset') { E.av = A().cleanAvatar(E.saved.av); E.theme = E.saved.theme; syncToggle(); renderAll(); return; }
+    if (act === 'reset') { E.av = A().cleanAvatar(E.saved.av); E.theme = E.saved.theme; E.roomName = E.saved.roomName; E.avRoom = E.saved.avRoom; syncToggle(); renderAll(); return; }
     if (act === 'save') return save();
     if (act === 'hair') { E.av.hair = id; renderChar(); renderPanel(); renderSave(); return; }
     if (act === 'outfit') { E.av.outfit = id; renderChar(); renderPanel(); renderSave(); return; }
@@ -275,6 +284,7 @@
     }
     if (act === 'acc-none') { setAcc(t.dataset.slot, null); renderChar(); renderPanel(); renderSave(); return; }
     if (act === 'room') { E.theme = id; renderRoom(); renderPanel(); renderSave(); return; }
+    if (act === 'avroom') { E.avRoom = id; renderPanel(); return; }
     if (act === 'dlg-cancel') return closeDlg();
     if (act === 'dlg-strip') return commit(true);
     if (act === 'dlg-buy') return commit(false);
@@ -361,19 +371,25 @@
       // Hidden, not-owned accessories are dropped; everything left is owned or free.
       E.av.acc = E.av.acc.filter(function (id) { return !lockOf('acc', A().find('acc', id)); });
       await A().save(E.av, E.theme);
-      // First save: the character steps into the room.
+      var cur = A().currentRoom ? A().currentRoom() : null;
+      if (cur && A().updateRoom) A().updateRoom(cur.id, E.roomName, null);
+      // First save: the character steps into the room; then into the chosen room.
       if (typeof getRoomLayout === 'function' && typeof setRoomLayout === 'function') {
-        var lay = getRoomLayout();
-        if (!lay.some(function (p) { return p && p.id === A().AV_ID; })) {
+        var placedIn = A().avatarRoom ? A().avatarRoom() : null;
+        if (!placedIn) {
+          var lay = getRoomLayout();
           var pl = {}; Object.keys(A().AV_DEFAULT_PLACE).forEach(function (k) { pl[k] = A().AV_DEFAULT_PLACE[k]; });
           lay.push(pl);
           setRoomLayout(lay);
+          placedIn = cur && cur.id;
         }
+        if (E.avRoom && placedIn && E.avRoom !== placedIn && A().moveTo) A().moveTo(A().AV_ID, E.avRoom);
       }
       if (typeof ROOM_ITEMS !== 'undefined') A().ensureRoomItem(ROOM_ITEMS);
       if (typeof _syncRoomToServer === 'function') _syncRoomToServer();
       if (typeof _applyRoomTheme === 'function') _applyRoomTheme();
       if (typeof renderRoomItems === 'function') renderRoomItems();
+      if (window.khRoomTabs) khRoomTabs.refresh();
       E.busy = false;
       close(true);
       say('Saved');
@@ -417,9 +433,11 @@
     if (!user()) { if (typeof openAuthModal === 'function') openAuthModal('login'); else say('Please sign in first'); return; }
     if (E) close();
     ensureStyle();
-    var saved = { av: A().getAvatar() || A().cleanAvatar(A().DEFAULT_AVATAR), theme: A().getRoomTheme() };
+    var curRoom = A().currentRoom ? A().currentRoom() : { id: 'main', name: 'My Room' };
+    var saved = { av: A().getAvatar() || A().cleanAvatar(A().DEFAULT_AVATAR), theme: A().getRoomTheme(),
+      roomName: curRoom.name, avRoom: (A().avatarRoom && A().avatarRoom()) || curRoom.id };
     E = {
-      saved: saved, av: A().cleanAvatar(saved.av), theme: saved.theme, tab: 'look',
+      saved: saved, av: A().cleanAvatar(saved.av), theme: saved.theme, roomName: saved.roomName, avRoom: saved.avRoom, tab: 'look',
       owned: (typeof getRoomOwned === 'function') ? getRoomOwned().slice() : [], progress: {}, busy: false, root: null
     };
     var root = document.createElement('div');
@@ -430,6 +448,7 @@
     document.documentElement.classList.add('kav-lock');
     root.addEventListener('click', onClick);
     root.querySelector('#kav-ptog').addEventListener('change', function (e) { E.av.profile = !!e.target.checked; });
+    root.addEventListener('input', function (e) { if (e.target && e.target.id === 'kav-rname') E.roomName = e.target.value; });
     document.addEventListener('keydown', onKey);
     renderAll();
     loadServer();
@@ -501,6 +520,11 @@
       '.kav-room .kav-b{left:auto;right:6px;top:6px}',
       '.kav-rn{position:relative;z-index:1;display:block;text-align:left;padding:18px 8px 6px;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(transparent,rgba(2,6,23,.75));text-shadow:0 1px 2px rgba(0,0,0,.5)}',
       '.kav-rn small{display:block;font-size:10px;font-weight:600;color:#cbd5e1}',
+      '.kav-rname{width:100%;box-sizing:border-box;font:inherit;font-size:14px;color:#fff;background:#16223b;border:1px solid #2a3858;border-radius:10px;padding:9px 12px;outline:none}',
+      '.kav-rname:focus{border-color:#7dd3fc}',
+      '.kav-chips{display:flex;flex-wrap:wrap;gap:8px}',
+      '.kav-chip{border:1px solid #2a3858;background:#16223b;color:#cbd5e1;border-radius:999px;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}',
+      '.kav-chip.on{background:#fbbf24;border-color:#fbbf24;color:#1a1300}',
       '.kav-note{display:flex;gap:8px;align-items:flex-start;margin:10px 2px 0;padding:9px 11px;border-radius:10px;background:#2a2410;border:1px solid #5b4a12;color:#fcd34d;font-size:12px;line-height:1.45}',
       '.kav-foot{display:none}',
       '.kav-reset{border:0;border-radius:12px;background:#16223b;color:#e2e8f0;font:inherit;font-weight:800;font-size:14px;cursor:pointer;padding:12px}',

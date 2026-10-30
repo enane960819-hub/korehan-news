@@ -1315,9 +1315,10 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="korehan-shared.js?v=20261030av"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261029ng"></script>
-<script src="js/features/room-view.js?v=20261030av"></script>
-<script src="js/features/avatar-art.js?v=20261030av"></script>
-<script src="js/features/avatar-editor.js?v=20261030av"></script>
+<script src="js/features/room-view.js?v=20261030rm"></script>
+<script src="js/features/avatar-art.js?v=20261030rm"></script>
+<script src="js/features/avatar-editor.js?v=20261030rm"></script>
+<script src="js/features/room-tabs.js?v=20261030rm"></script>
 <script src="js/features/room-learn.js?v=20261029rl"></script>
 <script>
 
@@ -3036,12 +3037,22 @@ function isRoomItemOwned(id) {
 }
 
 // ── Layout helpers ───────────────────────────────────────────
-function getRoomLayout() {
-  try { return JSON.parse(localStorage.getItem(K_ROOM_LAYOUT) || '[]'); } catch(e) { return []; }
+// One stored array for all rooms (entry.room = which room, none = room 1).
+// getRoomLayout / setRoomLayout work on the current room only
+// (js/features/avatar-art.js viewLayout / mergeLayout); sync uses the whole array.
+function _getRoomLayoutAll() {
+  try { var v = JSON.parse(localStorage.getItem(K_ROOM_LAYOUT) || '[]'); return Array.isArray(v) ? v : []; } catch(e) { return []; }
 }
-function setRoomLayout(arr) {
+function _setRoomLayoutAll(arr) {
   try { localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(arr)); }
   catch(e) { console.warn('room layout write failed (private mode?)', e); }
+}
+function getRoomLayout() {
+  var all = _getRoomLayoutAll();
+  return window.khAvatar ? khAvatar.viewLayout(all) : all;
+}
+function setRoomLayout(arr) {
+  _setRoomLayoutAll(window.khAvatar ? khAvatar.mergeLayout(_getRoomLayoutAll(), arr) : arr);
 }
 
 // ── Room prefs (wallpaper/floor, sound, pet affinity) ────────
@@ -3112,7 +3123,7 @@ function _syncRoomToServer() {
     if (_roomSyncInFlight) { _syncRoomToServer(); return; }
     _roomSyncInFlight = true;
     var write = function() {
-      var row = { user_id: supaUser.id, layout: getRoomLayout(), updated_at: new Date().toISOString() };
+      var row = { user_id: supaUser.id, layout: _getRoomLayoutAll(), updated_at: new Date().toISOString() };
       if (_roomPrefsCol) row.prefs = _roomPrefsBlob();
       return sb.from('user_room_state').upsert(row, { onConflict: 'user_id' });
     };
@@ -3155,8 +3166,8 @@ async function _loadRoomFromServer() {
       if (Array.isArray(r.data.layout)) {
         // Don't let an empty server layout wipe a non-empty local one that
         // hasn't synced yet; a real server layout always wins.
-        var _localLayout = getRoomLayout();
-        if (r.data.layout.length || !_localLayout.length) setRoomLayout(r.data.layout);
+        var _localLayout = _getRoomLayoutAll();
+        if (r.data.layout.length || !_localLayout.length) _setRoomLayoutAll(r.data.layout);
       }
       // Server is authoritative for ownership (only buy_room_item writes it).
       if (Array.isArray(r.data.owned)) setRoomOwned(r.data.owned);
@@ -3912,6 +3923,7 @@ async function loadRoomLayout() {
   _handlePlaceParam();
   // Today's word + study unlocks (claims reached items on the server).
   if (window.khRoomLearn) khRoomLearn.init();
+  if (window.khRoomTabs) khRoomTabs.init(); // room tabs (js/features/room-tabs.js)
 }
 
 // korehan-shop.html → "Place it now" links here with ?place=<item id>:

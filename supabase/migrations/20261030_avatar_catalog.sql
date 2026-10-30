@@ -26,9 +26,10 @@
 --    but keeps an admin's `active` choice.
 --
 -- 2. BUYING: buy_room_item stays the only purchase path and the only
---    nyang-spending writer of user_room_state.owned. It now also finds ids
---    in avatar_items, refuses unlock-only items (UNLOCK_ONLY) and items out
---    of their sale window (OUT_OF_SEASON), and logs source 'avatar_item'.
+--    nyang-spending writer of user_room_state.owned. It also finds ids in
+--    avatar_items, refuses unlock-only items (UNLOCK_ONLY) and items out of
+--    their sale window (OUT_OF_SEASON), and logs source 'avatar_item'
+--    (defined in 20261030_room_slots.sql, see below).
 --
 -- 3. UNLOCKS: kh_claim_room_unlocks also grants avatar items whose study
 --    goal is reached (hanbok: 7-day streak, barista: 100 saved words, heart
@@ -46,10 +47,10 @@
 --                     `layout` column (a later multi-room feature keeps
 --                     each further room's layout in its entry).
 --    The character stands in the room as layout entry { id: 'kh_avatar', x, y, scale, flipped }.
---    get_public_room now also returns prefs.avatar and prefs.room_theme,
---    filtered on the server: an item the owner doesn't own (and that isn't
---    free) is dropped, so editing prefs from the console can't show unowned
---    clothes or rooms to friends. Still room fields only.
+--    get_public_room (20261030_room_slots.sql) also returns prefs.avatar and
+--    the room themes, filtered on the server: an item the owner doesn't own
+--    (and that isn't free) is dropped, so editing prefs from the console
+--    can't show unowned clothes or rooms to friends. Still room fields only.
 
 -- ── 1. avatar_items ────────────────────────────────────────────────
 create table if not exists public.avatar_items (
@@ -113,103 +114,10 @@ on conflict (id) do update
       unlock_goal_target = excluded.unlock_goal_target, unlock_label = excluded.unlock_label,
       sort = excluded.sort;
 
--- Free = no price and no study goal (owned by everyone).
-create or replace function public.kh_avatar_item_free(p_id text)
-returns boolean
-language sql
-stable
-security definer
-set search_path to 'public'
-as $function$
-  select exists (select 1 from public.avatar_items a
-                  where a.id = p_id and a.active and a.price_nyang = 0 and a.unlock_goal_key is null);
-$function$;
-revoke execute on function public.kh_avatar_item_free(text) from public, anon, authenticated;
-grant execute on function public.kh_avatar_item_free(text) to service_role;
-
--- ── 2. buy_room_item: room items + avatar items ────────────────────
--- Same body as 20261029_room_learning.sql plus the avatar_items lookup,
--- OUT_OF_SEASON and the unlock-only check for avatar items.
-create or replace function public.buy_room_item(p_item_id text)
-returns jsonb
-language plpgsql
-security definer
-set search_path to 'public'
-as $function$
-declare
-  v_user_id   uuid   := auth.uid();
-  v_item      public.room_items%rowtype;
-  v_av        public.avatar_items%rowtype;
-  v_is_av     boolean := false;
-  v_price     int;
-  v_coin      bigint;
-  v_new_coin  bigint;
-  v_owned     jsonb;
-  v_name      text;
-  v_month     int := extract(month from (now() at time zone 'Asia/Seoul'))::int;
-begin
-  if v_user_id is null then
-    return jsonb_build_object('ok', false, 'error', 'UNAUTHENTICATED');
-  end if;
-  if p_item_id is null or length(p_item_id) = 0 then
-    return jsonb_build_object('ok', false, 'error', 'INVALID_INPUT');
-  end if;
-
-  select * into v_item from public.room_items where id = p_item_id and active = true;
-  if found then
-    v_price := coalesce(v_item.price_nyang, 0);
-    v_name  := coalesce(v_item.name, p_item_id);
-  else
-    select * into v_av from public.avatar_items where id = p_item_id and active = true;
-    if not found then
-      return jsonb_build_object('ok', false, 'error', 'ITEM_NOT_FOUND');
-    end if;
-    v_is_av := true;
-    v_price := coalesce(v_av.price_nyang, 0);
-    v_name  := coalesce(v_av.name, p_item_id);
-  end if;
-
-  insert into public.user_room_state (user_id) values (v_user_id) on conflict (user_id) do nothing;
-
-  select owned into v_owned from public.user_room_state where user_id = v_user_id for update;
-  if v_owned ? p_item_id then
-    select coalesce(coin_balance, 0) into v_new_coin from public.user_stats where user_id = v_user_id;
-    return jsonb_build_object('ok', true, 'already_owned', true, 'nyang_balance', v_new_coin);
-  end if;
-
-  if (not v_is_av and exists (select 1 from public.room_unlocks where item_id = p_item_id and active = true))
-     or (v_is_av and v_av.unlock_goal_key is not null) then
-    return jsonb_build_object('ok', false, 'error', 'UNLOCK_ONLY');
-  end if;
-
-  if v_is_av and v_av.sale_months is not null and cardinality(v_av.sale_months) > 0
-     and not (v_month = any (v_av.sale_months)) then
-    return jsonb_build_object('ok', false, 'error', 'OUT_OF_SEASON', 'months', to_jsonb(v_av.sale_months));
-  end if;
-
-  select coalesce(coin_balance, 0) into v_coin from public.user_stats where user_id = v_user_id for update;
-  v_coin := coalesce(v_coin, 0);
-  if v_coin < v_price then
-    return jsonb_build_object('ok', false, 'error', 'INSUFFICIENT_NYANG', 'required', v_price, 'current', v_coin);
-  end if;
-
-  v_new_coin := v_coin - v_price;
-  update public.user_stats set coin_balance = v_new_coin where user_id = v_user_id;
-
-  update public.user_room_state
-     set owned = coalesce(owned, '[]'::jsonb) || jsonb_build_array(p_item_id), updated_at = now()
-   where user_id = v_user_id;
-
-  insert into public.coin_transactions(user_id, tx_type, amount, balance_after, source, reference_id, memo)
-  values (v_user_id, 'spend', -v_price, v_new_coin,
-          case when v_is_av then 'avatar_item' else 'room_item' end, p_item_id,
-          case when v_is_av then 'Character item: ' else 'Room item: ' end || v_name);
-
-  return jsonb_build_object('ok', true, 'already_owned', false, 'price', v_price, 'nyang_balance', v_new_coin);
-end;
-$function$;
-revoke execute on function public.buy_room_item(text) from public, anon;
-grant execute on function public.buy_room_item(text) to authenticated, service_role;
+-- buy_room_item (sells these, UNLOCK_ONLY / OUT_OF_SEASON) and
+-- get_public_room (worn items filtered) are defined in 20261030_room_slots.sql,
+-- which runs right after this file and also adds extra rooms. Keeping them in
+-- one place means re-running this file can never roll them back.
 
 -- ── 3. progress: streak from kh_user_streak ────────────────────────
 create or replace function public.kh_room_unlock_progress(p_uid uuid)
@@ -377,98 +285,3 @@ end;
 $function$;
 revoke execute on function public.kh_claim_room_unlocks() from public, anon;
 grant execute on function public.kh_claim_room_unlocks() to authenticated, service_role;
-
--- ── 4. get_public_room: + worn character and room theme ────────────
-create or replace function public.get_public_room(p_user uuid)
-returns jsonb
-language plpgsql
-stable
-security definer
-set search_path to 'public'
-as $function$
-declare
-  v_layout  jsonb;
-  v_owned   jsonb;
-  v_prefs   jsonb;
-  v_viewer  uuid := auth.uid();
-  v_av      jsonb;
-  v_hair    text;
-  v_outfit  text;
-  v_acc     jsonb := '[]'::jsonb;
-  v_theme   text;
-  v_avatar  jsonb := null;
-begin
-  if p_user is null then return null; end if;
-  if v_viewer is not null and v_viewer <> p_user and to_regprocedure('public.is_blocked(uuid,uuid)') is not null then
-    if public.is_blocked(v_viewer, p_user) then return null; end if;
-  end if;
-
-  select coalesce(s.layout, '[]'::jsonb), coalesce(s.owned, '[]'::jsonb), coalesce(s.prefs, '{}'::jsonb)
-    into v_layout, v_owned, v_prefs
-    from public.user_room_state s where s.user_id = p_user;
-  if not found then return null; end if;
-  if jsonb_typeof(v_prefs) <> 'object' then v_prefs := '{}'::jsonb; end if;
-
-  -- Character: only free or owned pieces; anything else falls back.
-  v_av := v_prefs -> 'avatar';
-  if jsonb_typeof(v_av) = 'object' then
-    v_hair := v_av ->> 'hair';
-    if v_hair is null or v_hair not in ('long', 'short', 'bob', 'curly') then v_hair := 'long'; end if;
-    v_outfit := v_av ->> 'outfit';
-    if v_outfit is null or not (public.kh_avatar_item_free('av_outfit_' || v_outfit)
-         or (v_owned ? ('av_outfit_' || v_outfit)
-             and exists (select 1 from public.avatar_items a where a.id = 'av_outfit_' || v_outfit and a.active))) then
-      v_outfit := 'tee';
-    end if;
-    if jsonb_typeof(v_av -> 'acc') = 'array' then
-      select coalesce(jsonb_agg(to_jsonb(x.v) order by x.n), '[]'::jsonb) into v_acc from (
-        select distinct on (e.v) e.v, e.n
-          from jsonb_array_elements_text(v_av -> 'acc') with ordinality as e(v, n)
-         where public.kh_avatar_item_free('av_acc_' || e.v)
-            or (v_owned ? ('av_acc_' || e.v)
-                and exists (select 1 from public.avatar_items a where a.id = 'av_acc_' || e.v and a.active))
-         order by e.v, e.n
-         limit 6
-      ) x;
-    end if;
-    v_avatar := jsonb_build_object('hair', v_hair, 'outfit', v_outfit, 'acc', v_acc,
-                                   'profile', coalesce(case when jsonb_typeof(v_av -> 'profile') = 'boolean'
-                                                            then (v_av ->> 'profile')::boolean end, false));
-  end if;
-
-  -- Room theme picture (rooms[0]); 'classic' = wallpaper + floor below.
-  v_theme := v_prefs #>> '{rooms,0,theme}';
-  if v_theme is null or (v_theme <> 'classic' and not (public.kh_avatar_item_free('av_room_' || v_theme)
-       or (v_owned ? ('av_room_' || v_theme)
-           and exists (select 1 from public.avatar_items a where a.id = 'av_room_' || v_theme and a.active)))) then
-    v_theme := 'classic';
-  end if;
-
-  -- Only owned (or free) items that are actually placed, plus the character
-  -- (one entry, when the learner has one); at most 60.
-  select coalesce(jsonb_agg(e), '[]'::jsonb) into v_layout from (
-    select e from jsonb_array_elements(case when jsonb_typeof(v_layout) = 'array' then v_layout else '[]'::jsonb end)
-                  with ordinality as t(e, n)
-     where jsonb_typeof(e) = 'object'
-       and (v_owned ? (e ->> 'id')
-            or exists (select 1 from public.room_items ri where ri.id = e ->> 'id' and coalesce(ri.price_nyang, 0) = 0)
-            or (e ->> 'id' = 'kh_avatar' and v_avatar is not null
-                and n = (select min(t2.n) from jsonb_array_elements(v_layout) with ordinality as t2(e2, n)
-                          where t2.e2 ->> 'id' = 'kh_avatar')))
-     order by n
-     limit 60
-  ) x;
-
-  return jsonb_build_object(
-    'layout', v_layout,
-    'owned',  v_owned,
-    'prefs',  jsonb_build_object(
-                'theme', jsonb_build_object(
-                  'wallpaper', coalesce(v_prefs #>> '{theme,wallpaper}', 'default'),
-                  'floor',     coalesce(v_prefs #>> '{theme,floor}', 'none')),
-                'room_theme', v_theme,
-                'avatar', v_avatar));
-end;
-$function$;
-revoke execute on function public.get_public_room(uuid) from public;
-grant execute on function public.get_public_room(uuid) to anon, authenticated, service_role;
