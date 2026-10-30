@@ -1,4 +1,4 @@
-# Room themes (not wired yet)
+# Room themes (My Room → Customize → Room)
 
 Full room backgrounds from the owner's ChatGPT images (2026-10-29), cropped to the
 room box ratio (10:9, 1000x900) so `background-size: cover` shows the whole picture.
@@ -15,4 +15,5 @@ room box ratio (10:9, 1000x900) so `background-size: cover` shows the whole pict
 
 Floor items must keep their base at or below 62% of the box height so they stand on the
 floor in every theme (the two 52% rooms just have more floor). Still to come: hanok,
-spring, summer.
+spring, summer. Catalogue + prices: avatar_items (20261030_avatar_catalog.sql) and ROOMS in
+js/features/avatar-art.js; a new picture needs both, plus a KH_ROOM_ART_V bump.
