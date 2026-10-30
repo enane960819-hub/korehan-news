@@ -83,8 +83,9 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 .bg-dc .n { width:26px; height:26px; border-radius:50%; background:#2563eb; color:#fff; font-weight:900; font-size:13px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
 .bg-dc b { font-size:16px; color:#fff; }
 .bg-dc p { font-size:13px; color:#94a3b8; line-height:1.5; margin:4px 0 0; }
-.bg-dc .shot { height:170px; background:#0d1b3d; display:flex; justify-content:center; align-items:flex-start; padding-top:14px; overflow:hidden; }
-.bg-dc .shot img { width:62%; border-radius:14px 14px 0 0; border:5px solid #1e293b; border-bottom:0; }
+.bg-dc .shot { background:#0d1b3d; display:flex; justify-content:center; align-items:center; padding:14px; }
+/* Pictures are cropped to the part that matters (img/guide/*.webp, 520x640) and shown whole. */
+.bg-dc .shot img { width:68%; aspect-ratio:13/16; object-fit:cover; border-radius:12px; border:1px solid rgba(255,255,255,.12); display:block; }
 /* tabs map */
 .bg-map { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
 .bg-tab { background:#101f3f; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px; }
@@ -121,8 +122,8 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
   .hb, .bg-daily, .bg-map, .bg-fp { grid-template-columns:1fr; }
   .hb-card { order:2; }
   .bg-dc { display:grid; grid-template-columns:1fr 118px; }
-  .bg-dc .shot { height:auto; padding-top:10px; }
-  .bg-dc .shot img { width:92%; }
+  .bg-dc .shot { padding:10px; }
+  .bg-dc .shot img { width:100%; }
 }
 @media (max-width:420px) {
   .hb-row { gap:5px; }
@@ -196,9 +197,9 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
     <h2 class="bg-h2">Your daily 10 minutes</h2>
     <p class="bg-sub">The Study Room's Today's plan lines these up for you every day.</p>
     <div class="bg-daily">
-      <a class="bg-dc" href="korehan-study-room.html?review=daily"><div class="tx"><div class="n">1</div><b>Daily review</b><p>Words you saved come back right before you'd forget them. About 5 minutes.</p></div><div class="shot"><img src="img/landing/review.webp" alt="" loading="lazy"></div></a>
-      <a class="bg-dc" href="korehan-all.html" id="bg-dc-read"><div class="tx"><div class="n">2</div><b>Read one article</b><p>At your level. Tap a sentence for the English, the words and the grammar.</p></div><div class="shot"><img src="img/landing/article-tap.webp" alt="" loading="lazy"></div></a>
-      <a class="bg-dc" href="korehan-study-room.html"><div class="tx"><div class="n">3</div><b>One lesson step</b><p>This week's topic: words, grammar, listening, speaking — one step a day.</p></div><div class="shot"><img src="img/landing/lesson.webp" alt="" loading="lazy"></div></a>
+      <a class="bg-dc" href="korehan-study-room.html?review=daily"><div class="tx"><div class="n">1</div><b>Daily review</b><p>Words you saved come back right before you'd forget them. About 5 minutes.</p></div><div class="shot"><img src="img/guide/review.webp" alt="Daily review: a word with four meanings to choose from" loading="lazy"></div></a>
+      <a class="bg-dc" href="korehan-all.html" id="bg-dc-read"><div class="tx"><div class="n">2</div><b>Read one article</b><p>At your level. Tap a sentence for the English, the words and the grammar.</p></div><div class="shot"><img src="img/guide/article-tap.webp" alt="A tapped sentence with its English, words and grammar" loading="lazy"></div></a>
+      <a class="bg-dc" href="korehan-study-room.html"><div class="tx"><div class="n">3</div><b>One lesson step</b><p>This week's topic: words, grammar, listening, speaking — one step a day.</p></div><div class="shot"><img src="img/guide/lesson.webp" alt="This week's topic in the Study Room" loading="lazy"></div></a>
     </div>
   </section>
 
