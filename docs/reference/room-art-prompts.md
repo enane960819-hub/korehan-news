@@ -1,6 +1,6 @@
 # My Room item art: prompts
 
-86 items still need a picture. Nine at a time: each sheet below is ONE message that
+77 items still need a picture. Nine at a time: each sheet below is ONE message that
 makes a 3x3 picture of nine items. Send the sheet pictures back with their sheet number;
 they are cut with `python3 scripts/room-art/process.py --grid <picture> <sheet number>`
 (background removal, trim, 400x400) into `korehan/assets/room/`. An item shows up in the shop
@@ -101,16 +101,6 @@ Row 2: a colourful parrot on a perch; a small glass tank with a turtle and a roc
 Row 3: a big monstera plant in a woven basket; a small pine bonsai on a wooden stand; three tiny cacti in matching pots.
 ```
 Files, row by row: `hamster.png`, `shiba-dog.png`, `bunny.png`, `parrot.png`, `turtle-tank.png`, `goldfish-bowl.png`, `plant-monstera.png`, `bonsai.png`, `cactus-trio.png`
-
-### Sheet 7: Seasons & holidays
-
-```
-Make ONE square image: a 3x3 grid of nine separate items, evenly spaced, each centred in its own cell with plenty of empty white space around it, nothing touching, no grid lines, no labels.
-Row 1: a cheerful snowman with a red scarf; a Korean new-year lucky pouch (bokjumeoni) in red silk; a bowl of tteokguk rice cake soup.
-Row 2: a plate of colourful songpyeon rice cakes on pine needles; a pot of red carnations with a ribbon; a vase with blooming cherry blossom branches.
-Row 3: a retro electric fan; a glass jar with red and orange maple leaves; a heart-shaped box of chocolates with a bow.
-```
-Files, row by row: `snowman.png`, `bokjumeoni.png`, `tteokguk.png`, `songpyeon.png`, `carnation-pot.png`, `cherry-branch.png`, `summer-fan.png`, `maple-jar.png`, `choco-box.png`
 
 ### Older items (one picture each)
 
