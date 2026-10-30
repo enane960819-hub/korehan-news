@@ -34,7 +34,12 @@
         z-index:99999;
         min-width:200px;
         max-width:300px;
-        pointer-events:auto;
+        /* Hidden = transparent AND untouchable. With only opacity:0 the box
+           stayed on top (z 99999) where it last opened — after closing
+           Article Study its Save / Listen buttons kept catching taps and
+           the Study Room under it didn't respond (owner 2026-10-30). */
+        pointer-events:none;
+        visibility:hidden;
         background:#0f172a;
         color:#fff;
         border-radius:16px;
@@ -42,11 +47,14 @@
         box-shadow:0 18px 40px rgba(2,8,23,.38);
         opacity:0;
         transform:translateY(6px);
-        transition:opacity .12s,transform .12s;
+        transition:opacity .12s,transform .12s,visibility 0s linear .12s;
       }
       .kh-hover-tip.show{
         opacity:1;
         transform:translateY(0);
+        pointer-events:auto;
+        visibility:visible;
+        transition:opacity .12s,transform .12s,visibility 0s;
       }
       .kh-hover-tip .kh-tip-close{
         position:absolute;top:4px;right:4px;
@@ -688,6 +696,7 @@
     var t = ensureTooltip();
     t.classList.remove('show');
   }
+  window.khHideHoverTip = hideTooltip;   // modals call this when they close
 
   function installObserver() {
     if (observer) observer.disconnect();
