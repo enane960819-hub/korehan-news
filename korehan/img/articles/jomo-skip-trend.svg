@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fdf3ea"/>
+      <stop offset="1" stop-color="#f6e9f1"/>
+    </linearGradient>
+    <linearGradient id="room" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef3fb"/>
+      <stop offset="1" stop-color="#e2eaf6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <circle cx="160" cy="130" r="90" fill="#fbe9dc"/>
+  <circle cx="560" cy="700" r="120" fill="#f9e4ea"/>
+
+  <!-- left: dessert shop -->
+  <rect x="70" y="210" width="400" height="390" rx="14" fill="#fffaf5"/>
+  <g>
+    <path d="M60 210 h420 v60 h-420 Z" fill="#f2a7a0"/>
+    <path d="M60 210 h60 v60 h-60 Z M180 210 h60 v60 h-60 Z M300 210 h60 v60 h-60 Z M420 210 h60 v60 h-60 Z" fill="#fbd9cf"/>
+    <path d="M60 270 q30 26 60 0 q30 26 60 0 q30 26 60 0 q30 26 60 0 q30 26 60 0 q30 26 60 0 q30 26 60 0" fill="#f2a7a0"/>
+  </g>
+  <!-- window with a giant cookie and a rice-cake stack -->
+  <rect x="100" y="320" width="220" height="170" rx="12" fill="#fdeee2" stroke="#e7b9a2" stroke-width="6"/>
+  <circle cx="170" cy="410" r="50" fill="#c98e5e"/>
+  <circle cx="170" cy="410" r="38" fill="#a7c97a"/>
+  <circle cx="158" cy="398" r="6" fill="#7f9f56"/><circle cx="184" cy="420" r="5" fill="#7f9f56"/><circle cx="168" cy="428" r="4" fill="#7f9f56"/>
+  <rect x="236" y="430" width="64" height="26" rx="12" fill="#f7e7a8"/>
+  <rect x="242" y="404" width="52" height="26" rx="12" fill="#fbefc4"/>
+  <rect x="248" y="380" width="40" height="24" rx="11" fill="#f7e7a8"/>
+  <!-- door -->
+  <rect x="350" y="360" width="90" height="240" rx="8" fill="#e7b9a2"/>
+  <circle cx="426" cy="480" r="6" fill="#fffaf5"/>
+
+  <!-- the queue: simple faceless figures -->
+  <g fill="#8c9ab8">
+    <rect x="452" y="520" width="34" height="80" rx="16"/><circle cx="469" cy="500" r="17"/>
+    <rect x="506" y="526" width="34" height="74" rx="16" fill="#a3aecb"/><circle cx="523" cy="508" r="16" fill="#a3aecb"/>
+    <rect x="556" y="518" width="34" height="82" rx="16" fill="#b9a3c4"/><circle cx="573" cy="498" r="17" fill="#b9a3c4"/>
+    <rect x="606" y="528" width="34" height="72" rx="16"/><circle cx="623" cy="510" r="16"/>
+    <rect x="652" y="522" width="34" height="78" rx="16" fill="#c7b2a0"/><circle cx="669" cy="503" r="17" fill="#c7b2a0"/>
+  </g>
+  <g fill="#c3cadb" opacity=".8">
+    <rect x="700" y="534" width="30" height="66" rx="14"/><circle cx="715" cy="518" r="14"/>
+    <rect x="742" y="540" width="28" height="60" rx="13"/><circle cx="756" cy="525" r="13"/>
+  </g>
+  <!-- a long dotted tail: the queue goes on -->
+  <g fill="#d3d8e6"><circle cx="790" cy="580" r="6"/><circle cx="812" cy="580" r="5"/><circle cx="830" cy="580" r="4"/></g>
+  <!-- tiny clock above the queue -->
+  <circle cx="600" cy="420" r="34" fill="#fffaf5" stroke="#8c9ab8" stroke-width="6"/>
+  <path d="M600 420 V398 M600 420 L616 430" stroke="#8c9ab8" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- ground -->
+  <rect x="0" y="600" width="1200" height="200" fill="#f1ddd3"/>
+  <rect x="0" y="600" width="1200" height="10" fill="#e7cbbd"/>
+
+  <!-- right: a cosy room -->
+  <rect x="820" y="150" width="330" height="450" rx="22" fill="url(#room)"/>
+  <!-- window with moon -->
+  <rect x="870" y="190" width="140" height="120" rx="10" fill="#c9d8ef" stroke="#fffaf5" stroke-width="8"/>
+  <path d="M940 190 V310 M870 250 H1010" stroke="#fffaf5" stroke-width="6"/>
+  <circle cx="985" cy="220" r="14" fill="#fdf6d8"/>
+  <!-- lamp -->
+  <rect x="1080" y="300" width="8" height="190" fill="#a7b3c9"/>
+  <path d="M1050 300 h68 l-14 -46 h-40 Z" fill="#f7d98b"/>
+  <ellipse cx="1084" cy="492" rx="30" ry="8" fill="#a7b3c9"/>
+  <!-- sofa -->
+  <rect x="846" y="420" width="250" height="110" rx="30" fill="#8fb6a8"/>
+  <rect x="846" y="390" width="250" height="70" rx="30" fill="#a4c7ba"/>
+  <rect x="834" y="430" width="44" height="110" rx="20" fill="#7ea597"/>
+  <rect x="1066" y="430" width="44" height="110" rx="20" fill="#7ea597"/>
+  <rect x="860" y="536" width="14" height="40" rx="4" fill="#6e8d82"/><rect x="1072" y="536" width="14" height="40" rx="4" fill="#6e8d82"/>
+  <!-- resting figure under a blanket (no face) -->
+  <circle cx="906" cy="428" r="24" fill="#c7b2a0"/>
+  <path d="M920 420 q80 -40 150 6 q10 40 -10 58 h-150 q-16 -30 10 -64 Z" fill="#f2c6b6"/>
+  <path d="M940 440 q50 -20 110 4" stroke="#e9ab98" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- side table: mug, radio, phone face down -->
+  <rect x="980" y="560" width="150" height="14" rx="6" fill="#c9a98d"/>
+  <rect x="1000" y="574" width="10" height="26" fill="#b8987d"/><rect x="1100" y="574" width="10" height="26" fill="#b8987d"/>
+  <rect x="992" y="520" width="34" height="40" rx="6" fill="#fffaf5" stroke="#d6bfa8" stroke-width="4"/>
+  <path d="M1026 528 q16 4 0 22" stroke="#d6bfa8" stroke-width="4" fill="none"/>
+  <path d="M1002 510 q-8 -12 2 -22 M1016 510 q-8 -12 2 -22" stroke="#c3cadb" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <rect x="1040" y="524" width="62" height="36" rx="8" fill="#e58c6e"/>
+  <circle cx="1058" cy="542" r="10" fill="#fbd9cf"/>
+  <rect x="1074" y="534" width="20" height="6" rx="3" fill="#fbd9cf"/><rect x="1074" y="546" width="20" height="6" rx="3" fill="#fbd9cf"/>
+  <path d="M1092 524 l12 -22" stroke="#8c9ab8" stroke-width="4" stroke-linecap="round"/>
+  <rect x="1108" y="548" width="24" height="12" rx="4" fill="#5b6b86"/>
+  <!-- music notes from the radio -->
+  <g fill="#8c9ab8">
+    <circle cx="1118" cy="470" r="7"/><rect x="1123" y="440" width="4" height="30"/>
+    <circle cx="1140" cy="452" r="6"/><rect x="1144" y="424" width="4" height="28"/>
+  </g>
+
+  <!-- curved arrow: stepping out of the line -->
+  <path d="M700 360 C 740 260, 800 250, 830 300" stroke="#e58c6e" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="4 16"/>
+  <path d="M812 292 L 834 306 L 838 280" stroke="#e58c6e" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
