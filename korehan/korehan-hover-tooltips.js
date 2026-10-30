@@ -286,15 +286,44 @@
 
       vocabList = merged;
       vocabWords = vocabList.map(function(x){ return x.word_ko; }).sort(function(a,b){ return b.length - a.length; });
+      _rebuildIndex();
     } catch (e) {
       console.warn('hover vocab load failed', e);
       vocabList = [];
       vocabWords = [];
+      _rebuildIndex();
     }
   }
 
+  // ── Lookup index (2026-10-30 perf) ───────────────────────────
+  // findFirstMatch used to build two RegExps per dictionary word (~6k words)
+  // for every text node, and every sweep re-scanned text it had already
+  // scanned. Opening a sentence-analysis panel triggered a sweep of the
+  // whole article: 1.5 s+ main-thread freezes on phones (scroll "lag").
+  // Now: one Set/Map lookup per Hangul run, multi-word entries in one
+  // precompiled regex, and text nodes that found nothing are remembered.
+  var _byWord = new Map();      // word_ko → entry
+  var _exact = new Set();       // single-run words (no spaces)
+  var _stems = new Map();       // stem of a 다/요 word → longest such word
+  var _multiRe = null;          // words containing a space, longest first
+  var _scanned = new WeakSet(); // text nodes already scanned with this index
+  function _rebuildIndex() {
+    _byWord = new Map(); _exact = new Set(); _stems = new Map(); _scanned = new WeakSet();
+    var multi = [];
+    vocabList.forEach(function(v){ if (v && v.word_ko && !_byWord.has(v.word_ko)) _byWord.set(v.word_ko, v); });
+    vocabWords.forEach(function(w){
+      if (!w) return;
+      if (/\s/.test(w)) { multi.push(w); return; }
+      _exact.add(w);
+      if (w.length >= 3 && /[다요]$/.test(w)) {
+        var stem = w.slice(0, -1);
+        if (stem.length >= 2 && !_stems.has(stem)) _stems.set(stem, w);
+      }
+    });
+    _multiRe = multi.length ? new RegExp('(^|[^가-힣])(' + multi.map(escapeRegExp).join('|') + ')(?![가-힣])') : null;
+  }
   function getVocab(word) {
-    return vocabList.find(function(v){ return v.word_ko === word; }) || null;
+    return _byWord.get(word) || null;
   }
 
   // Expose the merged dictionary to other surfaces (e.g. story
@@ -335,53 +364,38 @@
     return false;
   }
 
+  var _PARTICLE_TRAILER = /^(에|의|을|를|이|가|도|만|과|와|로|부터|까지|보다|마저|조차|처럼|만큼|랑|하고|이라|라는|라고)/;
+  // Leftmost match in the text: a whole Hangul run that is a dictionary word,
+  // or a 다/요 word's stem + 1-4 ending syllables (e.g. 첨벙거리다 →
+  // 첨벙거리는), or a multi-word entry. Same word-boundary rules as before.
   function findFirstMatch(text) {
-    for (var i = 0; i < vocabWords.length; i++) {
-      var word = vocabWords[i];
-      // 1) Exact match with word boundary
-      var regex = new RegExp('(^|[^가-힣])(' + escapeRegExp(word) + ')(?![가-힣])');
-      var m = text.match(regex);
-      if (m) {
-        var full = m[0];
-        var matchedWord = m[2];
-        var index = text.indexOf(full) + full.indexOf(matchedWord);
-        return { word: word, matched: matchedWord, index: index };
-      }
-      // 2) Stem match for dictionary-form verbs / adjectives: allow the stem
-      //    to match followed by up to 4 Korean chars (conjugation endings).
-      //    e.g. vocab '첨벙거리다' → matches '첨벙거리는' / '첨벙거렸어요' in body.
-      if (word.length >= 3 && /[다요]$/.test(word)) {
-        var stem = word.slice(0, -1);
-        if (stem.length >= 2) {
-          var stemRe = new RegExp('(^|[^가-힣])(' + escapeRegExp(stem) + ')([가-힣]{1,4})');
-          var m2 = text.match(stemRe);
-          if (m2) {
-            var trailer = m2[3];
-            // Reject false positives where the "conjugation" is actually a
-            // noun particle attached to a homograph noun — e.g. vocab
-            // '사이다' (cider, a noun that happens to end in 다) should NOT
-            // match '사이에서' (between + locative). Particle-initial
-            // trailers like 에, 의, 을, 부터, 처럼 never appear at the
-            // start of a verb / adjective ending, so we can safely skip.
-            var isParticleTrailer = /^(에|의|을|를|이|가|도|만|과|와|로|부터|까지|보다|마저|조차|처럼|만큼|랑|하고|이라|라는|라고)/.test(trailer);
-            if (!isParticleTrailer) {
-              var full2 = m2[0];
-              var mword2 = m2[2] + trailer;
-              var idx2 = text.indexOf(full2) + full2.indexOf(mword2);
-              return { word: word, matched: mword2, index: idx2 };
-            }
-          }
-        }
+    var best = null;
+    if (_multiRe) {
+      var mm = text.match(_multiRe);
+      if (mm) best = { word: mm[2], matched: mm[2], index: mm.index + mm[1].length };
+    }
+    var re = /[가-힣]+/g, m;
+    while ((m = re.exec(text))) {
+      if (best && m.index >= best.index) break;
+      var tok = m[0];
+      if (_exact.has(tok)) return { word: tok, matched: tok, index: m.index };
+      for (var L = Math.min(tok.length - 1, 30); L >= 2; L--) {
+        var w = _stems.get(tok.slice(0, L));
+        if (!w) continue;
+        var trailer = tok.slice(L, L + 4);
+        if (_PARTICLE_TRAILER.test(trailer)) continue;
+        return { word: w, matched: tok.slice(0, L) + trailer, index: m.index };
       }
     }
-    return null;
+    return best;
   }
 
   function wrapTextNode(node) {
+    if (_scanned.has(node)) return;
     var text = node.nodeValue;
-    if (!text || !text.trim()) return;
+    if (!text || !text.trim()) { _scanned.add(node); return; }
     var match = findFirstMatch(text);
-    if (!match) return;
+    if (!match) { _scanned.add(node); return; }
 
     // Vocab lookup uses the dictionary form; visible text uses the actual
     // matched string (may be a conjugated form longer than the dictionary entry).
@@ -771,6 +785,7 @@
     // Rebuild sorted vocab word list (longest first)
     vocabWords = vocabList.map(function(x){ return x.word_ko; })
       .sort(function(a,b){ return b.length - a.length; });
+    _rebuildIndex();
     applyHoverTooltips();
   };
 })();

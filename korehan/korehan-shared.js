@@ -457,14 +457,23 @@ function ensureKhLucide() {
   return _khLucideReady;
 }
 
+// Many renderers call this right after injecting markup; calls in the same
+// frame now share one createIcons pass (each pass scans the whole page).
+var _khLucideQueued = false;
 function renderKhLucideIcons() {
+  if (_khLucideQueued) return;
+  _khLucideQueued = true;
   ensureKhLucide().then(function(lucideLib) {
-    if (!lucideLib || typeof lucideLib.createIcons !== 'function') return;
-    lucideLib.createIcons({
-      attrs: {
-        'stroke-width': 1.9
-      }
-    });
+    var run = function() {
+      _khLucideQueued = false;
+      if (!lucideLib || typeof lucideLib.createIcons !== 'function') return;
+      lucideLib.createIcons({
+        attrs: {
+          'stroke-width': 1.9
+        }
+      });
+    };
+    if (window.requestAnimationFrame && !document.hidden) requestAnimationFrame(run); else run();
   });
 }
 
@@ -8035,43 +8044,39 @@ async function saveVocabToDB(word, rom, en, isDelete) {
   }
 }
 
-function wrapVocab(el) {
+// wrapVocab's lookup tables, rebuilt only when VOCAB changes (2026-10-30 perf:
+// it used to compile two regexes from every VOCAB key on every call — about
+// 1 s of main thread per article open on a phone).
+var _khWrapIdx = null;
+function _khWrapIndex() {
+  var all = Object.keys(VOCAB);
+  var sig = all.length + '|' + all[0] + '|' + all[all.length >> 1] + '|' + all[all.length - 1];
+  if (_khWrapIdx && _khWrapIdx.sig === sig) return _khWrapIdx;
   // Require at least 2 Korean chars — 1-char entries (particles, single-syllable
   // verbs/nouns) match inside every compound word and fragment the underline
   // character-by-character.
-  var keys  = Object.keys(VOCAB).filter(function(k){ return k && k.length >= 2; })
-                                .sort(function(a, b){ return b.length - a.length; });
-  if (!keys.length) return;
-  // Build two parallel lists:
-  //   directKeys  — exact-match vocab (regular words, plus stems)
-  //   stemMap     — { stem -> dictionary form }, so when we match the stem +
-  //                 conjugation in the body we can resolve back to the
-  //                 dictionary entry the vocab list uses (재미있는 → 재미있다).
-  var directKeys = keys.slice();
-  var stemMap = {};
-  keys.forEach(function(k) {
+  var keys = all.filter(function(k){ return k && k.length >= 2; });
+  var direct = new Set(keys), maxDirect = 0;
+  //   stemMap — { stem -> dictionary form }, so when we match the stem +
+  //   conjugation in the body we can resolve back to the dictionary entry the
+  //   vocab list uses (재미있는 → 재미있다). Longest dictionary form wins a stem.
+  var stemMap = new Map(), maxStem = 0;
+  keys.slice().sort(function(a, b){ return b.length - a.length; }).forEach(function(k) {
+    if (k.length > maxDirect) maxDirect = k.length;
     if (k.length >= 3 && /[다요]$/.test(k)) {
       var stem = k.slice(0, -1);
-      if (stem.length >= 2 && !stemMap[stem]) stemMap[stem] = k;
+      if (stem.length >= 2 && !stemMap.has(stem)) { stemMap.set(stem, k); if (stem.length > maxStem) maxStem = stem.length; }
     }
   });
-  var stems = Object.keys(stemMap).sort(function(a,b){ return b.length - a.length; });
+  _khWrapIdx = { sig: sig, size: keys.length, direct: direct, maxDirect: maxDirect, stemMap: stemMap, maxStem: maxStem };
+  return _khWrapIdx;
+}
+function _khIsHangul(c) { return c >= 0xAC00 && c <= 0xD7A3; }
 
-  function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-
-  // Direct match: exact word with Korean word-boundary on the LEFT
-  // side only. Dropping the right-side boundary matches the same
-  // lenient rule as inArticleBody (V4.9) — without it "중요" in
-  // VOCAB never highlighted inside body "중요한" because 한 is
-  // Korean. Length>=2 filter above prevents single-char false
-  // positives; stems (from ~다/요 entries) keep their own longer
-  // regex below and still outrank direct matches via the overlap
-  // resolver.
-  var directRe = new RegExp('(?:^|[^\\uAC00-\\uD7A3])(' + directKeys.map(esc).join('|') + ')', 'g');
-  // Stem match: stem followed by 1-4 Korean chars (conjugation).
-  var stemRe = stems.length
-    ? new RegExp('(?:^|[^\\uAC00-\\uD7A3])((?:' + stems.map(esc).join('|') + ')[\\uAC00-\\uD7A3]{1,4})(?![\\uAC00-\\uD7A3])', 'g')
-    : null;
+function wrapVocab(el) {
+  var idx = _khWrapIndex();
+  if (!idx.size) return;
+  var stemMap = idx.stemMap;
 
   var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: function(n) {
@@ -8115,27 +8120,39 @@ function wrapVocab(el) {
   nodes.forEach(function(node) {
     var text = node.nodeValue;
     var spans = [];
-    function pushMatches(re, isStem) {
-      if (!re) return;
-      re.lastIndex = 0;
-      var m;
-      while ((m = re.exec(text)) !== null) {
-        var matched = m[1];
-        var wordStart = m.index + (m[0].length - matched.length);
-        var wordEnd = wordStart + matched.length;
-        var dictForm = matched;
-        if (isStem) {
-          // Find which stem prefix matched and resolve back to dictionary form.
-          for (var i = 0; i < stems.length; i++) {
-            if (matched.indexOf(stems[i]) === 0) { dictForm = stemMap[stems[i]]; break; }
+    // Same rules as the old regexes: a match starts at a Korean word
+    // boundary on the LEFT (start of text or after a non-Hangul char).
+    //   direct — longest VOCAB key that the text continues with (no right
+    //            boundary, so 중요 still highlights inside 중요한);
+    //   stem   — a 다/요 entry's stem + 1-4 Hangul chars ending the word.
+    function scan(isStem) {
+      var i = 0, n = text.length;
+      while (i < n) {
+        if (i > 0 && _khIsHangul(text.charCodeAt(i - 1))) { i++; continue; }
+        var hit = null;
+        if (!isStem) {
+          for (var L = Math.min(idx.maxDirect, n - i); L >= 2; L--) {
+            var cand = text.substr(i, L);
+            if (idx.direct.has(cand)) { hit = { start: i, end: i + L, text: cand, dict: cand }; break; }
+          }
+        } else {
+          // (a stem can hold a space: 줄을 서다 → 줄을 서는)
+          for (var S = Math.min(idx.maxStem, n - i - 1); S >= 2; S--) {
+            var dictForm = stemMap.get(text.substr(i, S));
+            if (!dictForm) continue;
+            var e = i + S;
+            while (e < n && _khIsHangul(text.charCodeAt(e))) e++;
+            var tail = e - i - S;
+            if (tail < 1 || tail > 4) continue;
+            hit = { start: i, end: e, text: text.slice(i, e), dict: dictForm };
+            break;
           }
         }
-        spans.push({ start: wordStart, end: wordEnd, text: matched, dict: dictForm });
-        if (re.lastIndex <= wordEnd) re.lastIndex = wordEnd; // skip past trailing boundary
+        if (hit) { spans.push(hit); i = hit.end + 1; } else i++;
       }
     }
-    pushMatches(directRe, false);
-    pushMatches(stemRe, true);
+    scan(false);
+    scan(true);
     if (!spans.length) return;
     // Sort by start asc, then by length desc — longer claims overlapping range.
     spans.sort(function(a,b){ return a.start - b.start || (b.end - b.start) - (a.end - a.start); });
