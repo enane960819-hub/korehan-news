@@ -11895,6 +11895,7 @@ function closeCommentDrawer() {
   window._khCdrOpener = null;
 }
 
+var KH_FEED_SWIPE_ON = false;   // vertical swipe between articles — paused (owner 2026-10-30)
 // Vertical feed navigation — "swipe up for next article" pattern.
 // Keeps the current page as a single-article render; we don't stack
 // multiple articles in DOM (would fight the existing reader layout
@@ -12299,7 +12300,9 @@ function setupFeedNavigation() {
   // strict: we ONLY navigate when the page can't scroll any further in
   // that direction. That eliminates the 'I scrolled to read the next
   // paragraph and the article jumped' class of bug.
-  if (!window._khFeedSwipeHooked) {
+  // Paused (owner 2026-10-30): set KH_FEED_SWIPE_ON = true to bring the swipe back.
+  // The Next / Prev article buttons stay.
+  if (KH_FEED_SWIPE_ON && !window._khFeedSwipeHooked) {
     window._khFeedSwipeHooked = true;
     var startY = 0;
     var startX = 0;
