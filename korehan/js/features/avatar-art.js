@@ -225,17 +225,18 @@
     'short-doctor': [173, 372, 82.6, 117.6, 1.03, 0, 10, 163],
     'short-kpop': [178, 365, 84.6, 111.5, 1.03, 0, 9, 168]
   };
-  // Sprites with headwear drawn in (cap, beret, cat ears, flower pin, straw
-  // hat, heart glasses on the head, pajama headband, witch hat, red hood):
-  // head accessories are hidden on them. Sprites with glasses drawn in hide
-  // face accessories. (Checked by eye on every sprite, 2026-10-30.)
-  var HEADWEAR = { 'long-street': 1, 'bob-street': 1, 'long-cute': 1, 'bob-cute': 1, 'bob-hanbok': 1, 'long-summer': 1,
-    'bob-summer': 1, 'long-pajamas': 1, 'bob-pajamas': 1, 'long-halloween': 1, 'bob-halloween': 1 };
-  // Hats / hijabs / hood drawn on every hair of these outfits.
-  ['cowboy', 'hijab', 'hijab-sport', 'chef', 'christmas', 'graduation'].forEach(function (o) {
+  // Sprites with headwear drawn in hide head accessories; sprites with glasses
+  // drawn in hide face accessories. (2026-10-31 redraw: every outfit drawn on
+  // one template, so only real hats / hoods / hijabs are listed.)
+  var HEADWEAR = {};
+  ['cowboy', 'chef', 'christmas', 'graduation'].forEach(function (o) {
     HAIRS.forEach(function (h) { HEADWEAR[h.id + '-' + o] = 1; });
   });
-  var GLASSES = { 'bob-summer': 1, 'curly-uniform': 1 };
+  ['long-halloween', 'bob-halloween', 'long-hijab', 'bob-hijab', 'long-hijab-sport', 'bob-hijab-sport'].forEach(function (k) { HEADWEAR[k] = 1; });
+  var GLASSES = {};
+  // Accessory anchors (ANCHOR) were measured on the first base-long; keep its
+  // metrics as the fixed reference so redrawn sprites map onto them.
+  var REF = [176, 368, 88.0, 107.0, 1.00, 0, 26, 154];
   // Accessory anchors on base-long: centre x, y, drawn width, y mode
   // (bottom = sprite bottom at y, centre = sprite centre at y), reference
   // (face = eyes, hair = hair top / edges). Cat ears and sakura pin moved
@@ -382,7 +383,7 @@
   function hidesFace(av) { return !!GLASSES[spriteName(av.hair, av.outfit)]; }
 
   function accBox(sp, id, natW, natH) {
-    var m = SPRITE[sp] || SPRITE['base-long'], B = SPRITE['base-long'];
+    var m = SPRITE[sp] || SPRITE['base-long'], B = REF;
     var a = ANCHOR[id];
     var k, cx, cy;
     if (a[4] === 'face') {
