@@ -37,15 +37,45 @@ def mask(path):
     core=op&(d<7)&(ch>15)
     lb,sz=comps(core)
     keep=np.isin(lb,np.nonzero(sz>=60)[0])&core
-    w=keep.astype(float)
-    # soft edge: up to 2 px around kept skin, pixels that are skin-ish (looser) get a partial weight
+    # forehead bits showing between hair strands: small pieces, but only in the head band
+    H0=core.shape[0]; top=np.zeros_like(core); top[:int(H0*0.36)]=True
+    keep|=np.isin(lb,np.nonzero((sz>=2)&(sz<60))[0])&core&top&(d<5)
+    # Shading: darker, more orange skin (ear insides, neck and hairline shadow) that touches the
+    # skin. Hair is darker (L < 45); cream / pink clothes are paler (chroma < ~22) or pinker.
+    hue=np.degrees(np.arctan2(L[...,2],L[...,1]))
+    shade=op&(L[...,0]>=46)&(L[...,0]<=84)&(ch>=24)&(hue>=36)&(hue<=72)
     cur=keep.copy()
-    for it in range(2):
+    for it in range(10):
         nb=np.zeros_like(cur)
         nb[1:]|=cur[:-1]; nb[:-1]|=cur[1:]; nb[:,1:]|=cur[:,:-1]; nb[:,:-1]|=cur[:,1:]
-        ring=nb&~cur&op&(d<16)&(ch>10)&(L[...,0]>30)
+        add=nb&~cur&shade
+        if not add.any(): break
+        cur|=add
+    # small holes fully inside the skin (nostril dots, blush specks) that aren't dark lines
+    hole=op&~cur&(L[...,0]>=50)
+    hl,hs=comps(hole)
+    H,W=cur.shape
+    for i in np.nonzero((hs>0)&(hs<=30))[0]:
+        if i==0: continue
+        ys,xs=np.nonzero(hl==i)
+        if ys.min()==0 or xs.min()==0 or ys.max()==H-1 or xs.max()==W-1: continue
+        ring=np.zeros_like(cur); ring[np.clip(ys+1,0,H-1),xs]=1; ring[np.clip(ys-1,0,H-1),xs]=1; ring[ys,np.clip(xs+1,0,W-1)]=1; ring[ys,np.clip(xs-1,0,W-1)]=1
+        ring&=~(hl==i)
+        if cur[ring].mean()>0.9: cur[hl==i]=True
+    w=cur.astype(float)
+    # the reddish skin outline right next to the skin (1 px), so darker tones get no orange halo
+    nb=np.zeros_like(cur)
+    nb[1:]|=cur[:-1]; nb[:-1]|=cur[1:]; nb[:,1:]|=cur[:,:-1]; nb[:,:-1]|=cur[:,1:]
+    line=nb&~cur&op&(L[...,0]>=28)&(L[...,0]<62)&(ch>=14)&(hue>=25)&(hue<=75)
+    w=np.where(line,0.85,w)
+    # soft edge: 2 px of anti-aliased skin-ish pixels around it get a partial weight
+    edge=cur.copy()
+    for it in range(2):
+        nb=np.zeros_like(edge)
+        nb[1:]|=edge[:-1]; nb[:-1]|=edge[1:]; nb[:,1:]|=edge[:,:-1]; nb[:,:-1]|=edge[:,1:]
+        ring=nb&~edge&op&(d<16)&(ch>10)&(L[...,0]>30)
         w=np.where(ring,np.maximum(w,np.clip(1-(d-7)/12,0.35,1)),w)
-        cur=cur|ring
+        edge=edge|ring
     return (w*255).astype(np.uint8)
 names=[f[:-4] for f in sorted(os.listdir(AV)) if f.endswith('.png') and not f.startswith('acc-')]
 for n in (sys.argv[1:] or names):
