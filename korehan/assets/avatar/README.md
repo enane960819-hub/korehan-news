@@ -54,3 +54,9 @@ base so the face sits at scale 1.0): cowboy, hijab, hijab-sport, aodai, taekwond
 christmas, padding, graduation (x4 hairs = 36). Headwear drawn in (head accessories hidden):
 cowboy, hijab, hijab-sport, chef, christmas, graduation on every hair. Sheet C (doctor,
 astronaut, kpop) added the same day; none of them has headwear.
+
+Normalized (2026-10-31, owner: "sizes and faces differ"): every outfit sprite is scaled so its face
+matches its base-<hair> face (face scale 1.0 in SPRITE). The A-D sheets were re-cut with a full
+scale search (the first cut's search started at 1.05, so those faces came out too big); the older
+outfits at 0.94/0.97 were enlarged to 1.0. Customize tiles draw every outfit at one fixed scale with
+the feet on the tile floor (avatar-editor.js figH), so a hat no longer shrinks the figure.
