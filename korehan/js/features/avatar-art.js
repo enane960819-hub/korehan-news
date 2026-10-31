@@ -60,7 +60,10 @@
     { id: 'taekwondo', name: 'Taekwondo', price: 0, goal: { key: 'games_played', target: 20, label: 'Finish 20 games', short: '20 games' } },
     { id: 'graduation', name: 'Graduation', price: 0, goal: { key: 'articles_read', target: 30, label: 'Read 30 articles', short: '30 articles' } },
     { id: 'padding', name: 'Winter padding', price: 350, months: [11, 12, 1, 2], season: 'Nov–Feb' },
-    { id: 'christmas', name: 'Christmas', price: 350, months: [12], season: 'December' }
+    { id: 'christmas', name: 'Christmas', price: 350, months: [12], season: 'December' },
+    { id: 'doctor', name: 'Doctor', price: 400 },
+    { id: 'kpop', name: 'K-pop stage', price: 450 },
+    { id: 'astronaut', name: 'Astronaut', price: 0, goal: { key: 'streak_days', target: 14, label: 'Study 14 days in a row', short: 'Streak 14' } }
   ];
   // slot: one item per slot. top = band / crown on top of the head,
   // pinr / pinl = clip on the right / left side, face = glasses.
@@ -207,7 +210,20 @@
     'short-hijab': [182, 360, 90.0, 102.0, 1.00, 0, 24, 157],
     'short-hijab-sport': [182, 366, 92.0, 98.0, 1.00, 0, 26, 159],
     'short-padding': [189, 366, 94.0, 118.0, 1.00, 0, 24, 174],
-    'short-taekwondo': [175, 360, 82.0, 116.0, 1.00, 0, 12, 161]
+    'short-taekwondo': [175, 360, 82.0, 116.0, 1.00, 0, 12, 161],
+    // 2026-10-31 sheet C
+    'bob-astronaut': [207, 363, 112.0, 110.0, 1.00, 0, 48, 183],
+    'bob-doctor': [180, 360, 88.0, 108.0, 1.00, 0, 26, 158],
+    'bob-kpop': [181, 360, 90.0, 106.0, 1.00, 0, 26, 160],
+    'curly-astronaut': [209, 371, 108.0, 118.0, 1.00, 0, 31, 197],
+    'curly-doctor': [190, 370, 92.0, 118.0, 1.00, 0, 16, 176],
+    'curly-kpop': [193, 359, 94.0, 110.0, 1.00, 0, 20, 177],
+    'long-astronaut': [216, 369, 110.0, 114.0, 1.00, 0, 41, 182],
+    'long-doctor': [191, 363, 96.0, 108.0, 1.00, 0, 31, 165],
+    'long-kpop': [198, 359, 98.0, 106.0, 1.00, 0, 31, 169],
+    'short-astronaut': [209, 376, 110.0, 120.0, 1.00, 0, 39, 190],
+    'short-doctor': [173, 371, 82.0, 118.0, 1.00, 0, 11, 161],
+    'short-kpop': [175, 361, 84.0, 110.0, 1.00, 0, 10, 165]
   };
   // Sprites with headwear drawn in (cap, beret, cat ears, flower pin, straw
   // hat, heart glasses on the head, pajama headband, witch hat, red hood):
