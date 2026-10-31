@@ -227,6 +227,8 @@
   // Accessory anchors (ANCHOR) were measured on the first base-long; keep its
   // metrics as the fixed reference so redrawn sprites map onto them.
   var REF = [176, 368, 88.0, 107.0, 1.00, 0, 26, 154];
+  // Per-hair nudge for head pieces on the redrawn bases: [dx, dy, size].
+  var HEAD_TUNE = { long: [0, 0, 1], bob: [0, 0, 1], short: [0, 0, 1], curly: [0, 0, 1] };
   // Accessory anchors on base-long: centre x, y, drawn width, y mode
   // (bottom = sprite bottom at y, centre = sprite centre at y), reference
   // (face = eyes, hair = hair top / edges). Cat ears and sakura pin moved
@@ -381,9 +383,14 @@
       cx = m[2] + (a[0] - B[2]) * k;
       cy = m[3] + (a[1] - B[3]) * k;
     } else {
-      k = (m[7] - m[6]) / (B[7] - B[6]);
-      cx = (m[6] + m[7]) / 2 + (a[0] - (B[6] + B[7]) / 2) * k;
-      cy = m[5] + (a[1] - B[5]) * k;
+      // Every outfit shares its hair style's head (2026-10-31 redraw), so head
+      // pieces are placed on base-<hair> and moved with the eyes: hoods, collars
+      // and stray curls in an outfit picture no longer shift them.
+      var hair = sp.indexOf('base-') === 0 ? sp.slice(5) : sp.split('-')[0];
+      var H = SPRITE['base-' + hair] || m, T = HEAD_TUNE[hair] || [0, 0, 1];
+      k = (H[7] - H[6]) / (B[7] - B[6]) * T[2];
+      cx = (H[6] + H[7]) / 2 + (a[0] - (B[6] + B[7]) / 2) * k + T[0] + (m[2] - H[2]);
+      cy = H[5] + (a[1] - B[5]) * k + T[1] + (m[3] - H[3]);
     }
     var w = a[2] * k, h = natH * w / natW;
     return { x: cx - w / 2, y: a[3] === 'bottom' ? cy - h : cy - h / 2, w: w, h: h };
