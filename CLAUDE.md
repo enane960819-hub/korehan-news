@@ -429,6 +429,10 @@ supabase functions deploy claude-proxy
   even with `jq -Rsa` escapes. For big seeds / repairs send the text as base64 and let Postgres decode
   it (`convert_from(decode('<b64>', 'base64'), 'UTF8')`, see `20261031_fix_broken_chars_article_cache_b64.sql`),
   and scan the table for U+FFFD after it applies.
+- **Streak = `kh_user_streak` (KST days with a `daily_missions` row) on every screen and device.** This device's
+  own study log (`getCurrentStreak`) is only a guess until the server answers; `khStreakNow()` asks the server
+  and `kh:streak` repaints anything drawn from the guess. A real 0 is a number: never `x || user_stats.streak`
+  (that stored column is stale).
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 

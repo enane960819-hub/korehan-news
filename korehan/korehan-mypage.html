@@ -1341,7 +1341,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261030qa"></script>
-<script src="korehan-shared.js?v=20261031hg"></script>
+<script src="korehan-shared.js?v=20261101st"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261030fx"></script>
 <script src="js/features/room-view.js?v=20261031ar"></script>
@@ -1471,6 +1471,12 @@ async function dbGetUserStats() {
   return statsData;
 }
 
+// The streak tile follows the server number when it lands or changes (kh:streak, korehan-shared.js).
+window.addEventListener('kh:streak', function (e) {
+  var el = document.getElementById('mp-streak-n');
+  if (el && e && e.detail && typeof e.detail.streak === 'number') el.textContent = e.detail.streak;
+});
+
 async function dbGetXPLog() {
   if (!supaUser) return [];
   var sb = getSupa();
@@ -1545,7 +1551,7 @@ function renderMiniStats(stats) {
       + '<span class="stat-n">' + value + '</span><span class="stat-lbl">' + label + '</span></div>';
   }
   el.innerHTML = '<div class="mp-stats">'
-    + tile(us.mission_streak || us.streak || 0, 'day streak')
+    + tile('<span id="mp-streak-n">' + (typeof us.mission_streak === 'number' ? us.mission_streak : (us.streak || 0)) + '</span>', 'day streak')
     + tile('<span id="mp-real-word-count">' + (us.words_saved || 0) + '</span>', 'saved words', ' clickable" role="button" tabindex="0" onclick="openSavedWordsModal()')
     + tile(coinVal.toLocaleString(), 'nyang', '', 'coin')
     + '</div>';
