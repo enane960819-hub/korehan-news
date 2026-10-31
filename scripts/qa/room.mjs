@@ -277,6 +277,7 @@ try {
       await noEmoji(page, '#mp-miniroom-section', T('room section'));
 
       // ── My Items drawer: filters, place every owned item ──
+      await editOn(page, mobile);   // My items lives in the edit dock (2026-10-31)
       await tapEl(page, 'button[onclick="openRoomShop(true)"]', mobile);
       await page.waitForSelector('.room-shop-overlay', { timeout: 8000 });
       check(/My Items/.test(await page.textContent('.room-shop-header h3')), T('My Items: drawer opens as My Items'));
@@ -301,10 +302,12 @@ try {
       // Esc closes the drawer
       await page.keyboard.press('Escape'); await sleep(200);
       check(!(await page.$('.room-shop-overlay')), T('My Items: Esc closes'));
+      await editOn(page, mobile);   // My items lives in the edit dock (2026-10-31)
       await tapEl(page, 'button[onclick="openRoomShop(true)"]', mobile);
       await page.waitForSelector('.room-shop-overlay');
       await page.mouse.click(5, 5); await sleep(200);
       check(!(await page.$('.room-shop-overlay')), T('My Items: backdrop tap closes'));
+      await editOff(page, mobile);
       await waitSynced(page);
       s0 = await roomState(page);
       check(!allInside(s0.dom).length, T('after placing: all items inside the room'), allInside(s0.dom));
@@ -450,7 +453,7 @@ try {
       const sAfterDone = await roomState(page);
       check(!posDiff(sBeforeDone.view, sAfterDone.view).length && !domDiff(sBeforeDone.dom, sAfterDone.dom).length, T('Done: nothing moves when saving'), posDiff(sBeforeDone.view, sAfterDone.view).concat(domDiff(sBeforeDone.dom, sAfterDone.dom)));
       check(/Room saved/.test(await lastToast(page)), T('Done: "Room saved!" toast'), await lastToast(page));
-      check(await page.evaluate(() => !_roomEditing && document.getElementById('room-edit-btn').textContent.trim() === 'Edit Room' && getComputedStyle(document.getElementById('room-size-controls')).display === 'none'), T('Done: leaves edit mode'));
+      check(await page.evaluate(() => !_roomEditing && document.getElementById('room-edit-btn').textContent.trim() === 'Edit' && getComputedStyle(document.getElementById('room-size-controls')).display === 'none'), T('Done: leaves edit mode'));
       await waitSynced(page);
       const row = await serverRow(page);
       check(!posDiff(sAfterDone.all, row.layout).length && row.layout.length === sAfterDone.all.length, T('Done: server layout matches the room'), posDiff(sAfterDone.all, row.layout));
@@ -462,10 +465,10 @@ try {
       check(!!fr && fr.scale === 105 && !!fr.flipped === !flip0, T('reload: size + flip persist'), fr);
       check(JSON.stringify(sReload.order) === JSON.stringify(sAfterDone.order), T('reload: layer order persists'), { was: sAfterDone.order, now: sReload.order });
 
-      // ── Save button (same as Done) ──
+      // ── Done saves (the separate Save button is gone, 2026-10-31) ──
       await editOn(page, mobile);
       const sv0 = await roomState(page);
-      await tapEl(page, '#room-save-btn', mobile); await sleep(300);
+      await tapEl(page, '#room-edit-btn', mobile); await sleep(300);
       const sv1 = await roomState(page);
       check(!posDiff(sv0.view, sv1.view).length && !(await page.evaluate(() => _roomEditing)), T('Save button: saves, leaves edit mode, nothing moves'), posDiff(sv0.view, sv1.view));
 
@@ -542,9 +545,10 @@ try {
       check(!posDiff(ne0.view, ne1.view).length, T('outside edit mode: dragging does nothing'), posDiff(ne0.view, ne1.view));
 
       // ── Theme drawer + light switch ──
-      const themeBtn = await page.$('#room-theme-btn');
+      await editOn(page, mobile);   // Background lives in the edit dock (2026-10-31)
+      const themeBtn = await page.$('#room-bg-btn');
       if (themeBtn && await themeBtn.isVisible()) {
-        await tapEl(page, '#room-theme-btn', mobile); await sleep(200);
+        await tapEl(page, '#room-bg-btn', mobile); await sleep(200);
         check(await page.evaluate(() => document.getElementById('room-theme-drawer').classList.contains('open')), T('wallpaper button opens the drawer'));
         await tapEl(page, '#room-theme-drawer .room-theme-swatch[data-id="brick"]', mobile); await sleep(200);
         check(await page.evaluate(() => _getRoomTheme().wallpaper === 'brick' && /repeating-linear-gradient/.test(document.getElementById('miniroom-container').style.background)), T('pick wallpaper Brick: room shows it'));
@@ -565,9 +569,10 @@ try {
         }
         check(okToggle, T('wallpaper button: open/close x6 (icon and edge taps) always toggles'));
         await page.evaluate(() => document.getElementById('room-theme-drawer').classList.remove('open'));
-        await tapEl(page, '#room-theme-btn', mobile); await sleep(200);
+        await tapEl(page, '#room-bg-btn', mobile); await sleep(200);
         await page.keyboard.press('Escape'); await sleep(150);
         check(await page.evaluate(() => !document.getElementById('room-theme-drawer').classList.contains('open')), T('wallpaper drawer: Esc closes'));
+        await editOff(page, mobile);   // the light switch shows when not editing
         // lights off / on → wallpaper comes back (Brick), not the default
         await tapEl(page, '#room-light-switch', mobile); await sleep(150);
         check(await page.evaluate(() => document.getElementById('miniroom-container').classList.contains('room-lights-off')), T('light switch: lights off'));
@@ -639,10 +644,11 @@ try {
     // ── Room tabs ──
     if (want('tabs')) {
       await page.evaluate(() => document.getElementById('mp-miniroom-section').scrollIntoView());
+      await editOn(page, mobile);   // + New and the tab row show while editing (2026-10-31)
       const rooms0 = await page.evaluate(() => khAvatar.allRooms());
       const lay0 = await page.evaluate(() => _getRoomLayoutAll());
       // + New on a free account with 1 room → paid sheet
-      await tapEl(page, '#rt-tabs .rt-new', mobile);
+      await editOn(page, mobile); await tapEl(page, '#rt-tabs .rt-new', mobile);
       await page.waitForSelector('.rt-ov .rt-sheet', { timeout: 8000 });
       const sheetTxt = await page.textContent('.rt-sheet');
       check(/Add a room/.test(sheetTxt) && /600 nyang/.test(sheetTxt) && /Room 2 of 3/.test(sheetTxt), T('+ New: "Add a room", Room 2 of 3, 600 nyang'), sheetTxt.slice(0, 200));
@@ -653,15 +659,15 @@ try {
       await page.fill('.rt-sheet .rt-in', 'Typed then cancelled');
       await tapEl(page, '.rt-sheet [data-sact="cancel"]', mobile); await sleep(200);
       check(!(await page.$('.rt-ov')) && JSON.stringify(await page.evaluate(() => khAvatar.allRooms())) === JSON.stringify(rooms0), T('+ New → Cancel: no room added'));
-      await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
+      await editOn(page, mobile); await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
       await page.keyboard.press('Escape'); await sleep(200);
       check(!(await page.$('.rt-ov')), T('+ New → Esc closes'));
-      await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
+      await editOn(page, mobile); await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
       await page.mouse.click(5, 5); await sleep(200);
       check(!(await page.$('.rt-ov')), T('+ New → backdrop closes'));
       // buy fails → nothing added, message shown
       fake.buy = { ok: false, error: 'INSUFFICIENT_NYANG', current: 880 };
-      await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
+      await editOn(page, mobile); await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
       const addBtn = await page.$('.rt-sheet [data-sact="add"]');
       if (addBtn && !(await addBtn.isDisabled())) {
         await tapEl(page, addBtn, mobile); await sleep(800);
@@ -675,7 +681,7 @@ try {
       // buy ok (faked) + the server now allows 2 rooms (faked) → room 2 added
       fake.buy = { ok: true, nyang_balance: 280 };
       fake.slots = { ok: true, premium: false, allowed: 2, max: 3, next: { slot: 3, price: 1000, premium_only: false, locked: false } };
-      await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
+      await editOn(page, mobile); await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
       await page.fill('.rt-sheet .rt-in', 'QA Room 2');
       await tapEl(page, '.rt-sheet .rt-th1[data-pick="classroom"]', mobile);
       await tapEl(page, '.rt-sheet [data-sact="add"]', mobile); await sleep(1200);
@@ -774,7 +780,7 @@ try {
         check(!(await page.$('.kav-ov')), T('Customize: Esc closes'));
       } else { await page.keyboard.press('Escape'); }
       // the paid sheet says "Room 3 of 3 · 1,000 nyang"
-      await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
+      await editOn(page, mobile); await tapEl(page, '#rt-tabs .rt-new', mobile); await page.waitForSelector('.rt-ov');
       check(/1,000 nyang/.test(await page.textContent('.rt-sheet')) && /Room 3 of 3/.test(await page.textContent('.rt-sheet')), T('+ New with 2 rooms: Room 3 of 3, 1,000 nyang'), (await page.textContent('.rt-sheet')).slice(0, 160));
       // locked background in the Add-a-room sheet: stays in the sheet and points at the hint
       const lockedNew = await page.$('.rt-sheet .rt-th1[data-locked]');
@@ -787,6 +793,7 @@ try {
       await noEmoji(page, '#mp-miniroom-section', T('room section with tabs'));
       // back to room 1 for the next sections
       await tapEl(page, '#rt-tabs .rt-tab[data-room="main"]', mobile); await sleep(300);
+      await editOff(page, mobile);
     }
 
     // ── Customize ──
@@ -794,7 +801,7 @@ try {
       await page.evaluate(() => document.getElementById('mp-miniroom-section').scrollIntoView());
       const av0 = await page.evaluate(() => khAvatar.getAvatar());
       const lay0 = await page.evaluate(() => _getRoomLayoutAll());
-      await tapEl(page, '#room-customize-btn', mobile);
+      await editOn(page, mobile); await tapEl(page, '#room-customize-btn', mobile);
       await page.waitForSelector('.kav-ov .kav', { timeout: 8000 });
       await sleep(800);
       await shot(page, kind + '-09-customize');
@@ -856,7 +863,7 @@ try {
       check(await page.evaluate(() => !document.documentElement.classList.contains('kav-lock')), T('Customize closed: page scroll unlocked'));
 
       // Save dialog with a locked outfit + locked background
-      await tapEl(page, '#room-customize-btn', mobile); await page.waitForSelector('.kav-ov .kav'); await sleep(600);
+      await editOn(page, mobile); await tapEl(page, '#room-customize-btn', mobile); await page.waitForSelector('.kav-ov .kav'); await sleep(600);
       const buyable = outfits.find((o) => o.locked && /^[\d,]+$/.test(o.badge.trim()));
       await tapEl(page, '.kav-panel [data-act="outfit"][data-id="' + buyable.id + '"]', mobile); await sleep(200);
       await tapEl(page, '.kav-tabs [data-tab="room"]', mobile); await sleep(150);
@@ -897,14 +904,14 @@ try {
       check(await page.evaluate(() => !!document.querySelector('.room-placed-item[data-item-id="kh_avatar"]')), T('character is drawn in the room'));
       await waitSynced(page);
       // Profile picture toggle
-      await tapEl(page, '#room-customize-btn', mobile); await page.waitForSelector('.kav-ov .kav'); await sleep(500);
+      await editOn(page, mobile); await tapEl(page, '#room-customize-btn', mobile); await page.waitForSelector('.kav-ov .kav'); await sleep(500);
       await page.evaluate(() => document.getElementById('kav-ptog').scrollIntoView());
       await page.click('.kav-prof', { force: true }).catch(async () => { await page.check('#kav-ptog', { force: true }); });
       check(await page.$eval('#kav-ptog', (t) => t.checked), T('profile picture toggle: turns on'));
       await tapEl(page, saveSel, mobile); await sleep(1200);
       check(await page.evaluate(() => khAvatar.getAvatar().profile === true && !!document.querySelector('.mp-avatar-wrap img.kh-av-face')), T('profile picture on: hero shows the character face'));
       // Buy & save success path (faked) → saved + owned
-      await tapEl(page, '#room-customize-btn', mobile); await page.waitForSelector('.kav-ov .kav'); await sleep(500);
+      await editOn(page, mobile); await tapEl(page, '#room-customize-btn', mobile); await page.waitForSelector('.kav-ov .kav'); await sleep(500);
       await tapEl(page, '.kav-panel [data-act="outfit"][data-id="' + buyable.id + '"]', mobile); await sleep(200);
       fake.buy = { ok: true, nyang_balance: 500 };
       await tapEl(page, saveSel, mobile); await sleep(200);
@@ -913,7 +920,7 @@ try {
       check(!avB.open && avB.av.outfit === buyable.id, T('Buy & save (purchase ok): saved with the bought outfit'), avB);
       check(fake.blocked.some((b) => b.includes('av_outfit_' + buyable.id)), T('Buy & save asks buy_room_item for av_outfit_' + buyable.id));
       // profile toggle off again, without buying anything
-      await tapEl(page, '#room-customize-btn', mobile); await page.waitForSelector('.kav-ov .kav'); await sleep(400);
+      await editOn(page, mobile); await tapEl(page, '#room-customize-btn', mobile); await page.waitForSelector('.kav-ov .kav'); await sleep(400);
       await page.click('.kav-prof', { force: true });
       await tapEl(page, '.kav-tabs [data-tab="look"]', mobile);
       await tapEl(page, saveSel, mobile); await sleep(800);

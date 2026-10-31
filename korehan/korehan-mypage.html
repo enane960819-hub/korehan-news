@@ -478,6 +478,37 @@ body.kh-neon-on .mypage-hero {
 /* ═══ Mini Room ═══ */
 #miniroom-container { user-select:none; -webkit-user-select:none; }
 #mp-miniroom-section.is-editing #room-unlocks { display:none !important; }
+/* My Room look / edit modes (owner mockup 2026-10-31) */
+.room-edit-btn{position:absolute;right:10px;bottom:10px;z-index:30;display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border:0;border-radius:999px;background:#fbbf24;color:#1a1300;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 6px 14px rgba(0,0,0,.35)}
+.room-edit-btn svg,.room-edit-btn i{width:16px;height:16px}
+.room-edit-bar{display:none;position:absolute;left:8px;right:8px;top:8px;z-index:29;align-items:center;min-height:42px;padding:0 90px 0 12px;border-radius:12px;background:rgba(11,21,48,.84);color:#e2e8f0;font-size:12.5px;pointer-events:none}
+.room-edit-bar b{color:#fff}
+#mp-miniroom-section.is-editing .room-edit-bar{display:flex}
+#mp-miniroom-section.is-editing .room-edit-btn{top:13px;bottom:auto;right:14px;padding:7px 14px;border-radius:9px;font-size:13px;box-shadow:none}
+#mp-miniroom-section.is-editing .room-edit-btn svg,#mp-miniroom-section.is-editing .room-edit-btn i{display:none}
+#mp-miniroom-section.is-editing #miniroom-container{outline:2px dashed #fbbf24;outline-offset:-2px}
+#mp-miniroom-section.is-editing #room-bgm-btn,#mp-miniroom-section.is-editing #room-light-switch{display:none !important}
+#room-theme-btn{display:none !important}
+.room-dock{display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;max-width:600px;margin:12px auto 0}
+#mp-miniroom-section.is-editing .room-dock{display:grid}
+@media(min-width:760px){.room-dock{max-width:920px}}
+#mp-miniroom-section .room-dk{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 2px;border-radius:14px;border:1px solid rgba(255,255,255,.1) !important;background:rgba(255,255,255,.06) !important;color:#e2e8f0 !important;font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap;min-width:0}
+#mp-miniroom-section .room-dk svg,#mp-miniroom-section .room-dk i{width:22px;height:22px;color:#fbbf24}
+#mp-miniroom-section #room-edit-btn{background:#fbbf24 !important;color:#1a1300 !important;border:0 !important}
+#mp-miniroom-section:not(.is-editing) .rt-new,#mp-miniroom-section:not(.is-editing) .rt-pen{display:none !important}
+#mp-miniroom-section:not(.is-editing) .rt-tabs.rt-single{display:none !important}
+body.kh-room-editing .mobile-bottom-nav{display:none !important}
+/* Selected item: its tools float over the room next to it */
+#room-sel-controls.rsel-float{position:absolute;z-index:28;padding:5px;border-radius:12px;background:rgba(11,21,48,.94);box-shadow:0 6px 16px rgba(0,0,0,.4);white-space:nowrap}
+#room-sel-controls.rsel-float .rsel-k,#room-sel-controls.rsel-float input[type=range],#room-sel-controls.rsel-float #room-size-value{display:none !important}
+#room-sel-controls.rsel-float > div{display:inline-flex !important;gap:4px !important;margin:0 !important;flex-wrap:nowrap !important;vertical-align:middle}
+#room-sel-controls.rsel-float > div + div{margin-left:4px !important}
+#room-sel-controls.rsel-float .room-ctrl-btn{width:34px;height:34px;padding:0 !important;margin:0 !important;font-size:0 !important;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;background:rgba(255,255,255,.1) !important;border:0 !important;color:#fff !important}
+#room-sel-controls.rsel-float .room-ctrl-btn svg{width:16px;height:16px}
+#room-sel-controls.rsel-float .room-ctrl-danger svg{color:#f87171}
+#mp-miniroom-section.is-editing #miniroom-container.room-editing-active::after{display:none}
+#room-size-controls > .room-ctrl-btn{background:rgba(255,255,255,.06) !important;border:1px solid rgba(255,255,255,.1) !important;color:#cbd5e1 !important}
+
 .room-placed-item {
   position:absolute; background-repeat:no-repeat;
   transition: outline .15s, box-shadow .15s;
@@ -1195,34 +1226,37 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
       <div id="room-bgm-drawer" class="room-bgm-drawer" role="menu" aria-label="Background music tracks"></div>
       <button type="button" id="room-theme-btn" class="room-theme-btn" onclick="toggleRoomThemeDrawer(event)" aria-label="Wallpaper and floor" title="Wallpaper &amp; floor"><i data-lucide="image" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
       <div id="room-theme-drawer" class="room-theme-drawer" role="menu" aria-label="Wallpaper and floor"></div>
+      <div id="room-edit-bar" class="room-edit-bar" aria-hidden="true"><span>Editing <b id="room-edit-name">My Room</b></span></div>
+      <button type="button" id="room-edit-btn" class="room-edit-btn" onclick="onRoomEditBtn()"><i data-lucide="pencil" aria-hidden="true"></i><span>Edit</span></button>
     </div>
-    <!-- Controls -->
-    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
-      <button onclick="openRoomShop(true)" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">My Items</button>
-      <button onclick="onRoomEditBtn()" id="room-edit-btn" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Edit Room</button>
-      <button type="button" onclick="if(window.khAvatarEditor)khAvatarEditor.open()" id="room-customize-btn" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Customize</button>
-      <a href="korehan-shop.html" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;font-family:inherit">Shop →</a>
-      <button onclick="saveRoomLayout()" id="room-save-btn" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none">Save</button>
+    <!-- Edit dock (owner mockup 2026-10-31): looking = just the room + one Edit button;
+         editing = Done bar on the room and every tool in this dock. -->
+    <div class="room-dock" id="room-dock">
+      <button type="button" class="room-dk" onclick="openRoomShop(true)"><i data-lucide="package" aria-hidden="true"></i><span>My items</span></button>
+      <button type="button" class="room-dk" id="room-customize-btn" onclick="if(window.khAvatarEditor)khAvatarEditor.open()"><i data-lucide="shirt" aria-hidden="true"></i><span>Character</span></button>
+      <button type="button" class="room-dk" id="room-bg-btn" onclick="openRoomBackground(event)"><i data-lucide="image" aria-hidden="true"></i><span>Theme</span></button>
+      <a class="room-dk" href="korehan-shop.html"><i data-lucide="shopping-bag" aria-hidden="true"></i><span>Shop</span></a>
     </div>
+    <button onclick="saveRoomLayout()" id="room-save-btn" style="display:none">Save</button>
     <div id="room-size-controls" style="margin-top:10px;text-align:center;display:none">
       <!-- Size / Flip / Front / Back only make sense for a selected item. -->
       <div id="room-sel-controls" style="display:none">
-      <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px">Selected item size</div>
+      <div class="rsel-k" style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px">Selected item size</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
-        <button class="room-ctrl-btn room-ctrl-icon" onclick="nudgeSelectedItemScale(-10)" aria-label="Decrease size">−</button>
+        <button class="room-ctrl-btn room-ctrl-icon" onclick="nudgeSelectedItemScale(-10)" aria-label="Smaller" title="Smaller"><i data-lucide="minus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
         <input type="range" id="room-size-slider" min="70" max="170" step="5" value="100" style="width:170px;height:36px" oninput="onRoomSizeSlider(this.value)">
-        <button class="room-ctrl-btn room-ctrl-icon" onclick="nudgeSelectedItemScale(10)" aria-label="Increase size">+</button>
+        <button class="room-ctrl-btn room-ctrl-icon" onclick="nudgeSelectedItemScale(10)" aria-label="Bigger" title="Bigger"><i data-lucide="plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
         <span id="room-size-value" style="font-size:12px;font-weight:800;color:#0b1626;min-width:42px;text-align:left">100%</span>
       </div>
       <div style="display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap">
         <button class="room-ctrl-btn" onclick="flipSelectedItem()" title="Flip"><i data-lucide="flip-horizontal-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Flip</button>
         <button class="room-ctrl-btn" onclick="moveSelectedLayer(1)" title="Bring forward"><i data-lucide="arrow-up" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Front</button>
         <button class="room-ctrl-btn" onclick="moveSelectedLayer(-1)" title="Send back"><i data-lucide="arrow-down" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Back</button>
-        <button id="room-remove-btn" class="room-ctrl-btn room-ctrl-danger" onclick="removeSelectedRoomItem()" style="display:none">Remove</button>
+        <button id="room-remove-btn" class="room-ctrl-btn room-ctrl-danger" onclick="removeSelectedRoomItem()" style="display:none" aria-label="Remove" title="Remove"><i data-lucide="trash-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Remove</button>
       </div>
       </div>
       <button class="room-ctrl-btn" onclick="resetRoomPositions()" style="margin-top:8px" title="Put every item back in view"><i data-lucide="rotate-ccw" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Reset positions</button>
-      <div style="font-size:10px;color:#94a3b8;margin-top:6px">Tap an item → resize/flip/layer · Hold → remove</div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px">Drag to move · tap an item for its tools · Done saves</div>
     </div>
     <!-- Study unlocks (js/features/room-learn.js, room_unlocks). Below the room controls so the
          edit buttons sit right under the room; hidden while editing. -->
@@ -1308,7 +1342,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/core/articles.js?v=20261029x"></script>
 <script src="js/core/reporters.js?v=20261029ng"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
-<script src="js/features/daily-mission.js?v=20261030dm"></script>
+<script src="js/features/daily-mission.js?v=20261031mr"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
 <script src="js/features/bookmarks.js?v=20261029s"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
@@ -1316,13 +1350,13 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261030qa"></script>
-<script src="korehan-shared.js?v=20261031i"></script>
+<script src="korehan-shared.js?v=20261031j"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261030fx"></script>
 <script src="js/features/room-view.js?v=20261030qa"></script>
-<script src="js/features/avatar-art.js?v=20261031ac"></script>
-<script src="js/features/avatar-editor.js?v=20261031fa"></script>
-<script src="js/features/room-tabs.js?v=20261030rt"></script>
+<script src="js/features/avatar-art.js?v=20261031sk"></script>
+<script src="js/features/avatar-editor.js?v=20261031sk"></script>
+<script src="js/features/room-tabs.js?v=20261031mr"></script>
 <script src="js/features/room-learn.js?v=20261031rl"></script>
 <script>
 
@@ -4043,11 +4077,15 @@ function toggleRoomEdit() {
   var btn = document.getElementById('room-edit-btn');
   var saveBtn = document.getElementById('room-save-btn');
   var container = document.getElementById('miniroom-container');
-  // While editing the button reads "Done" (it saves and leaves edit mode).
-  if (btn) btn.textContent = _roomEditing ? 'Done' : 'Edit Room';
-  if (saveBtn) saveBtn.style.display = _roomEditing ? '' : 'none';
+  // While editing the button reads "Done" (it saves and leaves edit mode) and sits in
+  // the edit bar on the room; the bottom tab bar steps aside so the dock is reachable.
+  if (btn) { var lb = btn.querySelector('span'); if (lb) lb.textContent = _roomEditing ? 'Done' : 'Edit'; else btn.textContent = _roomEditing ? 'Done' : 'Edit'; }
   var roomSec = document.getElementById('mp-miniroom-section');
   if (roomSec) roomSec.classList.toggle('is-editing', _roomEditing);
+  document.body.classList.toggle('kh-room-editing', _roomEditing);
+  var nameEl = document.getElementById('room-edit-name');
+  if (nameEl && window.khAvatar && khAvatar.currentRoom) nameEl.textContent = khAvatar.currentRoom().name || 'My Room';
+  if (!_roomEditing) { var td = document.getElementById('room-theme-drawer'); if (td) td.classList.remove('open'); }
   if (container) {
     container.classList.toggle('room-editing-active', _roomEditing);
     container.style.touchAction = _roomEditing ? 'none' : 'auto';
@@ -4188,6 +4226,7 @@ function roomDragEnd(e) {
     // safe even if the user never taps Save.
     if (didMove) {
       try { _autoSaveRoomLayout(); } catch (e) { console.warn('auto-save failed', e && e.message); }
+      _placeRoomSelTools();
     }
   }
   _unbindDragListeners();
@@ -4338,6 +4377,33 @@ function updateRoomSizeUI() {
   valueEl.style.opacity = _selectedRoomItemId ? '1' : '.45';
   var selCtl = document.getElementById('room-sel-controls');
   if (selCtl) selCtl.style.display = (_roomEditing && _selectedRoomItemId) ? '' : 'none';
+  _placeRoomSelTools();
+}
+// The selected item's tools float over the room, just above (or below) the item.
+function _placeRoomSelTools(again) {
+  var selCtl = document.getElementById('room-sel-controls');
+  var room = document.getElementById('miniroom-container');
+  if (!selCtl || !room) return;
+  if (selCtl.parentNode !== room) { room.appendChild(selCtl); selCtl.classList.add('rsel-float'); }
+  if (!_roomEditing || !_selectedRoomItemId) return;
+  // Icons draw a frame later and widen the bar: measure again once they're in.
+  if (!again) setTimeout(function () { _placeRoomSelTools(true); }, 80);
+  var el = document.querySelector('.room-placed-item.room-selected');
+  if (!el) return;
+  var rr = room.getBoundingClientRect(), er = el.getBoundingClientRect();
+  var w = Math.min(selCtl.offsetWidth || 260, rr.width - 12), h = selCtl.offsetHeight || 46;
+  var x = Math.max(6, Math.min(rr.width - w - 6, er.left - rr.left + er.width / 2 - w / 2));
+  var y = er.top - rr.top - h - 6;
+  if (y < 56) y = Math.min(rr.height - h - 6, er.bottom - rr.top + 6);
+  selCtl.style.left = Math.round(x) + 'px';
+  selCtl.style.top = Math.round(Math.max(56, y)) + 'px';
+}
+// Background tile in the edit dock: picture themes are chosen in Customize → Room;
+// the Classic room keeps its wallpaper / floor drawer.
+function openRoomBackground(ev) {
+  var classic = !(window.khAvatar && khAvatar.getRoomTheme) || khAvatar.getRoomTheme() === 'classic';
+  if (classic && typeof toggleRoomThemeDrawer === 'function') return toggleRoomThemeDrawer(ev);
+  if (window.khAvatarEditor) khAvatarEditor.open('room');
 }
 
 // Slider fires `input` at ~60Hz. Render the visual transform on every tick

@@ -99,6 +99,7 @@
         + (on ? '<span class="rt-pen">' + ic('pencil') + '</span>' : '') + '</button>';
     }).join('') + (canAdd ? '<button type="button" class="rt-tab rt-new" data-act="new">' + ic('plus') + '<span>New</span></button>' : '');
     el.hidden = false;
+    el.classList.toggle('rt-single', vis.length < 2);   // looking at one room: no tab row (My Room mockup 2026-10-31)
     icons();
     var on = el.querySelector('.rt-tab.on');
     if (on && on.scrollIntoView && el.scrollWidth > el.clientWidth) { try { on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) {} }
@@ -113,7 +114,9 @@
     var vis = A().visibleRooms(), cur = A().currentRoom();
     var idx = 0; vis.forEach(function (r, i) { if (r.id === cur.id) idx = i; });
     var n = placedCount();
-    el.innerHTML = '<span><b>' + esc(cur.name) + '</b> · ' + n + (n === 1 ? ' item' : ' items') + '</span><span>Room ' + (idx + 1) + ' of ' + vis.length + '</span>';
+    el.innerHTML = '<span><b>' + esc(cur.name) + '</b> · ' + n + (n === 1 ? ' item' : ' items') + '</span><span class="rt-of">Room ' + (idx + 1) + ' of ' + vis.length + '</span>'
+      + '<a class="rt-shop" href="korehan-shop.html">Shop' + ic('arrow-right') + '</a>';
+    icons();
   }
   function renderAll() { renderTabs(); renderCap(); renderTray(); }
 
@@ -378,6 +381,9 @@
       '.rt-i{width:15px;height:15px;flex:none}',
       '.rt-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin:0 auto;max-width:920px;scrollbar-width:none;-webkit-overflow-scrolling:touch}',
       '.rt-tabs::-webkit-scrollbar{display:none}',
+      '#mp-miniroom-section:not(.is-editing) .rt-of{display:none}#mp-miniroom-section.is-editing .rt-shop{display:none}',
+      '.rt-shop{display:inline-flex;align-items:center;gap:3px;color:#2563eb;font-weight:700;text-decoration:none}.rt-shop svg{width:14px;height:14px}',
+      'body.kh-neon-on .rt-shop{color:#93c5fd}',
       '.rt-tab{flex:none;display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e2e8f0;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;max-width:220px}',
       '.rt-tab span{overflow:hidden;text-overflow:ellipsis}',
       '.rt-tab:hover{background:rgba(255,255,255,.1)}',

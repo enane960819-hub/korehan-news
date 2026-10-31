@@ -89,6 +89,11 @@
     { id: 'kpop-studio', name: 'K-pop studio', price: 1200 },
     { id: 'attic', name: 'Starry attic', price: 0, goal: { key: 'streak_days', target: 30, label: 'Study 30 days in a row', short: 'Streak 30' } }
   ];
+  // Skin tones (free, 2026-10-31): the drawn skin is multiplied by these RGB factors,
+  // weighted by a per-sprite mask (assets/avatar/skin/<sprite>.png, built by
+  // scripts/avatar/skin-masks.py) so clothes that are skin-coloured stay as they are.
+  var SKINS = { light: null, tan: [0.92, 0.84, 0.76], brown: [0.74, 0.60, 0.48], deep: [0.54, 0.40, 0.31] };
+  var SKIN_SWATCH = { light: '#f6d3b8', tan: '#e0b48f', brown: '#b07a55', deep: '#7c5039' };
   var KIND_PREFIX = { outfit: 'av_outfit_', acc: 'av_acc_', room: 'av_room_' };
   function serverId(kind, id) { return KIND_PREFIX[kind] + id; }
   function list(kind) { return kind === 'outfit' ? OUTFITS : kind === 'acc' ? ACCS : kind === 'room' ? ROOMS : HAIRS; }
@@ -251,6 +256,7 @@
   function artUrl(path) { return (typeof khRoomImg === 'function') ? khRoomImg(path) : path; }
   function spriteName(hair, outfit) { return (!outfit || outfit === 'tee') ? 'base-' + hair : hair + '-' + outfit; }
   function spriteUrl(hair, outfit) { return artUrl('assets/avatar/' + spriteName(hair, outfit) + '.png'); }
+  function skinUrl(sp) { return artUrl('assets/avatar/skin/' + sp + '.png'); }
   function accUrl(id) { return artUrl('assets/avatar/acc-' + id + '.png'); }
   function themeUrl(id) { return artUrl('assets/room/themes/' + id + '.webp'); }
 
@@ -267,7 +273,8 @@
       seen[it.slot] = 1;
       acc.push(it.id);
     });
-    return { hair: hair, outfit: outfit, acc: acc, profile: a.profile === true };
+    var skin = SKINS[a.skin] ? a.skin : 'light';
+    return { hair: hair, outfit: outfit, acc: acc, profile: a.profile === true, skin: skin };
   }
   var MAX_ROOMS = 5;
   function cleanName(n, i) {
@@ -397,13 +404,28 @@
   }
 
   // compose(av) → Promise<canvas CW x CH | null>
+  function tintSkin(g, ox, oy, w, h, mask, t) {
+    try {
+      var mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+      var mg = mc.getContext('2d'); mg.drawImage(mask, 0, 0, w, h);
+      var m = mg.getImageData(0, 0, w, h).data, im = g.getImageData(ox, oy, w, h), d = im.data;
+      for (var i = 0; i < d.length; i += 4) {
+        var k = m[i] / 255;
+        if (!k) continue;
+        d[i] = d[i] * (1 - k + k * t[0]); d[i + 1] = d[i + 1] * (1 - k + k * t[1]); d[i + 2] = d[i + 2] * (1 - k + k * t[2]);
+      }
+      g.putImageData(im, ox, oy);
+    } catch (_) {}
+  }
   function compose(av) {
     av = cleanAvatar(av);
     var sp = spriteName(av.hair, av.outfit);
     var accs = visibleAcc(av);
-    return Promise.all([loadImg(spriteUrl(av.hair, av.outfit))].concat(accs.map(function (id) { return loadImg(accUrl(id)); })))
+    var tone = SKINS[av.skin];
+    return Promise.all([loadImg(spriteUrl(av.hair, av.outfit)), tone ? loadImg(skinUrl(sp)) : null].concat(accs.map(function (id) { return loadImg(accUrl(id)); })))
       .then(function (imgs) {
-        var body = imgs[0];
+        var body = imgs[0], skinMask = imgs[1];
+        imgs = [body].concat(imgs.slice(2));
         if (!body) return null;
         var c = document.createElement('canvas');
         c.width = CW; c.height = CH;
@@ -412,6 +434,7 @@
         g.imageSmoothingQuality = 'high';
         var ox = Math.round((CW - body.naturalWidth) / 2), oy = CH - body.naturalHeight;
         g.drawImage(body, ox, oy);
+        if (tone && skinMask) tintSkin(g, ox, oy, body.naturalWidth, body.naturalHeight, skinMask, tone);
         accs.forEach(function (id, i) {
           var im = imgs[i + 1];
           if (!im) return;
@@ -650,7 +673,7 @@
   function extendPrefs(out) {
     if (!out || typeof out !== 'object') return out;
     out.rooms = S.rooms.map(function (r) { return { id: r.id, name: r.name, theme: r.theme }; });   // hidden rooms too: never deleted
-    if (S.avatar) out.avatar = { hair: S.avatar.hair, outfit: S.avatar.outfit, acc: S.avatar.acc.slice(0, 6), profile: !!S.avatar.profile };
+    if (S.avatar) out.avatar = { hair: S.avatar.hair, outfit: S.avatar.outfit, acc: S.avatar.acc.slice(0, 6), profile: !!S.avatar.profile, skin: S.avatar.skin || 'light' };
     return out;
   }
   function applyServerPrefs(p) {
@@ -721,7 +744,7 @@
   else setTimeout(applyProfile, 0);
 
   window.khAvatar = {
-    HAIRS: HAIRS, OUTFITS: OUTFITS, ACCS: ACCS, ROOMS: ROOMS, SPRITE: SPRITE, ANCHOR: ANCHOR,
+    HAIRS: HAIRS, SKINS: SKINS, SKIN_SWATCH: SKIN_SWATCH, OUTFITS: OUTFITS, ACCS: ACCS, ROOMS: ROOMS, SPRITE: SPRITE, ANCHOR: ANCHOR,
     AV_ID: AV_ID, AV_DEFAULT_PLACE: AV_DEFAULT_PLACE, CW: CW, CH: CH,
     find: find, list: list, serverId: serverId, isFree: isFree, inSeason: inSeason, kstMonth: kstMonth,
     loadCatalog: loadCatalog, cleanAvatar: cleanAvatar, DEFAULT_AVATAR: DEFAULT_AVATAR,

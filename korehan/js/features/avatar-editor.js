@@ -94,8 +94,9 @@
   // ── Panels ─────────────────────────────────────────────────────────
   var _hairFaces = {};
   function hairFace(h) {
-    if (!_hairFaces[h]) _hairFaces[h] = A().faceUrl({ hair: h, outfit: 'tee', acc: [] }, 120);
-    return _hairFaces[h];
+    var skin = (E && E.av && E.av.skin) || 'light', key = h + '|' + skin;
+    if (!_hairFaces[key]) _hairFaces[key] = A().faceUrl({ hair: h, outfit: 'tee', acc: [], skin: skin }, 120);
+    return _hairFaces[key];
   }
   function lookHtml() {
     var av = E.av;
@@ -117,7 +118,12 @@
         + '<span class="kav-ofig"><img alt="" loading="lazy" src="' + esc(A().spriteUrl(av.hair, o.id)) + '" style="height:' + figH(av.hair, o.id) + '%"></span>'
         + '<span class="kav-n">' + esc(o.name) + '</span></button>';
     }).join('');
+    var skins = Object.keys(A().SKINS).map(function (k, i) {
+      var on = (av.skin || 'light') === k;
+      return '<button type="button" class="kav-skin' + (on ? ' on' : '') + '" data-act="skin" data-id="' + k + '" aria-pressed="' + on + '" aria-label="Skin tone ' + (i + 1) + '" style="background:' + A().SKIN_SWATCH[k] + '"></button>';
+    }).join('');
     return '<div class="kav-sec"><b>Hair</b><span>4 styles, all free</span></div><div class="kav-g kav-g4">' + hair + '</div>'
+      + '<div class="kav-sec"><b>Skin</b><span>free</span></div><div class="kav-skins">' + skins + '</div>'
       + '<div class="kav-sec"><b>Outfit</b><span>' + A().OUTFITS.length + ' looks · try any on</span></div><div class="kav-g kav-g5">' + outfits + '</div>';
   }
   var ACC_SECTIONS = [
@@ -289,6 +295,7 @@
     if (act === 'reset') { E.av = A().cleanAvatar(E.saved.av); E.theme = E.saved.theme; E.roomName = E.saved.roomName; E.avRoom = E.saved.avRoom; syncToggle(); renderAll(); return; }
     if (act === 'save') return save();
     if (act === 'hair') { E.av.hair = id; renderChar(); renderPanel(); renderSave(); return; }
+    if (act === 'skin') { E.av.skin = id; renderChar(); renderPanel(); renderSave(); return; }
     if (act === 'outfit') { E.av.outfit = id; renderChar(); renderPanel(); renderSave(); return; }
     if (act === 'acc') {
       var a = A().find('acc', id);
@@ -518,6 +525,9 @@
       '.kav-t:hover{background:#1b2946}',
       '.kav-t.on{border-color:#fbbf24}',
       '.kav-t:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}',
+      '.kav-skins{display:flex;gap:12px;padding:2px 2px 4px}',
+      '.kav-skin{width:38px;height:38px;border-radius:50%;border:3px solid transparent;box-shadow:0 0 0 1px #2a3858 inset;cursor:pointer;padding:0}',
+      '.kav-skin.on{border-color:#fbbf24}',
       '.kav-hair{aspect-ratio:1/1}.kav-hair img{width:100%;height:100%;object-fit:cover;display:block}',
       '.kav-outfit{aspect-ratio:3/4;padding:20px 4px 4px}.kav-ofig{position:relative;flex:1;width:100%;min-height:0;overflow:hidden}.kav-outfit img{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:auto;max-width:none;display:block}',
       '.kav-acc{aspect-ratio:1/1.05;padding:20px 6px 4px}.kav-acc img{width:80%;height:calc(100% - 16px);object-fit:contain;display:block}',
