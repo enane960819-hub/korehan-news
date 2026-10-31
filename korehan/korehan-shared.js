@@ -3775,7 +3775,7 @@ var SECTION_ALIASES = {
 // Room art lives under /assets/, which is cached for a year. A picture asked for before it was
 // uploaded comes back as the HTML fallback page and stays cached that way, so local room art is
 // always requested with a version. Bump KH_ROOM_ART_V whenever room/avatar art is added or changed.
-var KH_ROOM_ART_V = '20261031s2';
+var KH_ROOM_ART_V = '20261031hh';
 function khRoomImg(u) {
   if (!u || typeof u !== 'string' || !/^assets\//.test(u) || u.indexOf('?') !== -1) return u;
   return u + '?v=' + KH_ROOM_ART_V;

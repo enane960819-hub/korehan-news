@@ -573,7 +573,7 @@
       '.kav-body{display:flex;flex-direction:column;padding:12px 16px 90px;gap:12px;flex:1}',
       '.kav-left,.kav-right{flex:none}.kav-right{min-height:auto}.kav-panel{overflow:visible}',
       '.kav-left{display:contents}',
-      '.kav-stick{position:sticky;top:-12px;z-index:6;margin:-12px -16px 0;padding:12px 16px 8px;background:#0b1426;display:flex;justify-content:center}',
+      '.kav-stick{position:sticky;top:-12px;z-index:6;margin:-12px -16px 0;width:calc(100% + 32px);max-width:none;box-sizing:border-box;padding:12px 16px 8px;background:#0b1426;display:flex;justify-content:center}',
 
       // Phone: the preview stays pinned at a fixed size while the list scrolls, so every change shows
       // at once without scrolling back up (owner, 2026-10-31). Fixed, not shrinking: nothing jumps under a tap.

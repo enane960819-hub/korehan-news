@@ -40,6 +40,11 @@ def mask(path):
     # forehead bits showing between hair strands: small pieces, but only in the head band
     H0=core.shape[0]; top=np.zeros_like(core); top[:int(H0*0.36)]=True
     keep|=np.isin(lb,np.nonzero((sz>=2)&(sz<60))[0])&core&top&(d<5)
+    # small skin pieces cut off by a collar / scarf / bandana (the neck): close to the main skin
+    near=keep.copy()
+    for _ in range(8):
+        g=near.copy(); g[1:]|=near[:-1]; g[:-1]|=near[1:]; g[:,1:]|=near[:,:-1]; g[:,:-1]|=near[:,1:]; near=g
+    keep|=np.isin(lb,np.nonzero((sz>=4)&(sz<60))[0])&core&near&(d<5)
     # Shading: darker, more orange skin (ear insides, neck and hairline shadow) that touches the
     # skin. Hair is darker (L < 45); cream / pink clothes are paler (chroma < ~22) or pinker.
     hue=np.degrees(np.arctan2(L[...,2],L[...,1]))
