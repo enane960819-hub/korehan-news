@@ -276,7 +276,7 @@ set search_path to 'public'
 as $function$
   select exists (select 1 from public.avatar_items a
                   where a.id = p_id and a.active
-                    and ((a.price_nyang = 0 and a.unlock_goal_key is null) or coalesce(p_owned, '[]'::jsonb) ? p_id));
+                    and ((a.price_nyang = 0 and a.unlock_goal_key is null and not a.cash_only) or coalesce(p_owned, '[]'::jsonb) ? p_id));
 $function$;
 revoke execute on function public.kh_avatar_item_ok(jsonb, text) from public, anon, authenticated;
 grant execute on function public.kh_avatar_item_ok(jsonb, text) to service_role;
@@ -375,7 +375,7 @@ begin
             or not exists (select 1 from jsonb_array_elements(case when jsonb_typeof(v_prefs -> 'rooms') = 'array' then v_prefs -> 'rooms' else '[]'::jsonb end) rr
                             where rr ->> 'id' = t.e ->> 'room'))
        and (v_owned ? (t.e ->> 'id')
-            or exists (select 1 from public.room_items ri where ri.id = t.e ->> 'id' and coalesce(ri.price_nyang, 0) = 0)
+            or exists (select 1 from public.room_items ri where ri.id = t.e ->> 'id' and coalesce(ri.price_nyang, 0) = 0 and not ri.cash_only)
             or (t.e ->> 'id' = 'kh_avatar' and v_avatar is not null
                 and t.n = (select min(t2.n) from jsonb_array_elements(v_layout) with ordinality as t2(e2, n)
                             where t2.e2 ->> 'id' = 'kh_avatar')))

@@ -380,6 +380,15 @@ supabase functions deploy claude-proxy
   `cash_only` on room_items / avatar_items — buy_room_item refuses it for nyang, the nyang shop / My Room / Customize
   hide it or show "Special". Never sell nyang for cash, no paid random boxes; real goods stay "Coming soon"
   (`goods_interest`). QA: `scripts/qa/special-shop.mjs` (all network mocked).
+  Card items are price 0 in nyang: every "price 0 = free starter" rule must also check `cash` / `cash_only`
+  (`_roomFreeIds`, room-view, `isFree`, `kh_avatar_item_ok`, get_public_room) — or everyone owns them.
+  Products start inactive; the admin sees them as DRAFT in the Special tab. Art round 1:
+  `20261031_special_shop_art_1.sql`.
+- **Animated room pieces** (owner 2026-10-31, the second exception to "nothing moves"): `KH_ROOM_FRAMES`
+  (room item id → `assets/room/<name>-1..n.png`, e.g. the Christmas fireplace's fire, only the flames differ) and
+  outfits with `frames` (idol: `<hair>-idol-1..8` dance poses, eyes kept on the centre line, `ANIM_MS` each).
+  `khRoomAnim(el, urls, ms)` (korehan-shared.js) swaps them; off with prefers-reduced-motion, paused in hidden tabs.
+  New pose frames need SPRITE metrics, the hair-halo fix and skin masks like any sprite.
 - **Fake News** (ON HOLD since 2026-10-29: `KH_FAKE_NEWS_ON = false`, articles are drafts) (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
   openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —
   no crime, romance, health, death, politics or politicians, nobody in an active controversy; illustrations

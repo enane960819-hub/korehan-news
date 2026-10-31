@@ -61,7 +61,14 @@
     { id: 'padding', name: 'Winter padding', price: 350, months: [11, 12, 1, 2], season: 'Nov–Feb' },
     { id: 'christmas', name: 'Christmas', price: 350, months: [12], season: 'December' },
     { id: 'kpop', name: 'K-pop stage', price: 450 },
-    { id: 'astronaut', name: 'Astronaut', price: 0, goal: { key: 'streak_days', target: 14, label: 'Study 14 days in a row', short: 'Streak 14' } }
+    { id: 'astronaut', name: 'Astronaut', price: 0, goal: { key: 'streak_days', target: 14, label: 'Study 14 days in a row', short: 'Streak 14' } },
+    // Special shop (card) outfits, 2026-10-31: cash = never sold for nyang (avatar_items.cash_only).
+    // frames = an animated outfit: <hair>-idol-1..8 are dance poses shown in turn (ANIM_MS each).
+    { id: 'reindeer', name: 'Reindeer onesie', price: 0, cash: true },
+    { id: 'hoodie', name: 'Star hoodie', price: 0, cash: true },
+    { id: 'mhanbok', name: 'Modern hanbok', price: 0, cash: true },
+    { id: 'varsity', name: 'Varsity jacket', price: 0, cash: true },
+    { id: 'idol', name: 'Idol stage', price: 0, cash: true, frames: 8 }
   ];
   // slot: one item per slot. top = band / crown on top of the head,
   // pinr / pinl = clip on the right / left side, face = glasses.
@@ -87,7 +94,9 @@
     { id: 'seoul-night', name: 'Seoul night', price: 800 },
     { id: 'winter', name: 'Winter', price: 900, months: [12, 1, 2], season: 'Dec–Feb' },
     { id: 'kpop-studio', name: 'K-pop studio', price: 1200 },
-    { id: 'attic', name: 'Starry attic', price: 0, goal: { key: 'streak_days', target: 30, label: 'Study 30 days in a row', short: 'Streak 30' } }
+    { id: 'attic', name: 'Starry attic', price: 0, goal: { key: 'streak_days', target: 30, label: 'Study 30 days in a row', short: 'Streak 30' } },
+    { id: 'christmas-room', name: 'Christmas', price: 0, cash: true },
+    { id: 'han-river-room', name: 'Han River', price: 0, cash: true }
   ];
   // Skin tones (free, 2026-10-31): the drawn skin is multiplied by these RGB factors,
   // weighted by a per-sprite mask (assets/avatar/skin/<sprite>.png, built by
@@ -99,7 +108,7 @@
   function serverId(kind, id) { return KIND_PREFIX[kind] + id; }
   function list(kind) { return kind === 'outfit' ? OUTFITS : kind === 'acc' ? ACCS : kind === 'room' ? ROOMS : HAIRS; }
   function find(kind, id) { var l = list(kind); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
-  function isFree(it) { return !!it && !it.goal && !(Number(it.price) > 0); }
+  function isFree(it) { return !!it && !it.goal && !it.cash && !(Number(it.price) > 0); }
   function kstMonth() { return new Date(Date.now() + 9 * 3600000).getUTCMonth() + 1; }
   function inSeason(it) { return !it || !it.months || it.months.indexOf(kstMonth()) !== -1; }
 
@@ -220,7 +229,60 @@
     'short-street': [162, 379, 80.5, 110.0, 1.01, 0, 8, 153],
     'short-summer': [162, 378, 80.5, 110.0, 1.01, 0, 9, 153],
     'short-taekwondo': [162, 380, 80.5, 111.0, 1.01, 0, 9, 153],
-    'short-uniform': [161, 380, 79.5, 110.0, 1.01, 0, 9, 152]
+    'short-uniform': [161, 380, 79.5, 110.0, 1.01, 0, 9, 152],
+    // Special shop outfits (2026-10-31). <hair>-idol = pose 1, shown where nothing animates.
+    'long-reindeer': [176,  370,  88.0,  108.5,  1.07,  0,  25,  155],
+    'bob-reindeer': [172,  370,  86.2,  107.5,  1.04,  0,  22,  150],
+    'short-reindeer': [162,  379,  80.5,  111.0,  1.01,  0,  9,  153],
+    'curly-reindeer': [172,  379,  83.0,  111.0,  1.07,  0,  19,  168],
+    'long-hoodie': [176,  368,  88.0,  107.5,  1.07,  0,  25,  155],
+    'bob-hoodie': [172,  369,  86.2,  107.5,  1.04,  0,  22,  149],
+    'short-hoodie': [162,  378,  80.5,  110.0,  1.01,  0,  9,  153],
+    'curly-hoodie': [172,  378,  84.0,  111.0,  1.07,  0,  19,  168],
+    'long-mhanbok': [176,  367,  88.0,  107.5,  1.07,  0,  25,  156],
+    'bob-mhanbok': [172,  368,  86.2,  107.5,  1.04,  0,  22,  150],
+    'short-mhanbok': [162,  378,  80.5,  110.0,  1.01,  0,  9,  153],
+    'curly-mhanbok': [172,  378,  84.0,  111.0,  1.07,  0,  19,  168],
+    'long-varsity': [176,  367,  88.0,  107.5,  1.07,  0,  25,  155],
+    'bob-varsity': [172,  368,  86.2,  107.5,  1.04,  0,  22,  150],
+    'short-varsity': [162,  378,  80.5,  110.0,  1.01,  0,  8,  153],
+    'curly-varsity': [172,  378,  84.0,  111.0,  1.07,  0,  19,  169],
+    'long-idol': [221,  392,  123.0,  106.5,  1.07,  0,  25,  155],
+    'long-idol-1': [221,  392,  123.0,  106.5,  1.07,  0,  25,  155],
+    'long-idol-2': [191,  394,  90.0,  105.5,  1.07,  0,  25,  155],
+    'long-idol-3': [200,  392,  97.0,  109.5,  1.07,  0,  25,  155],
+    'long-idol-4': [225,  392,  103.0,  106.5,  1.07,  0,  25,  155],
+    'long-idol-5': [224,  389,  123.0,  105.5,  1.07,  0,  25,  155],
+    'long-idol-6': [217,  390,  114.0,  106.5,  1.07,  0,  25,  155],
+    'long-idol-7': [214,  387,  114.0,  106.5,  1.07,  0,  25,  155],
+    'long-idol-8': [211,  390,  103.0,  111.5,  1.07,  0,  25,  155],
+    'bob-idol': [231,  365,  122.2,  100.5,  1.04,  0,  22,  149],
+    'bob-idol-1': [231,  365,  122.2,  100.5,  1.04,  0,  22,  149],
+    'bob-idol-2': [181,  369,  91.2,  107.5,  1.04,  0,  22,  149],
+    'bob-idol-3': [186,  367,  97.2,  106.5,  1.04,  0,  22,  149],
+    'bob-idol-4': [218,  363,  93.2,  108.5,  1.04,  0,  22,  149],
+    'bob-idol-5': [211,  369,  123.2,  101.5,  1.04,  0,  22,  149],
+    'bob-idol-6': [181,  371,  91.2,  102.5,  1.04,  0,  22,  149],
+    'bob-idol-7': [183,  369,  95.2,  106.5,  1.04,  0,  22,  149],
+    'bob-idol-8': [197,  367,  96.2,  109.5,  1.04,  0,  22,  149],
+    'short-idol': [216,  374,  132.5,  109.0,  1.01,  0,  9,  153],
+    'short-idol-1': [216,  374,  132.5,  109.0,  1.01,  0,  9,  153],
+    'short-idol-2': [179,  374,  101.5,  105.0,  1.01,  0,  9,  153],
+    'short-idol-3': [175,  374,  87.5,  109.0,  1.01,  0,  9,  153],
+    'short-idol-4': [211,  374,  112.5,  115.0,  1.01,  0,  9,  153],
+    'short-idol-5': [170,  364,  93.5,  101.0,  1.01,  0,  9,  153],
+    'short-idol-6': [176,  370,  93.5,  105.0,  1.01,  0,  9,  153],
+    'short-idol-7': [168,  315,  79.5,  109.0,  1.01,  0,  9,  153],
+    'short-idol-8': [227,  374,  102.5,  98.0,  1.01,  0,  9,  153],
+    'curly-idol': [189,  361,  100.0,  106.0,  1.07,  0,  18,  168],
+    'curly-idol-1': [189,  361,  100.0,  106.0,  1.07,  0,  18,  168],
+    'curly-idol-2': [170,  362,  84.0,  108.0,  1.07,  0,  18,  168],
+    'curly-idol-3': [185,  360,  94.0,  105.0,  1.07,  0,  18,  168],
+    'curly-idol-4': [204,  364,  91.0,  102.0,  1.07,  0,  18,  168],
+    'curly-idol-5': [209,  364,  110.0,  103.0,  1.07,  0,  18,  168],
+    'curly-idol-6': [193,  365,  92.0,  104.0,  1.07,  0,  18,  168],
+    'curly-idol-7': [180,  297,  83.0,  105.0,  1.07,  0,  18,  168],
+    'curly-idol-8': [234,  361,  94.0,  101.0,  1.07,  0,  18,  168]
   };
   // Sprites with headwear drawn in hide head accessories; sprites with glasses
   // drawn in hide face accessories. (2026-10-31 redraw: every outfit drawn on
@@ -253,7 +315,9 @@
     'sunglasses': [89, 105, 108, 'centre', 'face'],
     'heart-glasses': [89, 106, 110, 'centre', 'face']
   };
-  var CW = 220, CH = 430;   // composite canvas: feet on the bottom edge, room above the head for ears / bows
+  var CW = 280, CH = 430;   // composite canvas: feet on the bottom edge, room above the head for ears / bows;
+                            // wide enough for the idol poses' arms (height decides the drawn size)
+  var ANIM_MS = 1100;        // one dance pose (outfit.frames) on screen this long
 
   function artUrl(path) { return (typeof khRoomImg === 'function') ? khRoomImg(path) : path; }
   function spriteName(hair, outfit) { return (!outfit || outfit === 'tee') ? 'base-' + hair : hair + '-' + outfit; }
@@ -419,12 +483,15 @@
       g.putImageData(im, ox, oy);
     } catch (_) {}
   }
-  function compose(av) {
+  function framesOf(av) { var o = find('outfit', av && av.outfit); return (o && o.frames) || 0; }
+  // compose(av[, frame]) — frame 1..n draws that dance pose of an animated outfit.
+  function compose(av, frame) {
     av = cleanAvatar(av);
-    var sp = spriteName(av.hair, av.outfit);
+    var nF = framesOf(av);
+    var sp = spriteName(av.hair, av.outfit) + (nF && frame ? '-' + frame : '');
     var accs = visibleAcc(av);
     var tone = SKIN_ON ? SKINS[av.skin] : null;
-    return Promise.all([loadImg(spriteUrl(av.hair, av.outfit)), tone ? loadImg(skinUrl(sp)) : null].concat(accs.map(function (id) { return loadImg(accUrl(id)); })))
+    return Promise.all([loadImg(artUrl('assets/avatar/' + sp + '.png')), tone ? loadImg(skinUrl(sp)) : null].concat(accs.map(function (id) { return loadImg(accUrl(id)); })))
       .then(function (imgs) {
         var body = imgs[0], skinMask = imgs[1];
         imgs = [body].concat(imgs.slice(2));
@@ -435,6 +502,8 @@
         g.imageSmoothingEnabled = true;
         g.imageSmoothingQuality = 'high';
         var ox = Math.round((CW - body.naturalWidth) / 2), oy = CH - body.naturalHeight;
+        // Dance poses keep the face still: eyes on the centre line, arms and legs move.
+        if (nF && SPRITE[sp]) ox = Math.round(CW / 2 - SPRITE[sp][2]);
         g.drawImage(body, ox, oy);
         if (tone && skinMask) tintSkin(g, ox, oy, body.naturalWidth, body.naturalHeight, skinMask, tone);
         accs.forEach(function (id, i) {
@@ -495,13 +564,23 @@
     var key = JSON.stringify(S.avatar);
     if (key === _defKey && AV_DEF.img) return Promise.resolve(false);
     _defKey = key;
-    return compose(S.avatar).then(canvasUrl).then(function (u) {
+    return frameUrls(S.avatar).then(function (us) {
+      var u = us && us[0];
       if (!u || key !== _defKey) return false;
-      var old = _defUrl;
+      var old = [_defUrl].concat(AV_DEF.frames || []);
       _defUrl = u; AV_DEF.img = u;
-      if (old && old.indexOf('blob:') === 0) setTimeout(function () { try { URL.revokeObjectURL(old); } catch (_) {} }, 3000);
+      AV_DEF.frames = us.length > 1 ? us : null; AV_DEF.frameMs = ANIM_MS;
+      setTimeout(function () { old.forEach(function (o) { if (o && o.indexOf('blob:') === 0 && us.indexOf(o) < 0) { try { URL.revokeObjectURL(o); } catch (_) {} } }); }, 3000);
       return true;
     });
+  }
+  // [url] for a still outfit, one url per dance pose for an animated one.
+  function frameUrls(av) {
+    var n = framesOf(cleanAvatar(av));
+    if (!n) return compose(av).then(canvasUrl).then(function (u) { return u ? [u] : []; });
+    var jobs = [];
+    for (var i = 1; i <= n; i++) jobs.push(compose(av, i).then(canvasUrl));
+    return Promise.all(jobs).then(function (us) { return us.filter(Boolean); });
   }
   // My Page hook (loadRoomItemsFromDB): add the character to the room catalogue.
   function ensureRoomItem(items) {
@@ -528,11 +607,11 @@
   var _viewDefs = {};
   function withRoomItem(items, avatar) {
     var av = cleanAvatar(avatar), key = JSON.stringify(av);
-    if (!_viewDefs[key]) _viewDefs[key] = compose(av).then(canvasUrl);
-    return _viewDefs[key].then(function (u) {
+    if (!_viewDefs[key]) _viewDefs[key] = frameUrls(av);
+    return _viewDefs[key].then(function (us) {
       var out = {};
       Object.keys(items || {}).forEach(function (k) { out[k] = items[k]; });
-      if (u) out[AV_ID] = { id: AV_ID, name: 'Character', img: u, size: AV_SIZE, price: 0, effect: 'none', category: 'avatar' };
+      if (us && us[0]) out[AV_ID] = { id: AV_ID, name: 'Character', img: us[0], frames: us.length > 1 ? us : null, frameMs: ANIM_MS, size: AV_SIZE, price: 0, effect: 'none', category: 'avatar' };
       return out;
     });
   }
@@ -752,7 +831,7 @@
     loadCatalog: loadCatalog, cleanAvatar: cleanAvatar, DEFAULT_AVATAR: DEFAULT_AVATAR,
     spriteName: spriteName, spriteUrl: spriteUrl, accUrl: accUrl, themeUrl: themeUrl,
     visibleAcc: visibleAcc, hidesHead: hidesHead, hidesFace: hidesFace,
-    compose: compose, canvasUrl: canvasUrl, faceCanvas: faceCanvas, faceUrl: faceUrl,
+    compose: compose, frameUrls: frameUrls, canvasUrl: canvasUrl, faceCanvas: faceCanvas, faceUrl: faceUrl,
     // state
     getAvatar: function () { return S.avatar ? cleanAvatar(S.avatar) : null; },
     getRooms: function () { return cleanRooms(S.rooms); },

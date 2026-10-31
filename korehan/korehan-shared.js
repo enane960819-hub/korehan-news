@@ -3775,7 +3775,7 @@ var SECTION_ALIASES = {
 // Room art lives under /assets/, which is cached for a year. A picture asked for before it was
 // uploaded comes back as the HTML fallback page and stays cached that way, so local room art is
 // always requested with a version. Bump KH_ROOM_ART_V whenever room/avatar art is added or changed.
-var KH_ROOM_ART_V = '20261031h3';
+var KH_ROOM_ART_V = '20261031sp';
 // Drawn size of a room item (in the room's 400-wide units) from room_items.base_size (owner
 // 2026-10-31: props were far too big). Characters keep the old doubling (they stand next to the
 // learner's character); everything else is drawn at 85 % of base_size without the doubling.
@@ -3787,6 +3787,47 @@ function khRoomItemSize(base, category) {
 function khRoomImg(u) {
   if (!u || typeof u !== 'string' || !/^assets\//.test(u) || u.indexOf('?') !== -1) return u;
   return u + '?v=' + KH_ROOM_ART_V;
+}
+
+// Animated room pieces (owner 2026-10-31, Special shop): the only motion in a room besides the
+// theme windows' FX. A room item listed here shows its frames in turn (assets/room/<id>-1..n.png);
+// the character does the same for an animated outfit (khAvatar sets def.frames).
+// khRoomAnim(el, urls, ms) swaps el's picture (an <img> src or a div's background) every ms;
+// frames load first, nothing runs with prefers-reduced-motion, and it pauses while the tab is hidden.
+var KH_ROOM_FRAMES = { xmas_fireplace: { n: 6, ms: 150, src: 'assets/room/xmas-fireplace-' } };
+function khRoomFrames(def) {
+  if (!def) return null;
+  if (Array.isArray(def.frames) && def.frames.length > 1) return { urls: def.frames, ms: def.frameMs || 1000 };
+  var f = KH_ROOM_FRAMES[def.id];
+  if (!f) return null;
+  var urls = [];
+  for (var i = 1; i <= f.n; i++) urls.push(khRoomImg(f.src + i + '.png'));
+  return { urls: urls, ms: f.ms };
+}
+var _khAnim = [], _khAnimT = 0;
+function khRoomAnim(el, urls, ms) {
+  if (!el) return;
+  _khAnim = _khAnim.filter(function (a) { return a.el !== el; });   // khRoomAnim(el, null) stops it
+  if (!urls || urls.length < 2) return;
+  try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (_) {}
+  var a = { el: el, urls: urls, ms: Math.max(60, ms || 1000), i: 0, at: 0, ready: false };
+  var left = urls.length;
+  urls.forEach(function (u) { var im = new Image(); im.onload = im.onerror = function () { if (--left === 0) a.ready = true; }; im.src = u; });
+  _khAnim.push(a);
+  if (!_khAnimT) _khAnimT = setInterval(_khAnimTick, 50);
+}
+function _khAnimTick() {
+  if (document.hidden) return;
+  var now = Date.now();
+  _khAnim = _khAnim.filter(function (a) { return a.el.isConnected; });
+  if (!_khAnim.length) { clearInterval(_khAnimT); _khAnimT = 0; return; }
+  _khAnim.forEach(function (a) {
+    if (!a.ready || now - a.at < a.ms) return;
+    a.at = now; a.i = (a.i + 1) % a.urls.length;
+    var u = a.urls[a.i];
+    if (a.el.tagName === 'IMG') a.el.src = u;
+    else a.el.style.backgroundImage = 'url("' + String(u).replace(/"/g, '%22') + '")';
+  });
 }
 
 // Conversation scene pictures (owner option B, 2026-10-31): every conversation card shows a

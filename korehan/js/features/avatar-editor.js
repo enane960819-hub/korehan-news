@@ -265,10 +265,13 @@
   function renderChar() {
     var seq = ++_charSeq;
     var av = A().cleanAvatar(E.av);
-    A().compose(av).then(function (c) {
-      if (seq !== _charSeq || !c || !E) return;
+    A().frameUrls(av).then(function (us) {
+      if (seq !== _charSeq || !us || !us[0] || !E) return;
       var im = document.getElementById('kav-char');
-      if (im) { try { im.src = c.toDataURL('image/png'); } catch (_) {} }
+      if (!im) return;
+      im.src = us[0];
+      if (us.length > 1 && typeof khRoomAnim === 'function') khRoomAnim(im, us, 1100);   // idol dance poses
+      else if (typeof khRoomAnim === 'function') khRoomAnim(im, null);
     });
     A().faceUrl(av, 96).then(function (u) { var f = document.getElementById('kav-pface'); if (u && f && seq === _charSeq) f.src = u; });
   }
