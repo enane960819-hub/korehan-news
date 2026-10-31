@@ -110,7 +110,7 @@
     if (_catP) return _catP;
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb) return Promise.resolve(false);
-    _catP = sb.from('avatar_items').select('id, kind, price_nyang, sale_months, unlock_goal_key, unlock_goal_target, unlock_label, active')
+    _catP = sb.from('avatar_items').select('*')
       .then(function (r) {
         if (!r || r.error || !Array.isArray(r.data)) return false;
         r.data.forEach(function (row) {
@@ -130,6 +130,7 @@
             it.goal = null;
           }
           it.inactive = row.active === false;
+          it.cash = row.cash_only === true;   // Special shop (card) item, never nyang
         });
         return true;
       }, function () { _catP = null; return false; });

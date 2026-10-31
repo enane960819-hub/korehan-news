@@ -28,6 +28,13 @@
 //   checkout.session.expired          → the pending seat hold is freed
 //   charge.refunded                   → status 'refunded' (refunds made in Stripe too)
 
+//
+// Special shop (digital items, owner 2026-10-31; metadata.kind 'kh-cash'):
+//   checkout.session.completed (paid) → kh_grant_cash_order(order_id): items into
+//                                       user_room_state.owned / user_photocards
+//   checkout.session.expired          → the pending order is marked canceled
+//   charge.refunded (full refund)     → kh_revoke_cash_order(): takes back what it added
+
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -146,12 +153,28 @@ Deno.serve(async (req) => {
     if (error && error.code !== '23503') throw new Error('live upsert: ' + error.message)
   }
 
+  // Special shop order paid — re-read the session from Stripe (payload not trusted).
+  async function cashOrderPaid(id: string) {
+    const s = await stripe.checkout.sessions.retrieve(id)
+    if (s.payment_status !== 'paid') return
+    const orderId = s.metadata?.order_id
+    if (!orderId) { await logErr('cash order without order_id', { checkout: s.id }); return }
+    const pi = typeof s.payment_intent === 'string' ? s.payment_intent : s.payment_intent?.id
+    await sb.from('cash_orders').update({ stripe_session_id: s.id, stripe_payment_intent: pi || null }).eq('id', orderId)
+    const { data, error } = await sb.rpc('kh_grant_cash_order', { p_order: orderId })
+    if (error) throw new Error('grant: ' + error.message)
+    if (!data?.ok) await logErr('cash order not granted', { order: orderId, result: data })
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.expired': {
         const s = event.data.object as Stripe.Checkout.Session
         if (s.metadata?.product === 'kh-live-class') {
           await sb.from('weekly_live_registrations').delete().eq('stripe_session_id', s.id).eq('status', 'pending')
+        }
+        if (s.metadata?.kind === 'kh-cash') {
+          await sb.from('cash_orders').update({ status: 'canceled' }).eq('stripe_session_id', s.id).eq('status', 'pending')
         }
         break
       }
@@ -161,6 +184,11 @@ Deno.serve(async (req) => {
         if (pi && ch.refunded) {
           await sb.from('weekly_live_registrations').update({ status: 'refunded', refunded_at: new Date().toISOString() })
             .eq('stripe_payment_intent', pi).eq('status', 'paid')
+          const { data: co } = await sb.from('cash_orders').select('id').eq('stripe_payment_intent', pi).eq('status', 'paid')
+          for (const o of co || []) {
+            const { error } = await sb.rpc('kh_revoke_cash_order', { p_order: o.id })
+            if (error) throw new Error('revoke: ' + error.message)
+          }
         }
         break
       }
@@ -168,6 +196,8 @@ Deno.serve(async (req) => {
         const s = event.data.object as Stripe.Checkout.Session
         if (s.mode === 'payment' && s.metadata?.product === 'kh-live-class') {
           await liveSeatPaid(s.id)
+        } else if (s.mode === 'payment' && s.metadata?.kind === 'kh-cash') {
+          await cashOrderPaid(s.id)
         } else if (s.mode === 'subscription' && s.subscription) {
           await syncSubscription(String(s.subscription), s.client_reference_id || null)
         }

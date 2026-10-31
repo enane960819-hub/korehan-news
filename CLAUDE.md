@@ -373,6 +373,13 @@ supabase functions deploy claude-proxy
   real celebrity (정우성/한소희/김지원/박서진 were renamed) — check before adding one. No politics beat. Each section has
   one reporter (`SECTION_REPORTER_MAP` in the admin + the migration's map); profile fields: age, birthday (MM-DD), mbti,
   symbol, catchphrase, likes (+ `_en`). 오관식 keeps his cigar (owner). Physical goods are "Coming soon" — digital only.
+- **Special shop** (card payments for digital items, owner 2026-10-31; `20261031_cash_shop.sql`, shop tab `special` in
+  shop-client.js): products in `cash_products` (inactive until their art lands), billing `item_checkout` → Stripe
+  (mode payment, Premium gets `premium_discount_pct`) → billing-webhook `kh_grant_cash_order` (items into
+  `user_room_state.owned`, `pc_*` ids into `user_photocards`); a full refund runs `kh_revoke_cash_order`. Cash art is
+  `cash_only` on room_items / avatar_items — buy_room_item refuses it for nyang, the nyang shop / My Room / Customize
+  hide it or show "Special". Never sell nyang for cash, no paid random boxes; real goods stay "Coming soon"
+  (`goods_interest`). QA: `scripts/qa/special-shop.mjs` (all network mocked).
 - **Fake News** (ON HOLD since 2026-10-29: `KH_FAKE_NEWS_ON = false`, articles are drafts) (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
   openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —
   no crime, romance, health, death, politics or politicians, nobody in an active controversy; illustrations

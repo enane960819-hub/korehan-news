@@ -141,6 +141,10 @@ grant execute on function public.kh_my_room_slots() to authenticated, service_ro
 -- Room items (room_unlocks → UNLOCK_ONLY), character items from avatar_items
 -- (UNLOCK_ONLY for study goals, OUT_OF_SEASON outside sale_months) and room
 -- slots (INCLUDED / PREMIUM_ONLY / SLOT_ORDER). Never trusts a client price.
+-- Special-shop art (20261031_cash_shop.sql) is bought with a card, never nyang.
+alter table public.room_items   add column if not exists cash_only boolean not null default false;
+alter table public.avatar_items add column if not exists cash_only boolean not null default false;
+
 create or replace function public.buy_room_item(p_item_id text)
 returns jsonb
 language plpgsql
@@ -225,6 +229,10 @@ begin
   if not v_admin and ((v_kind = 'room' and exists (select 1 from public.room_unlocks where item_id = p_item_id and active = true))
      or (v_kind = 'avatar' and v_av.unlock_goal_key is not null)) then
     return jsonb_build_object('ok', false, 'error', 'UNLOCK_ONLY');
+  end if;
+
+  if not v_admin and ((v_kind = 'room' and v_item.cash_only) or (v_kind = 'avatar' and v_av.cash_only)) then
+    return jsonb_build_object('ok', false, 'error', 'CASH_ONLY');
   end if;
 
   if not v_admin and v_kind = 'avatar' and v_av.sale_months is not null and cardinality(v_av.sale_months) > 0
