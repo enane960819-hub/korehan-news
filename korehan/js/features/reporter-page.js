@@ -185,7 +185,7 @@
     var el = document.getElementById('rp-panel'); if (!el) return;
     if (R.tab === 'posts') el.innerHTML = gridHtml();
     else if (R.tab === 'articles') { el.innerHTML = '<div id="rp-arts" class="rp-arts"><div class="rp-empty">Loading articles…</div></div>'; articles(false); }
-    else if (R.tab === 'cards') el.innerHTML = cardsHtml();
+    else if (R.tab === 'cards') { el.innerHTML = cardsHtml(); if (!R.setsLoaded) loadSets(); }
     else { el.innerHTML = '<div class="rp-empty">Loading…</div>'; goods(); }
     icons();
   }
@@ -204,16 +204,68 @@
           + '</button>';
       }).join('') + '</div>';
   }
+  // Photocard sets (cash_products kind photocard_set): preview[i] is the picture of items[i].
+  // Owned cards (user_photocards, written only by the server on purchase) show in full;
+  // the rest are locked with a link to the Special shop. The admin also sees drafts.
+  async function loadSets() {
+    var c = sb(); if (!c) return;
+    var res = await c.from('cash_products').select('id, name, description, price_cents, items, preview, active, sort')
+      .eq('reporter_id', R.id).eq('kind', 'photocard_set').order('sort', { ascending: true }).then(function (x) { return x; }, function () { return null; });
+    R.sets = (res && Array.isArray(res.data)) ? res.data : [];
+    R.owned = {};
+    var u = me();
+    if (u && R.sets.length) {
+      var oc = await c.from('user_photocards').select('card_id').eq('user_id', u.id).then(function (x) { return x; }, function () { return null; });
+      ((oc && Array.isArray(oc.data)) ? oc.data : []).forEach(function (x) { R.owned[x.card_id] = 1; });
+    }
+    R.setsLoaded = true;
+    if (R.tab === 'cards') { var el = document.getElementById('rp-panel'); if (el) { el.innerHTML = cardsHtml(); icons(); } }
+  }
+  function pcImg(u) { return (typeof khRoomImg === 'function' && /^assets\//.test(u)) ? khRoomImg(u) : u; }
+  function setCards(p) {
+    var ids = p.items || [], pv = p.preview || [];
+    return ids.map(function (id, i) { var x = pv[i] || {}; return { id: id, img: x.img || '', label: x.label || '' }; });
+  }
+  function setsHtml() {
+    if (!R.setsLoaded) return '<div class="rp-empty">Loading cards…</div>';
+    var r = R.r;
+    return (R.sets || []).map(function (p) {
+      var cards = setCards(p), got = cards.filter(function (c) { return R.owned[c.id]; }).length, n = cards.length;
+      var pad = String(n).padStart(2, '0');
+      return '<div class="rp-pcset" style="--c:' + r.color + '"><div class="rp-pcset-h"><span><b>' + esc(p.name) + '</b>' + (p.active ? '' : '<em class="rp-g-draft">Draft</em>') + '</span>'
+        + '<small>' + got + ' / ' + n + ' collected</small></div>'
+        + '<div class="rp-cards">' + cards.map(function (c, i) {
+          var own = !!R.owned[c.id], no = String(i + 1).padStart(2, '0') + ' / ' + pad;
+          return '<button type="button" class="rp-card' + (own ? '' : ' rp-card-lock') + '" style="--c:' + r.color + '"'
+            + (own ? ' onclick="khRp.card(\'' + esc(p.id) + '\',' + i + ')"' : ' onclick="location.href=\'korehan-shop.html?tab=special\'"')
+            + ' aria-label="' + esc(c.label + (own ? '' : ' (locked)')) + '"><img src="' + esc(pcImg(c.img)) + '" alt="" loading="lazy"><span class="rp-card-n">' + no + '</span>'
+            + (own ? '' : '<span class="rp-card-lk">' + ic('lock') + '</span>')
+            + '<span class="rp-card-b"><em>' + esc(c.label.toUpperCase()) + '</em><b lang="ko">' + esc(r.name) + '</b></span></button>';
+        }).join('') + '</div>'
+        + (got < n ? '<a class="rp-pcset-buy" href="korehan-shop.html?tab=special">' + ic('sparkles') + 'Get all ' + n + ' cards · $' + (p.price_cents / 100).toFixed(2) + ic('chevron-right') + '</a>' : '')
+        + '</div>';
+    }).join('');
+  }
   function cardsHtml() {
     var r = R.r, cards = [];
     if (r.image) cards.push({ src: r.image, tag: 'OFFICIAL' });
     R.posts.forEach(function (p) { if (p.status === 'published') (p.images || []).forEach(function (u) { if (u && u !== r.image) cards.push({ src: u, tag: 'BEHIND' }); }); });
-    if (!cards.length) return empty('id-card', 'No cards yet', 'Cards appear when ' + firstName() + ' shares photos.');
+    var sets = setsHtml();
+    if (!cards.length && !sets) return empty('id-card', 'No cards yet', 'Cards appear when ' + firstName() + ' shares photos.');
     var total = String(cards.length).padStart(3, '0');
-    return '<div class="rp-cards">' + cards.map(function (c, i) {
+    return sets + (cards.length ? (sets ? '<div class="rp-pcset-h rp-pcset-h2"><span><b>Official &amp; behind</b></span><small>Free</small></div>' : '') + '<div class="rp-cards">' + cards.map(function (c, i) {
       return '<div class="rp-card" style="--c:' + r.color + '"><img src="' + esc(c.src) + '" alt="" loading="lazy"><span class="rp-card-n">' + String(i + 1).padStart(3, '0') + ' / ' + total + '</span>'
         + '<span class="rp-card-b"><em>' + c.tag + '</em><b lang="ko">' + esc(r.name) + '</b></span></div>';
-    }).join('') + '</div>';
+    }).join('') + '</div>' : '');
+  }
+  // Big view of an owned photocard.
+  function card(pid, i) {
+    var p = (R.sets || []).filter(function (x) { return x.id === pid; })[0]; if (!p) return;
+    var c = setCards(p)[i]; if (!c || !R.owned[c.id]) return;
+    var ov = sheet('<button type="button" class="rp-x rp-pcv-x" onclick="khRp.close()" aria-label="Close">' + ic('x') + '</button>'
+      + '<div class="rp-pcv" style="--c:' + R.r.color + '"><img src="' + esc(pcImg(c.img)) + '" alt="' + esc(c.label) + '"></div>'
+      + '<div class="rp-pcv-b"><b>' + esc(c.label) + '</b><small>' + esc(p.name) + ' · ' + String(i + 1).padStart(2, '0') + ' / ' + String(setCards(p).length).padStart(2, '0') + '</small></div>', 'rp-ov-pc');
+    return ov;
   }
   var _artOff = 0, _artTotal = 0;
   async function articles(more) {
@@ -544,11 +596,12 @@
     close: closeSheet, follow: follow, gifts: gifts, give: give, bubble: bubble, notify: notify,
     word: word, save: save, answer: answer, like: like, comment: comment, uncomment: uncomment,
     compose: compose, savePost: savePost, delPost: delPost, files: function (inp) { _files = Array.prototype.slice.call(inp.files || []); },
-    moreArticles: function () { articles(true); }
+    moreArticles: function () { articles(true); }, card: card
   };
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && document.getElementById('rp-ov')) closeSheet(); });
   // Admin role arrives after the first paint: show drafts + the New post button.
   window.addEventListener('kh:roles', function () { if (R.r && isAdmin()) loadPosts().then(render); });
-  window.addEventListener('kh-auth-signed-in', function () { if (R.r) Promise.all([loadStats(), loadAffinity()]).then(render); });
+  window.addEventListener('kh-auth-signed-in', function () { if (R.r) { R.setsLoaded = false; Promise.all([loadStats(), loadAffinity()]).then(render); } });
+  window.addEventListener('kh:roles', function () { if (R.r && isAdmin() && R.tab === 'cards') loadSets(); });
   document.addEventListener('DOMContentLoaded', function () { load().catch(function () {}); });
 })();

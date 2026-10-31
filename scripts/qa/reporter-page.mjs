@@ -18,6 +18,9 @@ const POSTS = [
     quiz: { q: '"야근"의 뜻은?', a: 'overtime work', w: ['night market', 'lunch break'] }, post_type: 'daily', status: 'published', pinned: false, created_at: new Date(Date.now() - 3600e3).toISOString() },
   { id: '22222222-2222-3333-4444-555555555555', reporter_id: 'cr5', author_user_id: 'x', content: '비 오는 날 취재', vocab: [], post_type: 'field', status: 'published', pinned: false, created_at: new Date(Date.now() - 5 * 86400e3).toISOString() },
 ];
+const SET = { id: 'pc_cr5_midnight', name: 'Midnight', description: '', price_cents: 299, active: false, sort: 50, kind: 'photocard_set', reporter_id: 'cr5',
+  items: [1, 2, 3, 4, 5, 6].map((i) => 'pc_cr5_s1_0' + i),
+  preview: [1, 2, 3, 4, 5, 6].map((i) => ({ id: 'pc_cr5_s1_0' + i, label: 'Card ' + i, img: 'assets/photocards/cr5/s1-0' + i + '.webp' })) };
 async function page(opts = {}) {
   const ctx = await br.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const st = { follow: [], like: [], comment: null, postWrite: null };
@@ -27,6 +30,8 @@ async function page(opts = {}) {
     const J = (b, s = 200) => r.fulfill({ status: s, contentType: 'application/json', body: JSON.stringify(b) });
     if (/\/reporter_posts/.test(u)) { if (m !== 'GET') { st.postWrite = { m, body: r.request().postData() }; return J({ id: PID }); } return J(POSTS); }
     if (/\/reporter_post_images/.test(u)) return m === 'GET' ? J([{ post_id: PID, image_url: BASE + '/assets/room/themes/winter.webp', sort_order: 0 }, { post_id: PID, image_url: BASE + '/assets/room/themes/cafe.webp', sort_order: 1 }]) : J({});
+    if (/\/cash_products/.test(u)) return J([SET]);
+    if (/\/user_photocards/.test(u)) return J([{ card_id: 'pc_cr5_s1_01' }, { card_id: 'pc_cr5_s1_03' }]);
     if (/rpc\/kh_reporter_feed_stats/.test(u)) return J({ followers: 12, following: false, likes: { [PID]: 3 }, liked: [], comments: { [PID]: 1 } });
     if (/\/reporter_follows/.test(u)) { st.follow.push(m); return r.fulfill({ status: 201, body: '' }); }
     if (/\/reporter_post_likes/.test(u)) { st.like.push(m); return r.fulfill({ status: 201, body: '' }); }
@@ -79,6 +84,20 @@ async function page(opts = {}) {
     check(await p.evaluate(() => document.getElementById('rp-panel').innerText.length > 10), 'tab ' + tab + ' renders');
   }
   check(/COMING SOON/.test(await p.textContent('#rp-panel')), 'goods: real goods coming soon');
+  await p.click('.rp-tabs button:has-text("Cards")'); await sleep(1500);
+  const cb = await p.evaluate(() => ({ head: (document.querySelector('.rp-pcset-h') || {}).innerText || '', n: document.querySelectorAll('.rp-pcset .rp-card').length,
+    locked: document.querySelectorAll('.rp-pcset .rp-card-lock').length, buy: (document.querySelector('.rp-pcset-buy') || {}).innerText || '',
+    imgs: [...document.querySelectorAll('.rp-pcset .rp-card img')].map((i) => i.complete && i.naturalWidth > 0).filter(Boolean).length,
+    official: /Official/.test(document.getElementById('rp-panel').innerText) }));
+  check(/Midnight/.test(cb.head) && /2 \/ 6 collected/.test(cb.head) && cb.n === 6 && cb.locked === 4, 'card book: set with 2 of 6 owned, 4 locked', cb);
+  check(cb.imgs === 6, 'card book: all 6 card pictures load', cb);
+  check(/Get all 6 cards/.test(cb.buy) && cb.official, 'card book: buy link + free official cards below', cb);
+  await p.screenshot({ path: SHOTS + '03-cards.png', fullPage: true });
+  await p.click('.rp-pcset .rp-card:not(.rp-card-lock)'); await sleep(500);
+  check(await p.evaluate(() => { const i = document.querySelector('.rp-pcv img'); return !!i && /s1-01/.test(i.src) && /01 \/ 06/.test(document.querySelector('.rp-pcv-b').innerText); }), 'tap owned card opens the big view');
+  await p.screenshot({ path: SHOTS + '04-card-view.png' });
+  await p.keyboard.press('Escape'); await sleep(200);
+  check(/korehan-shop\.html\?tab=special/.test(await p.getAttribute('.rp-card-lock', 'onclick')), 'locked card goes to the Special shop');
   check(!(await p.$('.rp-new')), 'no admin button for learners');
   check(!errs.length, 'no page errors', errs);
   await ctx.close();

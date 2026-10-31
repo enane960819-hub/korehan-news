@@ -96,6 +96,23 @@ body.rp-lock { overflow:hidden; }
 .rp-card-n { position:absolute; top:6px; right:8px; font-size:10px; font-weight:800; text-shadow:0 1px 3px #000; }
 .rp-card-b { position:absolute; left:0; right:0; bottom:0; padding:22px 10px 8px; background:linear-gradient(transparent,rgba(0,0,0,.75)); display:grid; }
 .rp-card-b em { font-style:normal; font-size:9.5px; font-weight:800; letter-spacing:.08em; color:#fbbf24; } .rp-card-b b { font-size:14px; }
+.rp-pcset { display:grid; gap:0; margin-top:12px; }
+.rp-pcset-h { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-top:6px; }
+.rp-pcset-h span { display:inline-flex; gap:8px; align-items:center; } .rp-pcset-h b { font-size:15px; }
+.rp-pcset-h small { color:#8b90aa; font-size:12px; font-weight:700; }
+.rp-pcset-h .rp-g-draft { position:static; }
+.rp-pcset-h2 { margin-top:22px; }
+button.rp-card { padding:0; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.rp-card-lock img { filter:blur(5px) grayscale(.6) brightness(.45); transform:scale(1.06); }
+.rp-card-lk { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#e5e7f0; }
+.rp-card-lk svg, .rp-card-lk i[data-lucide] { width:26px; height:26px; }
+.rp-pcset-buy { margin-top:10px; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--c,#dc2626); color:#fff; border-radius:10px; padding:10px; font-weight:800; font-size:14px; text-decoration:none; }
+.rp-pcset-buy svg, .rp-pcset-buy i[data-lucide] { width:16px; height:16px; }
+.rp-ov-pc .rp-sheet { max-width:380px; background:#0b0c16; text-align:center; position:relative; }
+.rp-pcv { width:min(100%, 330px); aspect-ratio:55/85; margin:4px auto 0; border-radius:14px; overflow:hidden; border:3px solid var(--c); }
+.rp-pcv img { width:100%; height:100%; object-fit:cover; display:block; }
+.rp-pcv-b { display:grid; gap:2px; margin-top:10px; } .rp-pcv-b b { font-size:15px; } .rp-pcv-b small { color:#8b90aa; font-size:12px; }
+.rp-pcv-x { position:absolute; top:8px; right:8px; z-index:1; }
 .rp-goods { display:grid; gap:10px; margin-top:10px; }
 .rp-set { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; background:#16182a; border-radius:14px; padding:10px; color:inherit; text-decoration:none; }
 .rp-set-ims { display:flex; } .rp-set-ims img { width:30px; height:46px; object-fit:cover; border-radius:5px; margin-right:-10px; border:2px solid #16182a; }
@@ -191,8 +208,8 @@ body.rp-lock { overflow:hidden; }
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261030qa"></script>
-<script src="korehan-shared.js?v=20261031df"></script>
+<script src="korehan-shared.js?v=20261031pc"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
-<script src="js/features/reporter-page.js?v=20261031ig"></script>
+<script src="js/features/reporter-page.js?v=20261031pc"></script>
 </body>
 </html>
