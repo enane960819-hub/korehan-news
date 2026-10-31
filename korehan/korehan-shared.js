@@ -2034,6 +2034,12 @@ function khLoadRoles(uid) {
   return _khRolesLoading;
 }
 window.khLoadRoles = khLoadRoles;
+// Admin = unlimited nyang (owner, 2026-10-31). Display / button state only: the
+// server (buy_room_item, purchase_coin_shop_item) decides with is_admin_email().
+function khNyangUnlimited() {
+  try { var r = (window.supaUser && typeof khRolesCached === 'function') ? khRolesCached(supaUser.id) : null; return !!((r && r.admin) || window._isAdmin); }
+  catch (_) { return !!window._isAdmin; }
+}
 
 // user_stats minus email — email is not readable by clients (column
 // privilege, 20261025_user_stats_hide_email.sql), so select('*') fails.

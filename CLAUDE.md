@@ -359,6 +359,9 @@ supabase functions deploy claude-proxy
   `buy_room_item` (2nd 600 / Premium included, 3rd 1,000, 4th-5th 1,500 Premium only); the count is
   `kh_room_allowed()` on the server. Rooms past it (Premium lapsed) are hidden, never deleted; `get_public_room`
   returns only allowed rooms. `buy_room_item` + `get_public_room` live in `20261030_room_slots.sql` only.
+- **Admin = unlimited nyang** (owner 2026-10-31): `buy_room_item` and `purchase_coin_shop_item`
+  (`20261031_admin_unlimited_nyang.sql`) charge `is_admin_email()` 0 and skip unlock-only / season / Premium / slot-order
+  checks; the client only mirrors it for display (`khNyangUnlimited()`, balance shows ∞). Never trust the client flag.
 - **Fake News** (ON HOLD since 2026-10-29: `KH_FAKE_NEWS_ON = false`, articles are drafts) (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
   openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —
   no crime, romance, health, death, politics or politicians, nobody in an active controversy; illustrations

@@ -161,6 +161,10 @@ declare
   v_prem      boolean;
   v_month     int := extract(month from (now() at time zone 'Asia/Seoul'))::int;
   s           record;
+  -- Admin (owner, 2026-10-31): unlimited nyang. Everything is free and nothing is
+  -- locked (unlock-only, season, Premium, slot order) so the owner can try it all.
+  -- Same rule as kh_my_roles().admin: the signed JWT email.
+  v_admin     boolean := coalesce(public.is_admin_email(), false);
 begin
   if v_user_id is null then
     return jsonb_build_object('ok', false, 'error', 'UNAUTHENTICATED');
@@ -207,27 +211,28 @@ begin
     if v_slot.premium_included and v_prem then
       return jsonb_build_object('ok', false, 'error', 'INCLUDED');
     end if;
-    if v_slot.premium_only and not v_prem then
+    if v_slot.premium_only and not v_prem and not v_admin then
       return jsonb_build_object('ok', false, 'error', 'PREMIUM_ONLY');
     end if;
     -- Slots are added in order: every lower slot must already count.
     for s in select * from public.room_slots where slot < v_slot.slot order by slot loop
-      if not ((s.premium_included and v_prem) or (v_owned ? ('room_slot_' || s.slot) and (v_prem or not s.premium_only))) then
+      if not v_admin and not ((s.premium_included and v_prem) or (v_owned ? ('room_slot_' || s.slot) and (v_prem or not s.premium_only))) then
         return jsonb_build_object('ok', false, 'error', 'SLOT_ORDER', 'slot', s.slot);
       end if;
     end loop;
   end if;
 
-  if (v_kind = 'room' and exists (select 1 from public.room_unlocks where item_id = p_item_id and active = true))
-     or (v_kind = 'avatar' and v_av.unlock_goal_key is not null) then
+  if not v_admin and ((v_kind = 'room' and exists (select 1 from public.room_unlocks where item_id = p_item_id and active = true))
+     or (v_kind = 'avatar' and v_av.unlock_goal_key is not null)) then
     return jsonb_build_object('ok', false, 'error', 'UNLOCK_ONLY');
   end if;
 
-  if v_kind = 'avatar' and v_av.sale_months is not null and cardinality(v_av.sale_months) > 0
+  if not v_admin and v_kind = 'avatar' and v_av.sale_months is not null and cardinality(v_av.sale_months) > 0
      and not (v_month = any (v_av.sale_months)) then
     return jsonb_build_object('ok', false, 'error', 'OUT_OF_SEASON', 'months', to_jsonb(v_av.sale_months));
   end if;
 
+  if v_admin then v_price := 0; end if;
   select coalesce(coin_balance, 0) into v_coin from public.user_stats where user_id = v_user_id for update;
   v_coin := coalesce(v_coin, 0);
   if v_coin < v_price then
