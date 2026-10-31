@@ -389,6 +389,10 @@ supabase functions deploy claude-proxy
   outfits with `frames` (idol: `<hair>-idol-1..8` dance poses, eyes kept on the centre line, `ANIM_MS` each).
   `khRoomAnim(el, urls, ms)` (korehan-shared.js) swaps them; off with prefers-reduced-motion, paused in hidden tabs.
   New pose frames need SPRITE metrics, the hair-halo fix and skin masks like any sprite.
+  New outfit pictures also get `scripts/avatar/defringe.py` (white background fringe on the hair's outer edge).
+  Swapped frame areas must leave out anything in front of the moving part (the fireplace grate stays frame 1).
+  Admin test grants: `kh_admin_grant_product` / `kh_admin_reset_product` (`20261031_admin_grant_product.sql`,
+  amount 0 orders) behind the "Admin test" row in the Special sheet.
 - **Fake News** (ON HOLD since 2026-10-29: `KH_FAKE_NEWS_ON = false`, articles are drafts) (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
   openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —
   no crime, romance, health, death, politics or politicians, nobody in an active controversy; illustrations

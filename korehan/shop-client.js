@@ -873,11 +873,26 @@
              : '<div class="sp-total"><span>Total</span><span>' + _spMoney(price) + (price < p.price_cents ? ' <s>' + _spMoney(p.price_cents) + '</s>' : '') + '</span></div>'
                + '<button type="button" class="sh-buy" id="sp-pay" onclick="shopSpecialPay(\'' + _esc(p.id) + '\')">Pay ' + _spMoney(price) + '</button>'
                + '<div class="sp-note">You\'ll finish payment on Stripe\'s secure page. Items you already own are skipped.</div>')
+      // Admin test (owner 2026-10-31): take it free / give it back to try the flow again.
+      + (_spAdmin() ? '<div class="sp-admin"><span>Admin test</span>'
+          + (own ? '<button type="button" onclick="shopSpecialAdmin(\'' + _esc(p.id) + '\', false)">Remove from my account</button>'
+                 : '<button type="button" onclick="shopSpecialAdmin(\'' + _esc(p.id) + '\', true)">Get it free</button>') + '</div>' : '')
       + '<button type="button" class="sh-cancel" onclick="shopClose()">Close</button></div>';
     ov.addEventListener('click', function (e) { if (e.target === ov) shopClose(); });
     document.body.appendChild(ov);
     _spAnimate(ov);
     requestAnimationFrame(function () { ov.classList.add('open'); });
+  };
+  window.shopSpecialAdmin = async function (id, give) {
+    var sb = getSupa(); if (!sb || !_spAdmin()) return;
+    var r = await sb.rpc(give ? 'kh_admin_grant_product' : 'kh_admin_reset_product', { p_product: id });
+    var b = (r && r.data) || {};
+    if (r.error || !b.ok) { toast('Admin action failed: ' + ((b && b.error) || (r.error && r.error.message) || 'unknown'), 'error'); return; }
+    if (!give) delete _sp.paid[id];
+    await Promise.all([initShop(), _spLoad()]);
+    var p = _sp.products.filter(function (x) { return x.id === id; })[0];
+    if (give) _spPaidSheet(p);
+    else { shopClose(); toast('Removed from your account', 'success'); }
   };
   window.shopSpecialPay = async function (id) {
     if (!window.supaUser) { shopClose(); if (typeof openAuthModal === 'function') openAuthModal('signup'); return; }
