@@ -22,176 +22,149 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261030dm">
 <style>
-/* Reporter page (mockup 2026-10-29 ②) — dark, like Shop / Word Bank / Reporter Cards. */
-html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+/* Reporter page, Instagram style (owner-approved mockup 2026-10-31). Logic: js/features/reporter-page.js */
+html, html body, html body.mobile-light { background:#0b0d17 !important; color:#eef0f7; }
 body { overflow-x:hidden; }
-.rp-wrap { max-width:1000px; margin:0 auto; padding:24px 20px 70px; font-family:'DM Sans','Noto Sans KR',sans-serif; }
-.rp-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-.rp-nav a { color:#93c5fd; font-size:13px; font-weight:700; text-decoration:none; }
-.rp-nav a:hover { color:#bfdbfe; }
-
-/* ── Header ── */
-.rp-profile { display:grid; grid-template-columns:240px minmax(0,1fr); gap:22px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:18px; overflow:hidden; margin-bottom:16px; }
-.rp-photo-col { position:relative; min-height:300px; background:#0f1b33; cursor:zoom-in; }
-.rp-photo-col img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top; display:block; }
-.rp-photo-ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Noto Serif KR',serif; font-size:84px; font-weight:900; color:rgba(255,255,255,.82); text-shadow:0 2px 18px rgba(0,0,0,.35); cursor:default; }
-.rp-info-col { padding:20px 22px 20px 0; display:flex; flex-direction:column; min-width:0; }
-.rp-name { font-family:'Noto Serif KR',serif; font-size:30px; font-weight:900; color:#fff; line-height:1.2; margin:0; }
-.rp-name-rom { font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; color:#94a3b8; margin-left:8px; letter-spacing:.01em; }
-.rp-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
-.rp-chip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:999px; background:#334155; color:#e2e8f0; }
-.rp-chip.role { color:#fff; }
-.rp-chip .kh-ui-icon { width:12px; height:12px; }
-.rp-intro { font-size:14px; line-height:1.7; color:#cbd5e1; margin:12px 0 0; }
-.rp-intro-ko { font-size:12.5px; line-height:1.6; color:#94a3b8; margin:4px 0 0; font-family:'Noto Sans KR',sans-serif; }
-.rp-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
-.rp-tag { font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; background:rgba(255,255,255,.06); color:#cbd5e1; border:1px solid rgba(255,255,255,.1); }
-
-/* Affinity */
-.rp-aff { margin-top:auto; padding-top:16px; }
-.rp-aff-row { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:12.5px; color:#cbd5e1; font-weight:700; }
-.rp-aff-row b { color:#fff; }
-.rp-aff-row .kh-ui-icon { width:13px; height:13px; color:#f9a8d4; vertical-align:-2px; }
-.rp-aff-bar { height:7px; border-radius:999px; background:rgba(255,255,255,.1); overflow:hidden; margin-top:7px; }
-.rp-aff-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#f472b6,#a78bfa); transition:width .5s ease; }
-.rp-aff-note { font-size:11.5px; color:#94a3b8; line-height:1.5; margin-top:7px; }
-
-/* ── Tabs ── */
-.rp-tabbar { display:flex; gap:6px; margin:4px 0 14px; overflow-x:auto; scrollbar-width:none; }
-.rp-tabbar::-webkit-scrollbar { display:none; }
-.rp-tab { flex:0 0 auto; padding:9px 15px; border-radius:999px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05); font:inherit; font-size:13px; font-weight:800; color:#cbd5e1; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; transition:background .15s, color .15s; }
-.rp-tab:hover { color:#fff; background:rgba(255,255,255,.09); }
-.rp-tab.on { background:#e2e8f0; color:#0b1426; border-color:#e2e8f0; }
-.rp-tab .kh-ui-icon { width:14px; height:14px; }
-.rp-tab-count { font-weight:800; }
-.rp-tab-count:empty { display:none; }
-.rp-tab-count:not(:empty)::before { content:'· '; }
-.rp-panel { display:none; }
-.rp-panel.on { display:block; animation:rpPanelIn .2s ease; }
-@keyframes rpPanelIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
-
-/* Articles */
-.rp-art-list { display:flex; flex-direction:column; gap:8px; }
-.rp-art-item { display:flex; align-items:center; gap:12px; padding:9px 12px 9px 9px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); text-decoration:none; color:inherit; transition:background .15s, border-color .15s; }
-.rp-art-item:hover { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.16); }
-.rp-art-thumb { flex:0 0 auto; width:64px; height:46px; border-radius:8px; background:linear-gradient(135deg,#334155,#1e293b) center/cover no-repeat; }
-.rp-art-body { flex:1; min-width:0; }
-.rp-art-title { font-family:'Noto Sans KR',sans-serif; font-size:14px; font-weight:700; color:#f1f5f9; line-height:1.4; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-.rp-art-meta { font-size:11.5px; color:#94a3b8; margin-top:2px; }
-.rp-lv { flex:0 0 auto; font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:999px; background:rgba(255,255,255,.08); color:#cbd5e1; }
-.rp-lv.s { background:rgba(167,139,250,.18); color:#ddd6fe; }
-.rp-lv.b { background:rgba(34,197,94,.16); color:#86efac; }
-.rp-lv.i { background:rgba(245,158,11,.16); color:#fcd34d; }
-.rp-lv.a { background:rgba(244,63,94,.16); color:#fda4af; }
-.rp-more { display:block; width:100%; margin-top:10px; padding:11px; border-radius:12px; border:1px dashed rgba(255,255,255,.2); background:none; color:#cbd5e1; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
-.rp-more:hover { color:#fff; border-color:rgba(255,255,255,.35); }
-
-/* Gifts */
-.rp-gift-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
-.rp-gift-head p { margin:0; font-size:12.5px; color:#94a3b8; }
-.rp-nyang-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px; background:rgba(45,212,191,.12); color:#5eead4; font-size:12px; font-weight:800; border:1px solid rgba(45,212,191,.3); }
-.rp-nyang-chip .kh-ui-icon { width:13px; height:13px; }
-.rp-gifts { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
-.rp-gift { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 6px 11px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:#e2e8f0; font:inherit; cursor:pointer; transition:transform .15s, background .15s, border-color .15s; }
-.rp-gift:hover { transform:translateY(-2px); background:rgba(255,255,255,.08); border-color:rgba(249,168,212,.4); }
-.rp-gift.disabled { cursor:not-allowed; opacity:.45; transform:none; }
-.rp-gift-icon { color:#f9a8d4; display:flex; }
-.rp-gift-icon .kh-ui-icon { width:26px; height:26px; }
-.rp-gift-name { font-size:11.5px; font-weight:700; text-align:center; line-height:1.3; }
-.rp-gift-cost { font-size:11px; font-weight:800; color:#fbbf24; }
-.rp-gift-own { position:absolute; top:6px; right:6px; font-size:9.5px; font-weight:800; padding:1px 6px; border-radius:999px; background:rgba(34,197,94,.2); color:#86efac; }
-.rp-gift-msg { font-size:12px; color:#94a3b8; margin-top:10px; }
-.rp-signin { display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:9px 18px; border-radius:999px; border:0; background:#2563eb; color:#fff; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
-
-/* Album */
-.rp-album-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
-@media (min-width:640px) { .rp-album-grid { gap:6px; grid-template-columns:repeat(4,1fr); } }
-@media (min-width:960px) { .rp-album-grid { grid-template-columns:repeat(5,1fr); } }
-.rp-album-tile { position:relative; aspect-ratio:1/1; overflow:hidden; background:#0f172a; cursor:zoom-in; border-radius:6px; }
-.rp-album-tile img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .25s ease; }
-.rp-album-tile:hover img { transform:scale(1.05); }
-
-/* Photocards */
-.rp-pc-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
-@media (min-width:480px) { .rp-pc-grid { grid-template-columns:repeat(3,1fr); } }
-@media (min-width:720px) { .rp-pc-grid { grid-template-columns:repeat(4,1fr); } }
-.rp-pc { position:relative; aspect-ratio:2/3; border-radius:16px; overflow:hidden; border:2px solid rgba(255,255,255,.18); box-shadow:0 12px 28px rgba(0,0,0,.35); background:#0f172a; cursor:zoom-in; transition:transform .2s ease; }
-.rp-pc:hover { transform:translateY(-4px) rotate(-1deg); }
-.rp-pc-img { position:absolute; inset:0; background-size:cover; background-position:center top; }
-.rp-pc-fade { position:absolute; inset:auto 0 0 0; height:60%; background:linear-gradient(180deg,rgba(8,14,28,0) 0%,rgba(8,14,28,.55) 55%,rgba(8,14,28,.92) 100%); }
-.rp-pc-edge { position:absolute; top:0; left:0; right:0; height:5px; }
-.rp-pc-body { position:absolute; left:0; right:0; bottom:0; padding:14px; color:#fff; }
-.rp-pc-num { position:absolute; top:10px; right:12px; font-size:11px; font-weight:900; letter-spacing:.18em; color:rgba(255,255,255,.85); text-shadow:0 1px 2px rgba(0,0,0,.4); }
-.rp-pc-tag { display:inline-block; font-size:9px; font-weight:900; letter-spacing:.16em; text-transform:uppercase; padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.32); margin-bottom:6px; }
-.rp-pc-name { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:900; line-height:1.15; margin:0; text-shadow:0 2px 8px rgba(0,0,0,.45); }
-.rp-pc-role { font-size:10px; font-weight:700; letter-spacing:.04em; color:rgba(255,255,255,.85); margin-top:3px; }
-.rp-pc-ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Noto Serif KR',serif; font-size:88px; font-weight:900; color:#fff; }
-
-/* Posts (only reporters / admins write them) */
-.rp-post-compose { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:16px; margin-bottom:14px; }
-.rp-post-compose textarea { width:100%; min-height:92px; resize:vertical; border:1px solid rgba(255,255,255,.15); border-radius:12px; padding:12px; font:inherit; font-size:14px; color:#f1f5f9; background:rgba(0,0,0,.2); box-sizing:border-box; }
-.rp-post-compose-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; font-size:12px; color:#cbd5e1; }
-.rp-post-select, .rp-post-file { border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:8px 10px; background:rgba(0,0,0,.2); color:#e2e8f0; font:inherit; font-size:12px; }
-.rp-post-btn { border:0; background:#2563eb; color:#fff; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; }
-.rp-post-btn.ghost { background:rgba(255,255,255,.08); color:#e2e8f0; }
-.rp-post-feed { display:flex; flex-direction:column; gap:12px; }
-.rp-post-card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:16px; overflow:hidden; }
-.rp-post-head { display:flex; justify-content:space-between; gap:12px; padding:14px 16px 8px; }
-.rp-post-who { font-weight:800; color:#fff; }
-.rp-post-meta { font-size:11px; color:#94a3b8; }
-.rp-post-pin { font-size:11px; color:#fdba74; font-weight:900; }
-.rp-post-content { padding:0 16px 12px; color:#e2e8f0; font-size:14px; line-height:1.7; white-space:pre-wrap; }
-.rp-post-images { display:grid; gap:4px; grid-template-columns:repeat(2,1fr); }
-.rp-post-images img { width:100%; height:220px; object-fit:cover; display:block; cursor:zoom-in; }
-.rp-post-images.one { grid-template-columns:1fr; }
-.rp-post-images.one img { height:360px; }
-.rp-post-foot { padding:10px 16px 14px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,.08); }
-.rp-post-status { font-size:11px; color:#94a3b8; font-weight:700; }
-.rp-post-actions { display:flex; gap:8px; }
-.rp-post-act { border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:#e2e8f0; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:800; cursor:pointer; }
-.rp-post-empty { padding:20px; text-align:center; color:#94a3b8; font-size:13px; }
-
-/* Empty states */
-.rp-empty { background:rgba(255,255,255,.04); border:1px dashed rgba(255,255,255,.15); border-radius:16px; padding:30px 20px; text-align:center; }
-.rp-empty-ic { width:46px; height:46px; border-radius:50%; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; background:rgba(96,165,250,.14); color:#93c5fd; }
-.rp-empty-t { font-size:15px; font-weight:800; color:#fff; margin-bottom:4px; }
-.rp-empty-s { font-size:13px; color:#94a3b8; line-height:1.55; }
-
-/* Loading / not found */
-.rp-loading { text-align:center; padding:80px 20px; color:rgba(255,255,255,.55); font-size:15px; }
-.rp-not-found { text-align:center; padding:80px 20px; }
-.rp-not-found h2 { font-size:22px; color:#fff; margin-bottom:8px; }
-.rp-not-found p { color:#94a3b8; }
-.rp-not-found a { color:#93c5fd; font-weight:700; }
-
-/* Lightbox */
-#rp-lb { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
-#rp-lb.on { display:flex; }
-#rp-lb img { max-width:90vw; max-height:90vh; border-radius:16px; box-shadow:0 24px 80px rgba(0,0,0,.6); object-fit:contain; }
-
-@media (max-width:760px) {
-  .rp-gifts { grid-template-columns:repeat(3,minmax(0,1fr)); }
-}
-@media (max-width:640px) {
-  .rp-wrap { padding:16px 16px 56px; }
-  .rp-profile { grid-template-columns:1fr; gap:0; }
-  .rp-photo-col { min-height:280px; }
-  .rp-photo-col.noimg { min-height:170px; }
-  .rp-info-col { padding:16px; }
-  .rp-name { font-size:26px; }
-  .rp-name-rom { display:block; margin:2px 0 0; }
-  .rp-tab { padding:8px 12px; font-size:12.5px; }
-  .rp-art-thumb { width:52px; height:40px; }
-  .rp-post-images img { height:170px; }
-  .rp-post-images.one img { height:240px; }
-}
+body.rp-lock { overflow:hidden; }
+/* Shared light-theme rules colour b / h2 / [lang=ko] dark: keep the reporter page's own colours. */
+#rp-root b, #rp-root h2, #rp-root [lang="ko"], #rp-root strong, #rp-ov b, #rp-ov [lang="ko"], #rp-ov strong { color:#f4f5fa; }
+#rp-root .rp-aff b { color:#fbbf24; } #rp-root .rp-top b { color:#cfd3e4; } #rp-ov .rp-quiz > b { color:#93c5fd; } #rp-ov .rp-gift b { color:#eef0f7; }
+.rp { max-width:640px; margin:0 auto; padding:14px 16px 80px; font-family:'DM Sans','Noto Sans KR',sans-serif; }
+.rp svg, .rp i[data-lucide] { width:16px; height:16px; }
+.rp-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.rp-top a { display:inline-flex; align-items:center; gap:2px; color:#93c5fd; font-size:13px; font-weight:700; text-decoration:none; }
+.rp-top b { font-size:15px; }
+.rp-head { display:grid; grid-template-columns:96px 1fr; gap:18px; align-items:center; }
+.rp-ring { width:96px; height:96px; border-radius:50%; padding:3px; border:0; cursor:pointer; background:#2a2d3f; }
+.rp-ring.on { background:conic-gradient(var(--c),#f59e0b,#d6336c,var(--c)); }
+.rp-ring img, .rp-ph { width:100%; height:100%; border-radius:50%; border:3px solid #0b0d17; object-fit:cover; display:flex; align-items:center; justify-content:center; font-size:34px; font-weight:800; color:#fff; box-sizing:border-box; }
+.rp-stats { display:grid; grid-template-columns:repeat(3,1fr); text-align:center; }
+.rp-stats > * { background:none; border:0; color:inherit; font:inherit; padding:0; cursor:default; }
+.rp-stats button { cursor:pointer; }
+.rp-stats b { display:block; font-size:18px; }
+.rp-stats small { color:#a8adc4; font-size:12px; }
+.rp-bio { margin:12px 0 4px; display:grid; gap:4px; }
+.rp-bio h2 { margin:0; font-size:18px; display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+.rp-bio h2 small { font-size:13px; color:#a8adc4; font-weight:600; }
+.rp-role { font-size:13px; color:#a8adc4; }
+.rp-cp { font-size:14.5px; } .rp-cp small { display:block; color:#a8adc4; font-size:12px; }
+.rp-intro { margin:2px 0 0; font-size:13.5px; color:#cfd3e4; line-height:1.5; }
+.rp-facts { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.rp-facts span { display:inline-flex; align-items:center; gap:5px; background:#1a1d2c; border-radius:999px; padding:4px 10px; font-size:12px; color:#d5d9ea; }
+.rp-facts svg, .rp-facts i { width:13px; height:13px; color:#fbbf24; }
+.rp-aff { display:flex; justify-content:space-between; font-size:12.5px; color:#cfd3e4; margin-top:6px; }
+.rp-aff span:first-child { display:inline-flex; align-items:center; gap:5px; }
+.rp-aff b { color:#fbbf24; }
+.rp-affbar { height:5px; border-radius:3px; background:#24273a; overflow:hidden; }
+.rp-affbar i { display:block; height:100%; border-radius:3px; }
+.rp-btns { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:12px 0; }
+.rp-b { display:inline-flex; align-items:center; justify-content:center; gap:6px; background:#24263a; border:0; border-radius:10px; padding:9px 0; color:#eef0f7; font:inherit; font-weight:700; font-size:13.5px; cursor:pointer; text-decoration:none; }
+.rp-b:disabled { opacity:.5; cursor:default; }
+.rp-b-main { background:#dc2626; color:#fff; }
+.rp-b-on { background:#1f3b2c; color:#86efac; }
+.rp-b:focus-visible, .rp-hl-i:focus-visible, .rp-g:focus-visible, .rp-tabs button:focus-visible, .rp-w:focus-visible { outline:2px solid #fbbf24; outline-offset:2px; }
+.rp-wide { width:100%; padding:12px 0; }
+.rp-hl { display:flex; gap:14px; overflow-x:auto; padding:4px 2px 12px; scrollbar-width:none; }
+.rp-hl-i { flex:0 0 auto; display:grid; justify-items:center; gap:5px; background:none; border:0; color:#cfd3e4; font:inherit; font-size:11.5px; cursor:pointer; }
+.rp-hl-i span { width:62px; height:62px; border-radius:50%; border:2px solid #3a3d57; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#1a1d2c; color:#fbbf24; }
+.rp-hl-i.on span { border-color:#fbbf24; }
+.rp-hl-i img { width:100%; height:100%; object-fit:cover; }
+.rp-new { width:100%; display:flex; align-items:center; justify-content:center; gap:6px; border:1px dashed #475569; background:none; color:#cbd5e1; border-radius:10px; padding:9px; font:inherit; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:10px; }
+.rp-tabs { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid #24263a; }
+.rp-tabs button { display:flex; align-items:center; justify-content:center; gap:5px; background:none; border:0; border-top:2px solid transparent; margin-top:-1px; color:#8b90aa; font:inherit; font-weight:700; font-size:12.5px; padding:11px 0; cursor:pointer; }
+.rp-tabs button.on { color:#fff; border-top-color:#fff; }
+.rp-chip-x { display:inline-flex; align-items:center; gap:4px; margin:10px 0 0; background:#24263a; border:0; color:#fff; border-radius:999px; padding:5px 10px; font:inherit; font-size:12px; cursor:pointer; }
+.rp-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; margin-top:8px; }
+.rp-g { position:relative; aspect-ratio:1; border:0; padding:0; background:#1d1f33; cursor:pointer; overflow:hidden; color:#fff; font:inherit; }
+.rp-g img { width:100%; height:100%; object-fit:cover; display:block; }
+.rp-g-t { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:8px; font-size:12.5px; line-height:1.4; text-align:center; background:linear-gradient(135deg,#2a1f3f,#1d2a44); }
+.rp-g-multi { position:absolute; top:6px; right:6px; } .rp-g-multi svg { width:15px; height:15px; filter:drop-shadow(0 1px 2px #000); }
+.rp-g-draft { position:absolute; left:6px; top:6px; font-style:normal; font-size:10px; font-weight:800; background:#475569; border-radius:5px; padding:1px 6px; }
+.rp-g-likes { position:absolute; left:6px; bottom:6px; display:inline-flex; align-items:center; gap:3px; font-style:normal; font-size:11.5px; font-weight:700; text-shadow:0 1px 3px #000; }
+.rp-g-likes svg { width:12px; height:12px; fill:#fff; }
+.rp-empty { display:grid; justify-items:center; gap:5px; text-align:center; padding:34px 16px; color:#a8adc4; font-size:13px; }
+.rp-empty svg { width:26px; height:26px; color:#fbbf24; } .rp-empty b { color:#fff; font-size:15px; }
+.rp-empty-s { padding:10px 0; }
+.rp-arts { display:grid; gap:2px; margin-top:6px; }
+.rp-art { display:grid; grid-template-columns:72px 1fr; gap:12px; align-items:center; padding:9px 2px; border-bottom:1px solid #1d1f33; color:inherit; text-decoration:none; }
+.rp-art-th { width:72px; height:54px; border-radius:8px; background:#1d1f33 center/cover; }
+.rp-art-b { display:grid; gap:2px; min-width:0; } .rp-art-b b { font-size:14px; line-height:1.4; } .rp-art-b small { color:#8b90aa; font-size:12px; }
+.rp-more { width:100%; margin-top:10px; background:#1d1f33; border:0; color:#cfd3e4; border-radius:10px; padding:10px; font:inherit; font-weight:700; cursor:pointer; }
+.rp-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:10px; }
+.rp-card { position:relative; aspect-ratio:55/85; border-radius:12px; overflow:hidden; border:2px solid var(--c); background:#1d1f33; }
+.rp-card img { width:100%; height:100%; object-fit:cover; display:block; }
+.rp-card-n { position:absolute; top:6px; right:8px; font-size:10px; font-weight:800; text-shadow:0 1px 3px #000; }
+.rp-card-b { position:absolute; left:0; right:0; bottom:0; padding:22px 10px 8px; background:linear-gradient(transparent,rgba(0,0,0,.75)); display:grid; }
+.rp-card-b em { font-style:normal; font-size:9.5px; font-weight:800; letter-spacing:.08em; color:#fbbf24; } .rp-card-b b { font-size:14px; }
+.rp-goods { display:grid; gap:10px; margin-top:10px; }
+.rp-set { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; background:#16182a; border-radius:14px; padding:10px; color:inherit; text-decoration:none; }
+.rp-set-ims { display:flex; } .rp-set-ims img { width:30px; height:46px; object-fit:cover; border-radius:5px; margin-right:-10px; border:2px solid #16182a; }
+.rp-set-b { display:grid; padding-left:10px; } .rp-set-b small { color:#a8adc4; }
+.rp-soon-s { display:flex; gap:8px; align-items:center; background:#16182a; border-radius:14px; padding:12px; font-size:13px; color:#cfd3e4; }
+.rp-soon { border:1px dashed #3a3d57; border-radius:14px; padding:14px; display:grid; gap:8px; }
+.rp-soon > div { display:flex; justify-content:space-between; align-items:center; }
+.rp-soon > div span { font-size:10.5px; font-weight:800; background:#24263a; border-radius:999px; padding:2px 9px; }
+.rp-soon p { margin:0; font-size:13px; color:#a8adc4; }
+.rp-nf { max-width:520px; margin:60px auto; text-align:center; padding:0 16px; } .rp-nf a { color:#93c5fd; }
+/* sheets / post viewer */
+.rp-ov { position:fixed; inset:0; z-index:9000; background:rgba(3,5,12,.72); display:flex; align-items:flex-end; justify-content:center; }
+@media (min-width:720px){ .rp-ov { align-items:center; } }
+.rp-sheet { width:100%; max-width:560px; max-height:92vh; overflow-y:auto; background:#121423; color:#eef0f7; border-radius:18px 18px 0 0; padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px)); font-family:'DM Sans','Noto Sans KR',sans-serif; box-sizing:border-box; }
+@media (min-width:720px){ .rp-sheet { border-radius:18px; } }
+.rp-sheet svg, .rp-sheet i[data-lucide] { width:17px; height:17px; }
+.rp-sh-h, .rp-pv-h { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.rp-sh-h b { flex:1; font-size:16px; }
+.rp-pv-h b { font-size:14px; } .rp-pv-h small { color:#8b90aa; flex:1; }
+.rp-pv-av { width:30px; height:30px; border-radius:50%; overflow:hidden; background:#24263a; } .rp-pv-av img { width:100%; height:100%; object-fit:cover; }
+.rp-x { background:none; border:0; color:#cfd3e4; cursor:pointer; padding:4px; display:inline-flex; }
+.rp-sh-p { margin:0 0 12px; font-size:13.5px; color:#cfd3e4; line-height:1.5; }
+.rp-bub { background:#24263a; border-radius:16px 16px 16px 4px; padding:10px 12px; margin-bottom:14px; display:grid; } .rp-bub small { color:#a8adc4; }
+.rp-pv-imgs { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; margin:0 -16px; width:calc(100% + 32px); max-width:none; scrollbar-width:none; background:#000; }
+.rp-pv-imgs img { flex:0 0 100%; width:100%; aspect-ratio:4/5; object-fit:cover; scroll-snap-align:start; }
+.rp-dots { display:flex; justify-content:center; gap:4px; margin-top:6px; } .rp-dots i { width:6px; height:6px; border-radius:50%; background:#3a3d57; } .rp-dots i.on { background:#fff; }
+.rp-pv-bar { display:flex; gap:14px; padding:8px 0; }
+.rp-pv-bar button { display:inline-flex; align-items:center; gap:5px; background:none; border:0; color:#eef0f7; font:inherit; font-weight:700; cursor:pointer; padding:2px; }
+.rp-pv-bar button.on { color:#f43f5e; } .rp-pv-bar button.on svg { fill:#f43f5e; }
+.rp-cap { display:grid; gap:8px; }
+.rp-cap-ko { font-size:15.5px; line-height:1.7; }
+.rp-w { background:none; border:0; border-bottom:2px solid #fbbf24; color:inherit; font:inherit; padding:0; cursor:pointer; }
+.rp-wpop { display:flex; align-items:center; gap:10px; background:#1d2340; border:1px solid #2f3a6b; border-radius:12px; padding:8px 10px; font-size:13.5px; }
+.rp-wpop span { flex:1; color:#cfd3e4; }
+.rp-wpop button, .rp-vocab button { display:inline-flex; align-items:center; gap:4px; background:#24263a; border:0; color:#eef0f7; border-radius:999px; padding:4px 10px; font:inherit; font-size:12px; cursor:pointer; }
+.rp-wpop button svg, .rp-vocab button svg { width:13px; height:13px; }
+.rp-vocab { display:flex; flex-wrap:wrap; gap:6px; } .rp-vocab button.saved { background:#1f3b2c; color:#86efac; }
+.rp-tr { justify-self:start; display:inline-flex; align-items:center; gap:4px; background:none; border:0; color:#93c5fd; font:inherit; font-size:12.5px; cursor:pointer; padding:0; }
+.rp-cap-en { color:#a8adc4; font-size:13.5px; }
+.rp-quiz { margin-top:12px; background:#1d2340; border:1px solid #2f3a6b; border-radius:14px; padding:12px; display:grid; gap:8px; }
+.rp-quiz > b { display:inline-flex; align-items:center; gap:6px; color:#93c5fd; font-size:13px; }
+.rp-qo { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.rp-qo button { background:#0b0d17; border:1px solid #2a2d3f; border-radius:10px; color:#eef0f7; padding:9px 8px; font:inherit; font-size:13px; cursor:pointer; }
+.rp-qo button.ok { border-color:#22c55e; background:#14301f; } .rp-qo button.no { border-color:#ef4444; background:#3b1515; }
+.rp-cm { margin-top:14px; display:grid; gap:6px; } .rp-cm > b { font-size:14px; }
+.rp-c { font-size:13.5px; line-height:1.5; } .rp-c small { display:block; color:#8b90aa; font-size:11.5px; }
+.rp-c small button { background:none; border:0; color:#8b90aa; font:inherit; cursor:pointer; padding:0; text-decoration:underline; }
+.rp-cform { display:flex; gap:6px; margin-top:4px; }
+.rp-cform input { flex:1; min-width:0; background:#0b0d17; border:1px solid #2a2d3f; border-radius:999px; color:#eef0f7; padding:10px 14px; font:inherit; font-size:14px; }
+.rp-cform button { background:#dc2626; border:0; border-radius:50%; width:40px; height:40px; color:#fff; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+.rp-gifts { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.rp-gift-bal { grid-column:1/-1; display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:#fbbf24; font-weight:700; }
+.rp-gift { display:grid; justify-items:center; gap:3px; background:#1a1d2c; border:1px solid #2a2d3f; border-radius:12px; padding:12px 4px; color:#eef0f7; font:inherit; cursor:pointer; }
+.rp-gift:disabled { opacity:.45; cursor:default; }
+.rp-gift span { color:#f9a8d4; } .rp-gift b { font-size:12px; text-align:center; } .rp-gift small { font-size:11px; color:#fbbf24; }
+.rp-form { display:grid; gap:10px; }
+.rp-form label { display:grid; gap:4px; font-size:12.5px; color:#a8adc4; font-weight:700; }
+.rp-form textarea, .rp-form input:not([type=checkbox]), .rp-form select { background:#0b0d17; border:1px solid #2a2d3f; border-radius:10px; color:#eef0f7; padding:9px 10px; font:inherit; font-size:14px; font-weight:400; }
+.rp-form-2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.rp-chk { display:flex !important; grid-auto-flow:column; align-items:center; gap:6px; }
+.rp-form-btns { display:flex; gap:8px; justify-content:flex-end; } .rp-form-btns .rp-b { padding:10px 18px; }
+@media (max-width:420px){ .rp-head { grid-template-columns:80px 1fr; gap:12px; } .rp-ring { width:80px; height:80px; } .rp-stats b { font-size:16px; } }
+@media (prefers-reduced-motion: reduce){ .rp-pv-imgs { scroll-behavior:auto; } }
 </style>
 </head>
 <body>
 <h1 class="kh-sr-only">Reporter Profile — KoreHani</h1>
 <div id="kh-header"></div>
-<div id="rp-root"><div class="rp-loading">Loading…</div></div>
-<div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" alt=""></div>
+<div id="rp-root"><div class="rp-empty">Loading…</div></div>
 <div id="kh-footer"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -220,993 +193,6 @@ body { overflow-x:hidden; }
 <script src="js/features/fill-blank.js?v=20261030qa"></script>
 <script src="korehan-shared.js?v=20261031df"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
-<script>
-var FAV_HIRE_THRESHOLD = 3000;
-var _giftCatalog = [];
-var _giftOwnedMap = {};
-var _giftBalance = 0;
-var _currentReporterId = '';
-var _currentAffinityXP = 0;
-var _currentReporter = null;
-var _canManagePosts = false;
-var _postDraftFiles = [];
-var _editingPostId = null;
-var _postCache = [];
-var _postMode = 'db'; // db | fallback
-var _giftHistoryEnabled = true;
-
-function _postModeKey() { return 'kh_reporter_posts_mode'; }
-function getPostModePref() {
-  try { return localStorage.getItem(_postModeKey()) || 'db'; } catch(e) { return 'db'; }
-}
-function setPostModePref(mode) {
-  try { localStorage.setItem(_postModeKey(), mode); } catch(e) {}
-}
-function shouldUseGiftHistory() {
-  if (!_giftHistoryEnabled) return false;
-  try {
-    return localStorage.getItem('kh_reporter_gift_history_enabled') !== '0';
-  } catch(e) {
-    return true;
-  }
-}
-function disableGiftHistoryWrites() {
-  _giftHistoryEnabled = false;
-  try { localStorage.setItem('kh_reporter_gift_history_enabled', '0'); } catch(e) {}
-}
-function isMissingGiftHistoryTableError(err) {
-  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
-  return msg.indexOf('reporter_gift_history') >= 0 || msg.indexOf('pgrst') >= 0 || msg.indexOf('404') >= 0;
-}
-
-document.addEventListener('DOMContentLoaded', async function() {
-  var rid  = new URLSearchParams(window.location.search).get('id');
-  var root = document.getElementById('rp-root');
-  if (!rid) { window.location.replace('korehan-reporters.html'); return; }
-  _postMode = getPostModePref();
-  var sb = getSupa();
-
-  // Reporter row + the learner's affinity in parallel; each swallows its own failure.
-  var reporterPromise = sb
-    ? sb.from('character_reporters').select('data').eq('id', rid).maybeSingle().then(function(r){
-        if (!r.error && r.data) return r.data.data || r.data;
-        return null;
-      }, function(){ return null; })
-    : Promise.resolve(null);
-  var favPromise = loadAffinityPoints(sb, rid).catch(function(){ return 0; });
-
-  var reporter, favXP;
-  try {
-    var results = await Promise.all([reporterPromise, favPromise]);
-    reporter = results[0];
-    favXP    = results[1] || 0;
-  } catch(e) { reporter = null; favXP = 0; }
-
-  // Fall back to KH_REPORTERS cache (seeded by reporters.js + localStorage) if Supabase had no row.
-  if (!reporter || !reporter.name) {
-    var b = KH_REPORTERS[rid];
-    if (b) reporter = { id:rid, name:b.name, name_en:b.name_en, role:b.role, image:b.img, color:b.color, intro:'', tags:[] };
-  }
-  if (!reporter || !reporter.name) {
-    root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p>This reporter page doesn\'t exist or the link is incomplete.</p><p style="margin-top:14px"><a href="korehan-reporters.html">See all reporters</a></p></div>';
-    return;
-  }
-  if (!reporter.id) reporter.id = rid;
-
-  var color = /^#[0-9a-f]{6}$/i.test(reporter.color || '') ? reporter.color : '#2563eb';
-  // Random stock photos (picsum.photos) and the 1x1 seed placeholder are not the reporter.
-  if (reporter.image && (/picsum\.photos/i.test(String(reporter.image)) || /^data:image\/gif;base64,R0lGODlhAQAB/.test(String(reporter.image)))) reporter.image = '';
-  document.title = reporter.name + ' · Reporter — KoreHani';
-
-  _currentReporterId = rid;
-  _currentReporter = reporter;
-  _canManagePosts = canManageReporterPosts(reporter);
-  _currentAffinityXP = favXP;
-
-  var ph = '<div class="rp-photo-ph" style="background:radial-gradient(120% 90% at 30% 15%,' + color + '73 0%,' + color + '26 45%,#0f1b33 100%)">' + escHtml(reporter.name.charAt(0)) + '</div>';
-  var photoHtml = reporter.image
-    ? '<img src="' + escHtml(reporter.image) + '" alt="' + escHtml(reporter.name) + '" onerror="this.parentNode.innerHTML=rpPhHtml()">'
-    : ph;
-  window.rpPhHtml = function(){ return ph; };
-
-  var rom = (typeof khReporterNameEn === 'function') ? khReporterNameEn(reporter) : '';
-  var role = reporter.role_en || (typeof khReporterRole === 'function' ? khReporterRole(reporter.role || '') : (reporter.role || ''));
-  var tagsHtml = (reporter.tags || []).map(function(t){ return '<span class="rp-tag">' + escHtml(typeof khSecLabel === 'function' ? khSecLabel(t) : t) + '</span>'; }).join('');
-  var who = rom || reporter.name;
-
-  root.innerHTML =
-    '<div class="rp-wrap">'
-    + '<div class="rp-nav">'
-    +   '<a href="#" onclick="rpGoBack(event)"><i data-lucide="arrow-left" class="kh-ui-icon" aria-hidden="true"></i> Back</a>'
-    +   '<a href="korehan-reporters.html">All reporters</a>'
-    + '</div>'
-
-    // ── Header ──
-    + '<div class="rp-profile">'
-    +   '<div class="rp-photo-col' + (reporter.image ? '" onclick="rpOpenLb()"' : ' noimg"') + '>' + photoHtml + '</div>'
-    +   '<div class="rp-info-col">'
-    +     '<h1 class="rp-name">' + escHtml(reporter.name) + (rom ? '<span class="rp-name-rom">' + escHtml(rom) + '</span>' : '') + '</h1>'
-    +     '<div class="rp-chips">'
-    +       (role ? '<span class="rp-chip role" style="background:' + color + '">' + escHtml(role) + '</span>' : '')
-    +       (reporter.tone ? '<span class="rp-chip">' + escHtml(String(reporter.tone).replace(/,\s*ethnically[^,]*/i, '')) + '</span>' : '')
-    +       (reporter.age ? '<span class="rp-chip">Age ' + escHtml(reporter.age) + '</span>' : '')
-    +     '</div>'
-    +     '<p class="rp-intro">' + escHtml(reporter.intro_en || reporter.intro || 'No intro yet.') + '</p>'
-    +     (reporter.intro_en && reporter.intro ? '<p class="rp-intro-ko" lang="ko">' + escHtml(reporter.intro) + '</p>' : '')
-    +     (tagsHtml ? '<div class="rp-tags">' + tagsHtml + '</div>' : '')
-    +     '<div class="rp-aff">'
-    +       '<div class="rp-aff-row"><span><i data-lucide="heart" class="kh-ui-icon" aria-hidden="true"></i> Affinity · <b id="rp-fav-level"></b></span><span id="rp-fav-xp"></span></div>'
-    +       '<div class="rp-aff-bar"><div class="rp-aff-fill" id="rp-fav-bar-fill" style="width:0"></div></div>'
-    // What 3,000 actually does today: the reporter counts as your manager on
-    // Reporter Cards (Platinum card + "Hired" ribbon). There is no hire
-    // button or other manager feature in the code, so don't promise one.
-    +       '<div class="rp-aff-note" id="rp-fav-note">'
-    +         (supaUser
-              ? 'Gifts raise affinity. At ' + FAV_HIRE_THRESHOLD.toLocaleString() + ', ' + escHtml(who) + ' becomes your Korean manager: their card turns Platinum and is marked Hired in <a href="korehan-cards.html" style="color:#93c5fd">Reporter Cards</a>.'
-              : 'Log in and send gifts to build affinity. At ' + FAV_HIRE_THRESHOLD.toLocaleString() + ', ' + escHtml(who) + ' becomes your Korean manager on Reporter Cards.')
-    +       '</div>'
-    +     '</div>'
-    +   '</div>'
-    + '</div>'
-
-    // ── Tabs: Articles first and default. Posts / Album only appear when
-    // they have something (only reporters and admins post), so learners
-    // never meet a tab that is always empty. ──
-    + '<div class="rp-tabbar" role="tablist">'
-    +   '<button type="button" class="rp-tab on" data-tab="articles" role="tab" aria-selected="true" onclick="rpSwitchTab(\'articles\')"><i data-lucide="newspaper" class="kh-ui-icon" aria-hidden="true"></i> Articles <span class="rp-tab-count" id="rp-tab-c-arts"></span></button>'
-    +   '<button type="button" class="rp-tab" data-tab="posts" role="tab" aria-selected="false" onclick="rpSwitchTab(\'posts\')" style="display:none"><i data-lucide="notebook-pen" class="kh-ui-icon" aria-hidden="true"></i> Posts <span class="rp-tab-count" id="rp-tab-c-posts"></span></button>'
-    +   '<button type="button" class="rp-tab" data-tab="photocards" role="tab" aria-selected="false" onclick="rpSwitchTab(\'photocards\')"><i data-lucide="credit-card" class="kh-ui-icon" aria-hidden="true"></i> Photocards <span class="rp-tab-count" id="rp-tab-c-pc"></span></button>'
-    +   '<button type="button" class="rp-tab" data-tab="album" role="tab" aria-selected="false" onclick="rpSwitchTab(\'album\')" style="display:none"><i data-lucide="camera" class="kh-ui-icon" aria-hidden="true"></i> Album <span class="rp-tab-count" id="rp-tab-c-album"></span></button>'
-    +   '<button type="button" class="rp-tab" data-tab="gift" role="tab" aria-selected="false" onclick="rpSwitchTab(\'gift\')"><i data-lucide="gift" class="kh-ui-icon" aria-hidden="true"></i> Send a gift</button>'
-    + '</div>'
-
-    + '<div class="rp-panel on" id="rp-panel-articles" role="tabpanel"><div id="rp-arts"><div class="rp-post-empty">Loading articles…</div></div></div>'
-    + '<div class="rp-panel" id="rp-panel-posts" role="tabpanel">'
-    +   '<div id="rp-post-compose"></div>'
-    +   '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Loading posts…</div></div>'
-    + '</div>'
-    + '<div class="rp-panel" id="rp-panel-photocards" role="tabpanel"><div id="rp-pc-root"></div></div>'
-    + '<div class="rp-panel" id="rp-panel-album" role="tabpanel"><div id="rp-album-root"></div></div>'
-    + '<div class="rp-panel" id="rp-panel-gift" role="tabpanel">'
-    +   '<div class="rp-gift-head"><p>Each gift raises your affinity with ' + escHtml(who) + '.</p><span class="rp-nyang-chip" id="rp-nyang-balance" style="display:none"></span></div>'
-    +   '<div class="rp-gifts" id="rp-gifts"><div class="rp-post-empty" style="grid-column:1/-1">Loading gifts…</div></div>'
-    +   '<div class="rp-gift-msg" id="rp-gift-msg"></div>'
-    + '</div>'
-    + '</div>';
-
-  updateAffinityUI(favXP);
-  rpRenderPhotocards();
-  loadReporterArticles(rid, reporter.name);
-  loadReporterGiftPanel(rid);
-  initReporterPosts(rid, reporter);
-});
-
-// Tab switching: toggle .on between buttons and panels. Album and
-// Photocards render from _postCache (already loaded by initReporterPosts).
-window.rpSwitchTab = function(tab) {
-  document.querySelectorAll('.rp-tab').forEach(function(b){
-    var on = b.dataset.tab === tab;
-    b.classList.toggle('on', on);
-    b.setAttribute('aria-selected', on ? 'true' : 'false');
-  });
-  document.querySelectorAll('.rp-panel').forEach(function(p){
-    p.classList.toggle('on', p.id === 'rp-panel-' + tab);
-  });
-  if (tab === 'album')      rpRenderAlbum();
-  if (tab === 'photocards') rpRenderPhotocards();
-};
-
-// Show the Posts / Album tabs only when there is something in them (or for
-// the reporter's owner / an admin, who need Posts to write).
-function rpSyncOptionalTabs() {
-  var posts = _postCache || [];
-  var imgs = 0;
-  posts.forEach(function(p){ imgs += (p.images || []).filter(Boolean).length; });
-  var pt = document.querySelector('.rp-tab[data-tab="posts"]');
-  var at = document.querySelector('.rp-tab[data-tab="album"]');
-  if (pt) pt.style.display = (posts.length || _canManagePosts) ? '' : 'none';
-  if (at) at.style.display = imgs ? '' : 'none';
-}
-
-// Album: every post image flattened into a square Instagram-style grid.
-// Pulls from _postCache (already loaded by initReporterPosts) so there's
-// no extra round-trip. Updates the tab badge count too.
-function rpRenderAlbum() {
-  var root = document.getElementById('rp-album-root');
-  var countEl = document.getElementById('rp-tab-c-album');
-  if (!root) return;
-  var imgs = [];
-  (_postCache || []).forEach(function(p) {
-    if (Array.isArray(p.images)) p.images.forEach(function(u){ if (u) imgs.push(u); });
-  });
-  if (countEl) countEl.textContent = imgs.length ? imgs.length : '';
-  if (!imgs.length) {
-    root.innerHTML = rpEmpty('camera', 'No photos yet', 'Photos from ' + rpFirstName() + '\'s posts will show up here.');
-    return;
-  }
-  root.innerHTML = '<div class="rp-album-grid">'
-    + imgs.map(function(u){
-        return '<div class="rp-album-tile" onclick="rpOpenPostImage(&quot;' + escHtml(u) + '&quot;)">'
-          + '<img src="' + escHtml(u) + '" loading="lazy" alt="">'
-          + '</div>';
-      }).join('')
-    + '</div>';
-}
-
-// Photocards: the reporter's official profile shot + every published
-// post image gets framed as an idol photocard. Numbered 001/N onward
-// so collectors get a "set" feel. Single image (reporter.image only)
-// is fine — that's the official card.
-function rpRenderPhotocards() {
-  var root = document.getElementById('rp-pc-root');
-  var countEl = document.getElementById('rp-tab-c-pc');
-  if (!root || !_currentReporter) return;
-  var r = _currentReporter;
-  var color = r.color || '#2563eb';
-
-  // Build the card list: official first (reporter.image), then one per
-  // post image. Each entry → { src, tag, num } shape the renderer uses.
-  var cards = [];
-  if (r.image) {
-    cards.push({ src: r.image, tag: 'OFFICIAL', num: 1 });
-  }
-  (_postCache || []).forEach(function(p) {
-    (p.images || []).forEach(function(u) {
-      if (u && u !== r.image) cards.push({ src: u, tag: 'BEHIND', num: cards.length + 1 });
-    });
-  });
-
-  if (countEl) countEl.textContent = cards.length ? cards.length : '';
-  if (!cards.length) {
-    root.innerHTML = rpEmpty('credit-card', 'No photocards yet', 'Photocards appear when ' + rpFirstName() + ' shares photos.');
-    return;
-  }
-
-  var total = cards.length;
-  root.innerHTML = '<div class="rp-pc-grid">'
-    + cards.map(function(c, i) {
-        var num = String(c.num).padStart(3, '0');
-        var imgLayer = c.src
-          ? '<div class="rp-pc-img" style="background-image:url(\'' + escHtml(c.src) + '\')"></div>'
-          : '<div class="rp-pc-ph" style="background:' + color + '">' + escHtml(r.name.charAt(0)) + '</div>';
-        return '<div class="rp-pc" onclick="rpOpenPostImage(&quot;' + escHtml(c.src) + '&quot;)">'
-          + imgLayer
-          + '<div class="rp-pc-edge" style="background:' + color + '"></div>'
-          + '<div class="rp-pc-fade"></div>'
-          + '<div class="rp-pc-num">' + num + ' / ' + String(total).padStart(3, '0') + '</div>'
-          + '<div class="rp-pc-body">'
-          +   '<span class="rp-pc-tag">' + escHtml(c.tag) + '</span>'
-          +   '<h3 class="rp-pc-name">' + escHtml(r.name) + '</h3>'
-          +   '<div class="rp-pc-role">' + escHtml((typeof khReporterRole==='function'?khReporterRole:String)(r.role || '')) + '</div>'
-          + '</div>'
-          + '</div>';
-      }).join('')
-    + '</div>';
-}
-
-// Wrapper around the existing renderReporterPosts so the Posts and
-// Articles tab counters stay in sync with whatever the loaders write
-// to _postCache. Articles count is set in loadReporterArticles.
-function rpUpdatePostsCount() {
-  var el = document.getElementById('rp-tab-c-posts');
-  if (el) el.textContent = (_postCache && _postCache.length) ? _postCache.length : '';
-  rpSyncOptionalTabs();
-}
-
-function canManageReporterPosts(reporter) {
-  if (window._isAdmin) return true;
-  if (!supaUser || !reporter) return false;
-  var linked = reporter.user_id || reporter.owner_user_id || reporter.auth_user_id || reporter.account_user_id || reporter.linked_user_id || '';
-  return !!linked && String(linked) === String(supaUser.id);
-}
-
-// Friendly empty state for a tab with nothing in it yet.
-function rpEmpty(icon, title, sub) {
-  return '<div class="rp-empty"><div class="rp-empty-ic"><i data-lucide="' + icon + '" class="kh-ui-icon" aria-hidden="true"></i></div>'
-    + '<div class="rp-empty-t">' + escHtml(title) + '</div><div class="rp-empty-s">' + escHtml(sub) + '</div></div>';
-}
-function rpFirstName() {
-  var n = _currentReporter && _currentReporter.name ? String(_currentReporter.name) : '';
-  var rom = (typeof khReporterNameEn === 'function') ? khReporterNameEn(_currentReporter) : '';
-  return rom || n || 'This reporter';
-}
-function escHtml(t){ return String(t || '').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
-
-// Smart "← 뒤로가기" target. The old javascript:history.back() did the
-// literal browser-back, which on the common path (home → all reporters
-// → reporter detail) lands the user on the all-reporters list rather
-// than where they actually started — owner-reported as "뒤로가기 하면
-// 뒤로 안가고 전체 기자 페이지가 나옴". Heuristic:
-//   1. If we came directly from the all-reporters list AND we stashed
-//      the page that preceded it (kh_rp_pre_list, set by reporters.html
-//      on its own load), navigate straight there.
-//   2. Otherwise, do the standard history.back() if there's anything
-//      to go back to.
-//   3. Final fallback: home page.
-window.rpGoBack = function (e) {
-  if (e) { e.preventDefault(); e.stopPropagation(); }
-  var ref = document.referrer || '';
-  if (/korehan-reporters\.html/i.test(ref)) {
-    var pre = '';
-    try { pre = sessionStorage.getItem('kh_rp_pre_list') || ''; } catch (_) {}
-    if (pre) {
-      try {
-        var u = new URL(pre, window.location.origin);
-        if (u.origin === window.location.origin && !/korehan-reporter(s)?\.html/i.test(u.pathname)) {
-          window.location.href = u.pathname + u.search + u.hash;
-          return;
-        }
-      } catch (_) {}
-    }
-    window.location.href = 'index.html';
-    return;
-  }
-  if (window.history.length > 1) { window.history.back(); return; }
-  window.location.href = 'index.html';
-};
-
-function formatPostTime(ts) {
-  if (!ts) return '';
-  var d = new Date(ts);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleString('ko-KR', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-}
-
-async function initReporterPosts(reporterId, reporter) {
-  renderPostComposer(reporterId, reporter);
-  await loadReporterPosts(reporterId);
-}
-
-function renderPostComposer(reporterId, reporter) {
-  var el = document.getElementById('rp-post-compose');
-  if (!el) return;
-  if (!_canManagePosts) { el.innerHTML = ''; return; }
-  el.innerHTML =
-    '<div class="rp-post-compose">'
-    + '<textarea id="rp-post-content" placeholder="' + escHtml('Write a new post for ' + (reporter && reporter.name ? reporter.name : 'this reporter')) + '"></textarea>'
-    + '<div class="rp-post-compose-row">'
-    +   '<input id="rp-post-files" class="rp-post-file" type="file" accept="image/*" multiple onchange="onPostFilesPicked(this)">'
-    +   '<select id="rp-post-status" class="rp-post-select"><option value="published">Publish</option><option value="draft">Draft</option></select>'
-    +   '<label style="font-size:12px;color:#475569"><input type="checkbox" id="rp-post-pinned"> Pin to top</label>'
-    +   '<button class="rp-post-btn" onclick="submitReporterPost(\'' + reporterId + '\')">Upload</button>'
-    +   '<button class="rp-post-btn ghost" id="rp-post-cancel" style="display:none" onclick="cancelPostEdit()">Cancel</button>'
-    + '</div>'
-    + '<div id="rp-post-file-hint" style="margin-top:8px;font-size:11px;color:#94a3b8"></div>'
-    + '</div>';
-}
-
-function onPostFilesPicked(input) {
-  _postDraftFiles = Array.from(input.files || []);
-  var hint = document.getElementById('rp-post-file-hint');
-  if (hint) hint.textContent = _postDraftFiles.length ? (_postDraftFiles.length + ' images selected') : '';
-}
-
-function isMissingReporterPostsTableError(err) {
-  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
-  return msg.indexOf('reporter_posts') >= 0 || msg.indexOf('reporter_post_images') >= 0 || msg.indexOf('pgrst') >= 0 || msg.indexOf('404') >= 0;
-}
-
-function _fallbackPostsKey(reporterId) {
-  return 'reporter_posts_fallback_' + reporterId;
-}
-
-async function loadFallbackReporterPosts(sb, reporterId) {
-  var localPosts = [];
-  try { localPosts = JSON.parse(localStorage.getItem('kh_rp_posts_' + reporterId) || '[]'); } catch(e) { localPosts = []; }
-  try {
-    if (!sb) return localPosts;
-    var key = _fallbackPostsKey(reporterId);
-    var res = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
-    if (res.error) return localPosts.length ? localPosts : [];
-    var raw = res.data && res.data.value ? res.data.value : '[]';
-    var arr = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
-    arr = Array.isArray(arr) ? arr : [];
-    // Merge: use whichever has more posts (server or local)
-    return arr.length >= localPosts.length ? arr : localPosts;
-  } catch(e) {
-    return localPosts;
-  }
-}
-
-async function saveFallbackReporterPosts(sb, reporterId, posts) {
-  var postsJson = JSON.stringify(posts || []);
-  // Always save to localStorage as backup
-  try { localStorage.setItem('kh_rp_posts_' + reporterId, postsJson); } catch(e) {}
-  if (!sb) return false;
-  try {
-    var key = _fallbackPostsKey(reporterId);
-    var payload = { key:key, value:postsJson, updated_at:new Date().toISOString() };
-    var res = await sb.from('app_settings').upsert(payload, { onConflict:'key' });
-    return !res.error;
-  } catch(e) {
-    return false;
-  }
-}
-
-// Also load from localStorage as secondary fallback
-
-
-async function loadReporterPosts(reporterId) {
-  var feed = document.getElementById('rp-post-feed');
-  if (!feed) return;
-  var sb = getSupa();
-  if (!sb) { feed.innerHTML = '<div class="rp-post-empty">Couldn\'t load posts.</div>'; return; }
-  try {
-    if (_postMode === 'fallback') {
-      var fp = await loadFallbackReporterPosts(sb, reporterId);
-      fp = fp.filter(function(p){ return _canManagePosts || p.status === 'published'; });
-      fp.sort(function(a,b){ return Number(!!b.pinned) - Number(!!a.pinned) || String(b.created_at||'').localeCompare(String(a.created_at||'')); });
-      _postCache = fp;
-      renderReporterPosts(fp);
-      return;
-    }
-
-    var q = sb.from('reporter_posts')
-      .select('id,reporter_id,author_user_id,content,post_type,status,pinned,created_at,updated_at')
-      .eq('reporter_id', reporterId)
-      .order('pinned', { ascending:false })
-      .order('created_at', { ascending:false });
-    if (!_canManagePosts) q = q.eq('status', 'published');
-    var res = await q;
-    if (res.error) throw res.error;
-    var posts = res.data || [];
-    var ids = posts.map(function(p){ return p.id; });
-    var imgMap = {};
-    if (ids.length) {
-      var ir = await sb.from('reporter_post_images').select('id,post_id,image_url,sort_order').in('post_id', ids).order('sort_order', { ascending:true });
-      if (ir.error && isMissingReporterPostsTableError(ir.error)) throw ir.error;
-      if (!ir.error) {
-        (ir.data || []).forEach(function(im){
-          if (!imgMap[im.post_id]) imgMap[im.post_id] = [];
-          imgMap[im.post_id].push(im.image_url);
-        });
-      }
-    }
-    posts.forEach(function(p){ p.images = imgMap[p.id] || []; });
-    _postMode = 'db';
-    setPostModePref('db');
-    _postCache = posts;
-    renderReporterPosts(posts);
-  } catch(e) {
-    if (isMissingReporterPostsTableError(e)) {
-      _postMode = 'fallback';
-      setPostModePref('fallback');
-      var fposts = await loadFallbackReporterPosts(sb, reporterId);
-      fposts = fposts.filter(function(p){ return _canManagePosts || p.status === 'published'; });
-      fposts.sort(function(a,b){ return Number(!!b.pinned) - Number(!!a.pinned) || String(b.created_at||'').localeCompare(String(a.created_at||'')); });
-      _postCache = fposts;
-      renderReporterPosts(fposts);
-      return;
-    }
-    feed.innerHTML = '<div class="rp-post-empty">Failed to load posts.</div>';
-  }
-}
-
-function renderReporterPosts(posts) {
-  var feed = document.getElementById('rp-post-feed');
-  if (!feed) return;
-  // Keep the tab badge count in sync with whatever lands in the feed,
-  // and refresh the Album / Photocards panels if they happen to be
-  // open so a new post upload doesn't leave them stale.
-  if (typeof rpUpdatePostsCount === 'function') rpUpdatePostsCount();
-  var openPanel = document.querySelector('.rp-panel.on');
-  if (openPanel && openPanel.id === 'rp-panel-album')      rpRenderAlbum();
-  if (openPanel && openPanel.id === 'rp-panel-photocards') rpRenderPhotocards();
-  if (!posts.length) {
-    feed.innerHTML = rpEmpty('notebook-pen', 'No posts yet', rpFirstName() + ' hasn\'t posted anything yet. Check back soon.');
-    return;
-  }
-  feed.innerHTML = posts.map(function(p){
-    var imgs = p.images || [];
-    var imgsClass = 'rp-post-images' + (imgs.length === 1 ? ' one' : '');
-    var actions = _canManagePosts
-      ? '<div class="rp-post-actions"><button class="rp-post-act" onclick="editReporterPost(&quot;' + p.id + '&quot;)">Edit</button><button class="rp-post-act" onclick="deleteReporterPost(&quot;' + p.id + '&quot;)">Delete</button></div>'
-      : '';
-    return '<article class="rp-post-card">'
-      + '<div class="rp-post-head">'
-      +   '<div><div class="rp-post-who">' + escHtml(rpFirstName()) + '</div><div class="rp-post-meta">' + escHtml(formatPostTime(p.created_at)) + (p.updated_at && p.updated_at !== p.created_at ? ' · edited' : '') + '</div></div>'
-      +   (p.pinned ? '<div class="rp-post-pin"><i data-lucide="pin" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> PINNED</div>' : '')
-      + '</div>'
-      + '<div class="rp-post-content">' + escHtml(p.content || '') + '</div>'
-      + (imgs.length ? ('<div class="' + imgsClass + '">' + imgs.map(function(url){ return '<img src="' + escHtml(url) + '" onclick="rpOpenPostImage(&quot;' + escHtml(url) + '&quot;)">'; }).join('') + '</div>') : '')
-      + '<div class="rp-post-foot"><span class="rp-post-status">' + (p.status === 'draft' ? 'Draft' : 'Published') + '</span>' + actions + '</div>'
-      + '</article>';
-  }).join('');
-}
-
-function rpOpenPostImage(url) {
-  var img = document.getElementById('rp-lb-img');
-  var lb = document.getElementById('rp-lb');
-  if (!img || !lb) return;
-  img.src = url;
-  lb.classList.add('on');
-}
-
-async function uploadPostImages(sb, reporterId, postId, files) {
-  var out = [];
-  if (!files || !files.length) return out;
-  for (var i = 0; i < files.length; i++) {
-    var f = files[i];
-    var ext = (f.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '');
-    var path = 'posts/' + reporterId + '/' + postId + '/' + Date.now() + '_' + i + '.' + ext;
-    var up = await sb.storage.from('reporter-images').upload(path, f, { upsert:true, contentType:f.type || 'image/jpeg' });
-    if (up.error) continue;
-    var pub = sb.storage.from('reporter-images').getPublicUrl(path);
-    var u = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : '';
-    if (u) out.push(u);
-  }
-  return out;
-}
-
-async function submitReporterPost(reporterId) {
-  if (!_canManagePosts) return;
-  var sb = getSupa();
-  if (!sb || !supaUser) { openAuthModal('signin'); return; }
-  var contentEl = document.getElementById('rp-post-content');
-  var statusEl = document.getElementById('rp-post-status');
-  var pinEl = document.getElementById('rp-post-pinned');
-  var content = (contentEl && contentEl.value || '').trim();
-  if (!content && !_postDraftFiles.length) { alert('You need text or an image.'); return; }
-
-  var status = statusEl ? statusEl.value : 'published';
-  var pinned = !!(pinEl && pinEl.checked);
-  var now = new Date().toISOString();
-  var postId = _editingPostId || (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'rp_' + Date.now());
-  var payload = {
-    id: postId, reporter_id: reporterId, author_user_id: supaUser.id,
-    content: content, post_type: 'general', status: status, pinned: pinned,
-    updated_at: now
-  };
-  if (!_editingPostId) payload.created_at = now;
-
-  if (_postMode === 'fallback') {
-    var local = await loadFallbackReporterPosts(sb, reporterId);
-    if (_editingPostId) {
-      local = local.map(function(p){ return p.id === postId ? Object.assign({}, p, payload) : p; });
-    } else {
-      local.unshift(Object.assign({ images:[] }, payload));
-    }
-    if (_postDraftFiles.length) {
-      var furls = await uploadPostImages(sb, reporterId, postId, _postDraftFiles);
-      local = local.map(function(p){
-        if (p.id !== postId) return p;
-        var imgs = Array.isArray(p.images) ? p.images.slice() : [];
-        return Object.assign({}, p, { images: imgs.concat(furls) });
-      });
-    }
-    var ok = await saveFallbackReporterPosts(sb, reporterId, local);
-    if (!ok) { alert('Failed to save post'); return; }
-    cancelPostEdit();
-    await loadReporterPosts(reporterId);
-    return;
-  }
-
-  var r = _editingPostId
-    ? await sb.from('reporter_posts').update(payload).eq('id', postId).eq('reporter_id', reporterId)
-    : await sb.from('reporter_posts').insert(payload);
-  if (r.error) {
-    if (isMissingReporterPostsTableError(r.error)) {
-      _postMode = 'fallback';
-      setPostModePref('fallback');
-      return submitReporterPost(reporterId);
-    }
-    alert('Failed to save post');
-    return;
-  }
-
-  if (_postDraftFiles.length) {
-    var urls = await uploadPostImages(sb, reporterId, postId, _postDraftFiles);
-    if (urls.length) {
-      var existing = _postCache.find(function(p){ return p.id === postId; });
-      var start = existing && existing.images ? existing.images.length : 0;
-      var rows = urls.map(function(url, idx){
-        return { post_id: postId, image_url: url, sort_order: start + idx };
-      });
-      await sb.from('reporter_post_images').insert(rows);
-    }
-  }
-
-  cancelPostEdit();
-  await loadReporterPosts(reporterId);
-}
-
-function editReporterPost(postId) {
-  if (!_canManagePosts) return;
-  var p = _postCache.find(function(x){ return x.id === postId; });
-  if (!p) return;
-  _editingPostId = postId;
-  var contentEl = document.getElementById('rp-post-content');
-  var statusEl = document.getElementById('rp-post-status');
-  var pinEl = document.getElementById('rp-post-pinned');
-  var cancelBtn = document.getElementById('rp-post-cancel');
-  if (contentEl) contentEl.value = p.content || '';
-  if (statusEl) statusEl.value = p.status || 'published';
-  if (pinEl) pinEl.checked = !!p.pinned;
-  if (cancelBtn) cancelBtn.style.display = '';
-  var hint = document.getElementById('rp-post-file-hint');
-  if (hint) hint.textContent = 'Edit mode: you can upload more images.';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function cancelPostEdit() {
-  _editingPostId = null;
-  _postDraftFiles = [];
-  var contentEl = document.getElementById('rp-post-content');
-  var statusEl = document.getElementById('rp-post-status');
-  var pinEl = document.getElementById('rp-post-pinned');
-  var fileEl = document.getElementById('rp-post-files');
-  var hint = document.getElementById('rp-post-file-hint');
-  var cancelBtn = document.getElementById('rp-post-cancel');
-  if (contentEl) contentEl.value = '';
-  if (statusEl) statusEl.value = 'published';
-  if (pinEl) pinEl.checked = false;
-  if (fileEl) fileEl.value = '';
-  if (hint) hint.textContent = '';
-  if (cancelBtn) cancelBtn.style.display = 'none';
-}
-
-async function deleteReporterPost(postId) {
-  if (!_canManagePosts) return;
-  if (!confirm('Delete this post?')) return;
-  var sb = getSupa();
-  if (!sb) return;
-  if (_postMode === 'fallback') {
-    var local = await loadFallbackReporterPosts(sb, _currentReporterId);
-    local = local.filter(function(p){ return p.id !== postId; });
-    var ok = await saveFallbackReporterPosts(sb, _currentReporterId, local);
-    if (!ok) { alert('Delete failed'); return; }
-    await loadReporterPosts(_currentReporterId);
-    return;
-  }
-  await sb.from('reporter_post_images').delete().eq('post_id', postId);
-  var dr = await sb.from('reporter_posts').delete().eq('id', postId);
-  if (dr.error) {
-    if (isMissingReporterPostsTableError(dr.error)) {
-      _postMode = 'fallback';
-      setPostModePref('fallback');
-      return deleteReporterPost(postId);
-    }
-    alert('Delete failed'); return;
-  }
-  await loadReporterPosts(_currentReporterId);
-}
-
-async function loadReporterGiftPanel(reporterId) {
-  var grid = document.getElementById('rp-gifts');
-  var msg = document.getElementById('rp-gift-msg');
-  if (!grid) return;
-  var sb = getSupa();
-  if (!supaUser) await _waitForSupaUser(4000);
-  if (!sb || !supaUser) {
-    grid.innerHTML = '<div style="grid-column:1/-1">' + rpEmpty('gift', 'Log in to send gifts', 'Gifts are bought with Nyang you earn by studying, and they raise your affinity.')
-      .replace('</div></div>', '</div><button class="rp-signin" onclick="if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')">Log in</button></div>') + '</div>';
-    if (msg) msg.textContent = '';
-    return;
-  }
-  try {
-    var res = await Promise.all([
-      sb.from('shop_items').select('id,name,description,coin_price,image_url').eq('is_active', true).eq('item_type', 'reporter_item').order('sort_order', { ascending:true }),
-      sb.from('owned_items').select('item_id,quantity').eq('user_id', supaUser.id),
-      sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
-    ]);
-    _giftCatalog = res[0].data || [];
-    _giftOwnedMap = {};
-    (res[1].data || []).forEach(function(o){ _giftOwnedMap[o.item_id] = Number(o.quantity || 0); });
-    _giftBalance = Number(res[2].data && res[2].data.coin_balance || 0);
-    var bal = document.getElementById('rp-nyang-balance');
-    if (bal) { bal.style.display = ''; bal.innerHTML = '<i data-lucide="paw-print" class="kh-ui-icon" aria-hidden="true"></i> ' + _giftBalance.toLocaleString() + ' Nyang'; }
-    renderGiftGrid(reporterId);
-    if (msg) msg.textContent = 'A gift you own is used first; otherwise it is bought with Nyang and sent right away.';
-  } catch(e) {
-    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#fca5a5">Couldn\'t load gifts. Please try again later.</div>';
-  }
-}
-
-// One Lucide icon per gift, by item id first, then by name keywords.
-var RP_GIFT_ICON = {
-  reporter_coffee: 'coffee', reporter_bubble_tea: 'cup-soda', reporter_flower: 'flower',
-  reporter_tteokbokki: 'soup', reporter_hotteok: 'cookie', reporter_mandu: 'utensils-crossed',
-  reporter_chimaek: 'drumstick', reporter_kimchi_jeon: 'egg-fried', reporter_korean_tea: 'leaf',
-  reporter_postcard: 'mail', reporter_polaroid: 'camera'
-};
-var RP_GIFT_SHORT = {
-  reporter_coffee: 'Coffee', reporter_bubble_tea: 'Bubble tea', reporter_flower: 'Bouquet',
-  reporter_tteokbokki: 'Tteokbokki', reporter_hotteok: 'Hotteok', reporter_mandu: 'Mandu',
-  reporter_chimaek: 'Chimaek', reporter_kimchi_jeon: 'Kimchi pancake', reporter_korean_tea: 'Korean tea',
-  reporter_postcard: 'Postcard', reporter_polaroid: 'Polaroids'
-};
-function rpGiftIcon(g) {
-  if (RP_GIFT_ICON[g.id]) return RP_GIFT_ICON[g.id];
-  var n = String(g.name || '').toLowerCase();
-  var rules = [[/coffee|커피/, 'coffee'], [/bubble|boba|버블|soda/, 'cup-soda'], [/flower|bouquet|꽃/, 'flower'],
-    [/tteok|떡|soup|ramen|라면/, 'soup'], [/chicken|chimaek|치맥|치킨/, 'drumstick'], [/postcard|letter|card|편지/, 'mail'],
-    [/tea|차/, 'leaf'], [/photo|polaroid|사진/, 'camera'], [/cake|케이크/, 'cake-slice'], [/cookie|hotteok|호떡/, 'cookie'],
-    [/mandu|dumpling|만두|jeon|전/, 'utensils-crossed']];
-  for (var i = 0; i < rules.length; i++) if (rules[i][0].test(n)) return rules[i][1];
-  return 'gift';
-}
-
-function renderGiftGrid(reporterId) {
-  var grid = document.getElementById('rp-gifts');
-  if (!grid) return;
-  if (!_giftCatalog.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1">' + rpEmpty('gift', 'No gifts right now', 'Reporter gifts will be back in the shop soon.') + '</div>';
-    return;
-  }
-  grid.innerHTML = _giftCatalog.map(function(g) {
-    var own = Number(_giftOwnedMap[g.id] || 0);
-    var price = Number(g.coin_price || 0);
-    var disabled = own <= 0 && _giftBalance < price;
-    var label = RP_GIFT_SHORT[g.id] || String(g.name || '').replace(/^Reporter\s+/i, '');
-    return '<button type="button" class="rp-gift' + (disabled ? ' disabled' : '') + '" ' + (disabled ? 'disabled ' : '')
-      + 'title="' + escHtml(g.name + (g.description ? ' — ' + g.description : '') + (disabled ? ' (not enough Nyang)' : '')) + '" '
-      + 'onclick="sendGiftToReporter(\'' + escHtml(reporterId) + '\',\'' + escHtml(g.id) + '\')">'
-      + '<span class="rp-gift-icon"><i data-lucide="' + rpGiftIcon(g) + '" class="kh-ui-icon" aria-hidden="true"></i></span>'
-      + '<span class="rp-gift-name">' + escHtml(label) + '</span>'
-      + '<span class="rp-gift-cost">' + price.toLocaleString() + ' Nyang</span>'
-      + (own > 0 ? '<span class="rp-gift-own">x' + own + '</span>' : '')
-      + '</button>';
-  }).join('');
-}
-
-async function sendGiftToReporter(reporterId, itemId) {
-  var sb = getSupa();
-  if (!sb || !supaUser) { openAuthModal('signin'); return; }
-  var item = _giftCatalog.find(function(it){ return it.id === itemId; });
-  if (!item) return;
-  var own = Number(_giftOwnedMap[itemId] || 0);
-  var prompt = own > 0
-    ? 'Send ' + item.name + ' using 1 from your inventory?'
-    : 'Buy & send ' + item.name + ' for ' + Number(item.coin_price || 0).toLocaleString() + ' 냥?';
-  if (!confirm(prompt)) return;
-
-  // Server-only: send_reporter_gift spends the item or the nyang in one
-  // transaction (the old client fallback wrote coin_balance directly).
-  var res = await sb.rpc('send_reporter_gift', {
-    p_item_id: itemId,
-    p_reporter_id: reporterId,
-    p_user_id: supaUser.id
-  });
-  if (res.error || !res.data || !res.data.ok) {
-    var code = (res.data && res.data.error) || 'GIFT_PROCESS_FAILED';
-    var friendly = 'Gift sending failed. Please try again later.';
-    if (code === 'INSUFFICIENT_NYANG') friendly = 'Not enough 냥.';
-    else if (code === 'ITEM_NOT_GIFTABLE') friendly = 'This item cannot be sent.';
-    else if (code === 'INVALID_INPUT') friendly = 'Invalid gift info.';
-    else if (code === 'GIFT_PROCESS_FAILED') friendly = 'Error processing gift.';
-    alert(friendly);
-    return;
-  }
-  alert('Gift sent! The reporter\'s affinity went up.');
-  var delta = Number(res.data && (res.data.affinity_gained || res.data.affinity_delta) || 0);
-  if (!delta) {
-    delta = Math.max(10, Number(item.coin_price || 0));
-  }
-  _currentAffinityXP = Math.max(0, Number(_currentAffinityXP || 0) + delta);
-  setLocalAffinity(reporterId, _currentAffinityXP);
-  updateAffinityUI(_currentAffinityXP);
-  await loadReporterGiftPanel(reporterId);
-}
-
-
-function getAffinityStorageKey(reporterId) {
-  if (!supaUser || !reporterId) return '';
-  return 'kh_affinity_' + supaUser.id + '_' + reporterId;
-}
-
-// Auth restores asynchronously after page load. Without this gate the
-// reporter page renders affinity as 0 because supaUser is still null
-// when loadAffinityPoints fires from DOMContentLoaded — the function
-// then short-circuits to getLocalAffinity which keys on supaUser.id
-// (empty), so localStorage looks empty too. We block up to 4s for the
-// session to land before reading.
-async function _waitForSupaUser(timeoutMs) {
-  if (supaUser) return supaUser;
-  return new Promise(function(resolve) {
-    var done = false;
-    function finish() {
-      if (done) return;
-      done = true;
-      window.removeEventListener('kh-auth-signed-in', onSignIn);
-      resolve(supaUser || null);
-    }
-    function onSignIn() { finish(); }
-    window.addEventListener('kh-auth-signed-in', onSignIn);
-    // Poll lightly in case the event already fired before listeners
-    // attached (race when shared.js getSession resolves quickly).
-    var pollId = setInterval(function(){
-      if (supaUser) { clearInterval(pollId); finish(); }
-    }, 100);
-    setTimeout(function(){ clearInterval(pollId); finish(); }, timeoutMs || 4000);
-  });
-}
-
-// Belt-and-suspenders: if auth restored AFTER the page already rendered
-// affinity (e.g. very slow getSession on a cold tab), re-fetch and patch
-// the UI in place so the user doesn't see 0 then have to refresh.
-window.addEventListener('kh-auth-signed-in', async function() {
-  if (!_currentReporterId) return;
-  var sb = getSupa();
-  if (!sb) return;
-  try {
-    var fresh = Number(await loadAffinityPoints(sb, _currentReporterId)) || 0;
-    if (fresh > Number(_currentAffinityXP || 0)) {
-      _currentAffinityXP = fresh;
-      updateAffinityUI(fresh);
-    }
-  } catch(_) {}
-});
-
-function shouldUseRemoteAffinity() {
-  try {
-    return localStorage.getItem('kh_remote_affinity') !== '0';
-  } catch(e) {
-    return true;
-  }
-}
-
-function getLocalAffinity(reporterId) {
-  try {
-    var key = getAffinityStorageKey(reporterId);
-    if (!key) return 0;
-    return Number(localStorage.getItem(key) || 0);
-  } catch(e) {
-    return 0;
-  }
-}
-
-function setLocalAffinity(reporterId, points) {
-  try {
-    var key = getAffinityStorageKey(reporterId);
-    if (!key) return;
-    localStorage.setItem(key, String(Math.max(0, Number(points || 0))));
-  } catch(e) {}
-}
-
-function isMissingAffinityTableError(err) {
-  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
-  return msg.indexOf('reporter_user_affinity') >= 0 || msg.indexOf('pgrst205') >= 0 || msg.indexOf('schema cache') >= 0 || msg.indexOf('404') >= 0;
-}
-
-// ── app_settings fallback for affinity ──
-function _affinityFallbackKey(reporterId) {
-  return 'kh_affinity_fb_' + (supaUser ? supaUser.id : 'anon') + '_' + reporterId;
-}
-async function loadAffinityFromAppSettings(sb, reporterId) {
-  try {
-    var key = _affinityFallbackKey(reporterId);
-    var res = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
-    if (res.data && res.data.value) return Number(res.data.value) || 0;
-  } catch(e) {}
-  return 0;
-}
-async function saveAffinityToAppSettings(sb, reporterId, points) {
-  try {
-    var key = _affinityFallbackKey(reporterId);
-    await sb.from('app_settings').upsert({ key: key, value: String(points), updated_at: new Date().toISOString() }, { onConflict: 'key' });
-  } catch(e) {}
-}
-
-async function loadAffinityPoints(sb, reporterId) {
-  // Bridge the async auth restore — without this, a fresh page load
-  // calls this function before supaUser settles, the table read gets
-  // skipped, and the user sees their affinity reset to 0 every time.
-  if (!supaUser) await _waitForSupaUser(4000);
-  if (!sb || !supaUser) return getLocalAffinity(reporterId);
-  // Try primary table first
-  if (shouldUseRemoteAffinity()) {
-    try {
-      var af = await sb.from('reporter_user_affinity').select('affinity_points').eq('user_id', supaUser.id).eq('reporter_id', reporterId).maybeSingle();
-      if (af && af.error) {
-        if (isMissingAffinityTableError(af.error)) {
-          try { localStorage.setItem('kh_remote_affinity', '0'); } catch(e) {}
-        }
-      } else {
-        var dbVal = Number(af.data && af.data.affinity_points || 0);
-        var localVal = getLocalAffinity(reporterId);
-        var finalVal = Math.max(dbVal, localVal);
-        if (finalVal !== localVal) setLocalAffinity(reporterId, finalVal);
-        return finalVal;
-      }
-    } catch(e) {}
-  }
-  // Fallback: app_settings table
-  var fbVal = await loadAffinityFromAppSettings(sb, reporterId);
-  var localVal = getLocalAffinity(reporterId);
-  var finalVal = Math.max(fbVal, localVal);
-  if (finalVal > 0) {
-    setLocalAffinity(reporterId, finalVal);
-    if (finalVal > fbVal) saveAffinityToAppSettings(sb, reporterId, finalVal);
-  }
-  return finalVal;
-}
-
-function updateAffinityUI(favXP) {
-  favXP = Number(favXP || 0);
-  var pct = Math.min(100, Math.round(favXP / FAV_HIRE_THRESHOLD * 100));
-  var level = favXP >= FAV_HIRE_THRESHOLD ? 'Manager' : favXP >= 200 ? 'Friend' : favXP >= 80 ? 'Acquaintance' : 'Stranger';
-  var fill = document.getElementById('rp-fav-bar-fill');
-  if (fill) fill.style.width = (favXP > 0 ? Math.max(2, pct) : 0) + '%';
-  var xp = document.getElementById('rp-fav-xp');
-  if (xp) xp.innerHTML = '<b>' + favXP.toLocaleString() + '</b> / ' + FAV_HIRE_THRESHOLD.toLocaleString();
-  var lv = document.getElementById('rp-fav-level');
-  if (lv) lv.textContent = level;
-}
-
-function rpOpenLb() {
-  var src = document.querySelector('.rp-photo-col img');
-  if (!src) return;
-  document.getElementById('rp-lb-img').src = src.src;
-  document.getElementById('rp-lb').classList.add('on');
-}
-document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('rp-lb').classList.remove('on'); });
-
-// The reporter's own published articles, straight from the articles table
-// (the shared list cache only holds the newest 80, which undercounts busy
-// reporters). Count comes from the same query (count: 'exact').
-var RP_ART_PAGE = 20;
-var RP_ART_SELECT = 'id,title,title_en,image,section,level,date,created_at,status';
-var _rpArtOffset = 0, _rpArtTotal = 0;
-function rpArtQuery(sb, rid, sel, from) {
-  return sb.from('articles').select(sel, { count: 'exact' })
-    .eq('reporter_id', rid)
-    .or('status.is.null,status.eq.published')
-    .or('section.is.null,section.neq.fake')
-    .order('created_at', { ascending: false })
-    .range(from, from + RP_ART_PAGE - 1);
-}
-function rpArtItem(a) {
-  var lv = a.level || '';
-  var lvName = (typeof KH_LEVEL_MAP === 'object' && KH_LEVEL_MAP[lv]) || lv;
-  var lvCls = { Starter:'s', Beginner:'b', Intermediate:'i', Advanced:'a' }[lv] || '';
-  var dRaw = a.date || a.created_at;
-  var d = dRaw ? new Date(dRaw) : null;
-  var dTxt = d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }) : '';
-  var sec = typeof khSecLabel === 'function' ? khSecLabel(a.section) : (a.section || '');
-  var img = String(a.image || '');
-  var thumbStyle = /^https?:\/\//i.test(img) && !/picsum\.photos/i.test(img) ? ' style="background-image:url(\'' + escHtml(img).replace(/'/g, '%27') + '\'),linear-gradient(135deg,#334155,#1e293b)"' : '';
-  return '<a class="rp-art-item" href="korehan-article.html?id=' + encodeURIComponent(a.id) + '">'
-    + '<span class="rp-art-thumb"' + thumbStyle + '></span>'
-    + '<span class="rp-art-body"><span class="rp-art-title" lang="ko">' + escHtml(a.title || '') + '</span>'
-    + '<span class="rp-art-meta" style="display:block">' + escHtml([sec, dTxt].filter(Boolean).join(' · ')) + '</span></span>'
-    + (lvName ? '<span class="rp-lv ' + lvCls + '">' + escHtml(lvName) + '</span>' : '')
-    + '</a>';
-}
-async function loadReporterArticles(rid, name, more) {
-  var el = document.getElementById('rp-arts');
-  var countEl = document.getElementById('rp-tab-c-arts');
-  if (!el) return;
-  var sb = getSupa();
-  if (!more) { _rpArtOffset = 0; _rpArtTotal = 0; }
-  var rows = [], total = 0, failed = false;
-  if (sb) {
-    try {
-      var res = await rpArtQuery(sb, rid, RP_ART_SELECT, _rpArtOffset);
-      // { data: [], error: null } can be column drift (CLAUDE.md 2026-05-16) — retry with '*'.
-      if (!more && (res.error || !(res.data && res.data.length))) res = await rpArtQuery(sb, rid, '*', _rpArtOffset);
-      if (res.error) failed = true;
-      rows = res.data || [];
-      total = Number(res.count || 0) || (_rpArtOffset + rows.length);
-    } catch (e) { failed = true; }
-  } else failed = true;
-  if (!more) _rpArtTotal = total;
-  if (countEl) countEl.textContent = _rpArtTotal ? _rpArtTotal : '';
-  var btn = document.getElementById('rp-art-more');
-  if (btn) btn.remove();
-  if (!more && !rows.length) {
-    el.innerHTML = failed
-      ? rpEmpty('wifi-off', 'Couldn\'t load articles', 'Please check your connection and try again.')
-      : rpEmpty('newspaper', 'No articles yet', rpFirstName() + '\'s articles will be listed here once they are published.');
-    return;
-  }
-  var html = rows.map(rpArtItem).join('');
-  if (!more) el.innerHTML = '<div class="rp-art-list" id="rp-art-list">' + html + '</div>';
-  else { var list = document.getElementById('rp-art-list'); if (list) list.insertAdjacentHTML('beforeend', html); }
-  _rpArtOffset += rows.length;
-  if (_rpArtOffset < _rpArtTotal && rows.length) {
-    el.insertAdjacentHTML('beforeend', '<button type="button" class="rp-more" id="rp-art-more" onclick="this.disabled=true;this.textContent=\'Loading…\';loadReporterArticles(_currentReporterId,\'\',true)">Show more (' + (_rpArtTotal - _rpArtOffset) + ' left)</button>');
-  }
-}
-</script>
+<script src="js/features/reporter-page.js?v=20261031ig"></script>
 </body>
 </html>
