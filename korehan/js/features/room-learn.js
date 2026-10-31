@@ -20,7 +20,7 @@
   var GOAL_ICON = { streak_days: 'flame', saved_words: 'library', articles_read: 'newspaper', topik_tests: 'award', games_played: 'gamepad-2' };
   var ITEM_ICON = { lamp: 'lamp', cushion: 'armchair', espresso_machine: 'coffee', standing_desk: 'award', gaming_desk: 'gamepad-2',
     bookshelf: 'library', neon_hwaiting: 'zap', sofa_2seat: 'sofa', byobu: 'frame' };
-  var S = { word: null, due: 0, empty: false, unlocks: null, expanded: false, min: false, uid: null };
+  var S = { word: null, due: 0, empty: false, unlocks: null, expanded: false, uid: null };
 
   function kstToday() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -79,13 +79,14 @@
   }
 
   function bubbleHtml() {
+    var x = '<button type="button" class="rw-x" aria-label="Hide today\'s word until tomorrow" title="Hide until tomorrow" onclick="khRoomLearn.minimize(true)">' + icon('x') + '</button>';
     if (S.empty) {
-      return '<div class="rw-tag">Today\'s word</div>'
+      return x + '<div class="rw-tag">Today\'s word</div>'
         + '<div class="rw-e">Save words while you read — they\'ll show up here.</div>'
         + '<a class="rw-btn" href="korehan-all.html">Read the news</a>';
     }
     var w = S.word;
-    return '<button type="button" class="rw-x" aria-label="Hide today\'s word" onclick="khRoomLearn.minimize(true)">' + icon('x') + '</button>'
+    return x
       // The pick (and its "due" flag) is cached for the day; once every due
       // word has been reviewed (S.due = 0, read live) it's no longer due.
       + '<div class="rw-tag">Today\'s word · ' + (w.due && S.due > 0 ? 'due for review' : 'from your word book') + '</div>'
@@ -110,11 +111,9 @@
       host.appendChild(el);
     }
     if (!user() || (!S.word && !S.empty)) { el.hidden = true; return; }
-    S.min = !S.empty && lsGetJ('kh_room_word_min') === kstToday();
-    el.classList.toggle('rw-min', S.min);
-    el.innerHTML = S.min
-      ? '<button type="button" class="rw-pill" onclick="khRoomLearn.minimize(false)" aria-label="Show today\'s word">' + icon('message-circle') + '<span lang="ko">' + esc(S.word.ko) + '</span></button>'
-      : bubbleHtml() + '<span class="rw-tail" aria-hidden="true"></span>';
+    // × hides the word for the rest of the KST day; it's back tomorrow.
+    if (lsGetJ('kh_room_word_min') === kstToday()) { el.hidden = true; return; }
+    el.innerHTML = bubbleHtml() + '<span class="rw-tail" aria-hidden="true"></span>';
     el.hidden = false;
     drawIcons();
     position();
@@ -174,12 +173,6 @@
       left = cx - art * 0.22; right = cx + art * 0.22;
     }
     var obs = obstacles(host), gap = 12, pad = 6;
-    if (S.min) {
-      var pw = el.offsetWidth, ph = el.offsetHeight;
-      el.style.left = Math.max(pad, Math.min(W - pw - pad, cx - pw / 2)) + 'px';
-      el.style.top = Math.max(pad, headY - ph - 8) + 'px';
-      return;
-    }
     var bw0 = el.offsetWidth, MINW = 136;
 
     function above(w) {
