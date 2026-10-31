@@ -1136,16 +1136,13 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 .rw-k { display:flex; align-items:center; gap:6px; font-family:'Noto Sans KR',sans-serif; font-weight:800; font-size:20px; line-height:1.25; }
 .rw-say, .rw-x { border:0; background:none; padding:2px; cursor:pointer; color:#2563eb; display:inline-flex; border-radius:6px; }
 .rw-say svg, .rw-say i { width:18px; height:18px; }
-.rw-x { position:absolute; top:6px; right:6px; color:#94a3b8; }
+.rw-x { position:absolute; top:0; right:0; padding:8px; color:#94a3b8; }
 .rw-x svg, .rw-x i { width:14px; height:14px; }
 .rw-say:focus-visible, .rw-x:focus-visible, .rw-btn:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
 .rw-e { font-size:12px; color:#475569; margin:2px 0 6px; line-height:1.4; }
 .rw-ex { font-family:'Noto Sans KR',sans-serif; font-weight:500; font-size:12.5px; color:#334155; margin-bottom:8px; line-height:1.45; }
 .rw-btn { display:inline-block; background:#2563eb; color:#fff !important; font-size:12px; font-weight:800; border-radius:999px; padding:6px 12px; text-decoration:none; }
 .rw-btn:hover { background:#1d4ed8; }
-.rw.rw-min { width:auto; padding:0; background:none; box-shadow:none; }
-.rw-pill { display:inline-flex; align-items:center; gap:5px; border:0; cursor:pointer; background:#fff; color:#0b1626; border-radius:999px; padding:5px 10px; font:800 13px 'Noto Sans KR',sans-serif; box-shadow:0 4px 12px rgba(0,0,0,.25); }
-.rw-pill svg, .rw-pill i { width:14px; height:14px; color:#2563eb; }
 @media (max-width:480px) {
   .rw { width:188px; padding:8px 10px 9px; }
   .rw-k { font-size:18px; }
@@ -1257,7 +1254,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
       </div>
       </div>
       <button class="room-ctrl-btn" onclick="resetRoomPositions()" style="margin-top:8px" title="Put every item back in view"><i data-lucide="rotate-ccw" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Reset positions</button>
-      <div style="font-size:10px;color:#94a3b8;margin-top:6px">Drag to move · tap an item for its tools · Done saves</div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px">Drag to move · tap an item for its tools, empty space to hide them · Done saves</div>
     </div>
     <!-- Study unlocks (js/features/room-learn.js, room_unlocks). Below the room controls so the
          edit buttons sit right under the room; hidden while editing. -->
@@ -1358,7 +1355,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/avatar-art.js?v=20261031on"></script>
 <script src="js/features/avatar-editor.js?v=20261031on"></script>
 <script src="js/features/room-tabs.js?v=20261031it"></script>
-<script src="js/features/room-learn.js?v=20261031rl"></script>
+<script src="js/features/room-learn.js?v=20261031rx"></script>
 <script>
 
 // ── Tier SVG mark helper ────────────────────────────────────────
@@ -4225,6 +4222,7 @@ function roomDragEnd(e) {
     // lost the new positions. Persist immediately so the layout is
     // safe even if the user never taps Save.
     if (didMove) {
+      _roomDragEndAt = Date.now();
       try { _autoSaveRoomLayout(); } catch (e) { console.warn('auto-save failed', e && e.message); }
       _placeRoomSelTools();
     }
@@ -4387,6 +4385,25 @@ function selectRoomItem(id) {
   updateRoomSizeUI();
   var rmBtn = document.getElementById('room-remove-btn'); if (rmBtn) rmBtn.style.display = '';
 }
+// Tapping an empty spot in the room (editing) drops the selection, so the
+// floating tools stop covering the items under them.
+var _roomDragEndAt = 0;
+function deselectRoomItem() {
+  if (!_selectedRoomItemId) return;
+  _selectedRoomItemId = null;
+  document.querySelectorAll('.room-placed-item.room-selected').forEach(function(el) { el.classList.remove('room-selected'); });
+  updateRoomSizeUI();
+  var rmBtn = document.getElementById('room-remove-btn'); if (rmBtn) rmBtn.style.display = 'none';
+}
+document.addEventListener('click', function (e) {
+  if (!_roomEditing || !_selectedRoomItemId) return;
+  var t = e.target;
+  if (!t || !t.closest || !t.closest('#miniroom-container')) return;
+  // A drag let go off the item fires its click on the room itself.
+  if (Date.now() - _roomDragEndAt < 400) return;
+  if (t.closest('.room-placed-item, #room-sel-controls, #room-theme-drawer, .rw, button, a, input, select, label')) return;
+  deselectRoomItem();
+});
 // The selected item's tools float over the room, just above (or below) the item.
 function _placeRoomSelTools(again) {
   var selCtl = document.getElementById('room-sel-controls');

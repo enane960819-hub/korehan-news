@@ -312,6 +312,24 @@ try {
       const ids = s0.order;
       console.log('# ' + kind + ' room has ' + ids.length + ' items: ' + ids.join(','));
 
+      // ── Today's word bubble: hidden while editing, × hides it until tomorrow ──
+      {
+        const shown = await page.waitForFunction(() => { const w = document.getElementById('room-word'); return w && !w.hidden; }, null, { timeout: 15000 }).then(() => true, () => false);
+        if (check(shown, T('word bubble shown'))) {
+          await editOn(page, mobile);
+          check(await page.evaluate(() => getComputedStyle(document.getElementById('room-word')).visibility === 'hidden'), T('word bubble hidden while editing'));
+          await editOff(page, mobile);
+          await tapEl(page, '#room-word .rw-x', mobile); await sleep(200);
+          check(await page.evaluate(() => document.getElementById('room-word').hidden), T('word bubble: x hides it'));
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await page.waitForFunction(() => window.supaUser && typeof _roomItemsLoaded !== 'undefined' && _roomItemsLoaded, null, { timeout: 45000 });
+          await sleep(2500);
+          check(await page.evaluate(() => { const w = document.getElementById('room-word'); return !w || w.hidden; }), T('word bubble: stays hidden after reload (today)'));
+          await page.evaluate(() => localStorage.removeItem('kh_room_word_min'));
+          await openMyPage(page);
+        }
+      }
+
       // ── Edit mode on / off without changes must not move anything ──
       for (let i = 0; i < 5; i++) { await editOn(page, mobile); await editOff(page, mobile); }
       let s1 = await roomState(page);
@@ -331,6 +349,26 @@ try {
       let s2 = await roomState(page);
       check(!posDiff(s0.view, s2.view).length && !domDiff(s0.dom, s2.dom).length, T('tap-select does not move anything'), posDiff(s0.view, s2.view).concat(domDiff(s0.dom, s2.dom)).concat([target], await page.evaluate(() => window.__dm.slice(-12))));
       await roomShot(page, kind + '-03-selected');
+
+      // ── Tap an empty spot → selection and its floating tools go away ──
+      {
+        const spot = await page.evaluate(() => {
+          const r = document.getElementById('miniroom-container').getBoundingClientRect();
+          for (let y = r.top + r.height * 0.3; y < r.bottom - 8; y += 9) for (let x = r.left + 8; x < r.right - 8; x += 9) {
+            const t = document.elementFromPoint(x, y);
+            if (t && t.closest('#miniroom-container') && !t.closest('.room-placed-item, #room-sel-controls, button, a, input, .rw, #room-edit-bar')) return { x, y };
+          }
+          return null;
+        });
+        if (check(!!spot, T('empty room spot found'))) {
+          if (mobile) await page.touchscreen.tap(spot.x, spot.y); else await page.mouse.click(spot.x, spot.y);
+          await sleep(150);
+          check(await page.evaluate(() => _selectedRoomItemId === null && getComputedStyle(document.getElementById('room-sel-controls')).display === 'none' && !document.querySelector('.room-placed-item.room-selected')), T('tap empty spot: deselects, tools hide'));
+          check(await page.evaluate(() => _roomEditing), T('tap empty spot: still editing'));
+          const again = await selectItem(page, target, mobile, cdp);
+          check(again === target, T('re-select after empty tap'), again);
+        }
+      }
 
       // ── Front / Back x10 ──
       const pressN = async (sel, n) => { for (let i = 0; i < n; i++) { await tapEl(page, sel, mobile); await sleep(60); } };
