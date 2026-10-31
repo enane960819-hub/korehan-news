@@ -45,7 +45,7 @@ function khReporterRole(role) {
 }
 window.khReporterRole = khReporterRole;
 
-// Romanized reporter name for learners ("박서진" → "Park Seo-jin"). Display
+// Romanized reporter name for learners ("서도윤" → "Seo Do-yun"). Display
 // only: the customary spelling for the family name, rule-based RR
 // (khRomanize, korehan-shared.js) per syllable of the given name, hyphenated
 // the way Korean names are usually written. '' for non-Hangul names
@@ -79,13 +79,16 @@ function khReporterNameEn(r) { return (r && (r.name_en || khNameRoman(r.name))) 
 window.khReporterNameEn = khReporterNameEn;
 
 var _KH_DEFAULT_REPORTERS_LIST = [
-  { id:'cr1',  name:'박서진', role:'Reporter',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#2563eb' },
-  { id:'cr2',  name:'김지원', role:'Correspondent',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#7c3aed' },
-  { id:'cr4',  name:'최유나', role:'Reporter',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#db2777' },
-  { id:'cr6',  name:'한소희', role:'Beauty & Travel Editor', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#0891b2' },
-  { id:'cr8',  name:'신지은', role:'Society & Environment Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#16a34a' },
-  { id:'cr9',  name:'강태양', role:'World & Diplomacy Reporter',      image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#4338ca' },
-  { id:'cr10', name:'류하늘', role:'Culture & Lifestyle Reporter',    image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#c026d3' },
+  { id:'cr5', name:'서도윤', role:'Society & Investigative Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#dc2626' },
+  { id:'cr4', name:'앨리샤', role:'Culture Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#db2777' },
+  { id:'cr1', name:'이리안', role:'Nature & Travel Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#2563eb' },
+  { id:'cr7', name:'오지훈', role:'History Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#ea580c' },
+  { id:'cr6', name:'송유나', role:'Tech & Science Editor', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#0891b2' },
+  { id:'cr9', name:'강태양', role:'World Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#4338ca' },
+  { id:'cr10', name:'류하늘', role:'Culture & Life Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#c026d3' },
+  { id:'cr3', name:'오관식', role:'Editor-in-Chief · Economy', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#059669' },
+  { id:'cr2', name:'한다온', role:'Easy News Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#7c3aed' },
+  { id:'cr8', name:'모래', role:'KoreHani Mascot', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#16a34a' },
 ];
 
 // Seed KH_REPORTERS from defaults immediately (synchronous, always works)

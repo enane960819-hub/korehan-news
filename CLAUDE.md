@@ -368,6 +368,11 @@ supabase functions deploy claude-proxy
 - **Admin = unlimited nyang** (owner 2026-10-31): `buy_room_item` and `purchase_coin_shop_item`
   (`20261031_admin_unlimited_nyang.sql`) charge `is_admin_email()` 0 and skip unlock-only / season / Premium / slot-order
   checks; the client only mirrors it for display (`khNyangUnlimited()`, balance shows ∞). Never trust the client flag.
+- **Reporters are an idol-style IP** (owner 2026-10-31; `character_reporters.data`, lineup in
+  `20261031_reporter_lineup.sql`): photocards / goods are sold per reporter, so a reporter name must never match a
+  real celebrity (정우성/한소희/김지원/박서진 were renamed) — check before adding one. No politics beat. Each section has
+  one reporter (`SECTION_REPORTER_MAP` in the admin + the migration's map); profile fields: age, birthday (MM-DD), mbti,
+  symbol, catchphrase, likes (+ `_en`). 오관식 keeps his cigar (owner). Physical goods are "Coming soon" — digital only.
 - **Fake News** (ON HOLD since 2026-10-29: `KH_FAKE_NEWS_ON = false`, articles are drafts) (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
   openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —
   no crime, romance, health, death, politics or politicians, nobody in an active controversy; illustrations
