@@ -61,3 +61,29 @@ Row 2 (winter padding): a long cream puffer coat to the knees, a red knitted sca
 Row 3 (graduation): a navy graduation gown with a gold sash, a navy square graduation cap on the head with a gold tassel, black shoes.
 ```
 Files: `<hair>-christmas.png`, `<hair>-padding.png`, `<hair>-graduation.png`
+
+## 3. Redraw for an identical character (2026-10-31)
+
+The first sheets drew each outfit on a slightly different body (bigger head, shorter legs), so no
+resizing can make every look match. This edit keeps the four template characters exactly and only
+changes their clothes. Attach `avatar-template-4.png` to EVERY message (not the old reference). One
+message per outfit; send each picture back with its outfit name.
+
+```
+Edit the attached picture. Keep the four characters EXACTLY as they are: same faces, same hair, same head size, same body and leg length, same pose, same position in the picture, same soft pixel-art style, plain pure white background. Change ONLY their clothes (and add headwear if I list it). New outfit for all four: <OUTFIT>.
+```
+
+| file | <OUTFIT> |
+|------|----------|
+| `<hair>-cowboy.png` | a brown cowboy hat on the head, a red-and-white plaid shirt, a small blue bandana around the neck, blue jeans with a big belt buckle, brown cowboy boots |
+| `<hair>-hijab.png` | a soft pastel pink hijab that fully covers the hair, ears and neck (face uncovered), a cream long cardigan over a white top, a long pleated beige skirt, white sneakers |
+| `<hair>-hijab-sport.png` | a navy sports hijab that fully covers the hair, ears and neck (face uncovered), a navy and white zip-up track jacket, matching long track pants, white running shoes |
+| `<hair>-aodai.png` | a light blue silk ao dai, a long fitted tunic with a high collar and small white flower print, split at the sides, over loose white trousers, flat white shoes |
+| `<hair>-taekwondo.png` | a white taekwondo dobok with a V-neck, a black belt tied at the waist, barefoot |
+| `<hair>-chef.png` | a white double-breasted chef jacket, a tall white chef hat on the head, black trousers, a small red neckerchief, black shoes |
+| `<hair>-doctor.png` | a white doctor's coat over a light blue shirt, a stethoscope around the neck, navy trousers, white shoes |
+| `<hair>-astronaut.png` | a white space suit with small patches, holding the round helmet under one arm (the head is uncovered), white boots |
+| `<hair>-kpop.png` | a sparkly silver stage jacket over a black top, black trousers, a small headset microphone by the cheek, white platform sneakers |
+| `<hair>-christmas.png` | a red Santa-style hooded jacket with white fluffy trim, the hood up over the head, red trousers, black boots |
+| `<hair>-padding.png` | a long cream puffer coat to the knees, a red knitted scarf, black leggings, brown winter boots |
+| `<hair>-graduation.png` | a navy graduation gown with a gold sash, a navy square graduation cap on the head with a gold tassel, black shoes |
