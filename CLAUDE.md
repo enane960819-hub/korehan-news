@@ -373,6 +373,13 @@ supabase functions deploy claude-proxy
   real celebrity (정우성/한소희/김지원/박서진 were renamed) — check before adding one. No politics beat. Each section has
   one reporter (`SECTION_REPORTER_MAP` in the admin + the migration's map); profile fields: age, birthday (MM-DD), mbti,
   symbol, catchphrase, likes (+ `_en`). 오관식 keeps his cigar (owner). Physical goods are "Coming soon" — digital only.
+- **Reporter page = Instagram style** (owner mockup 2026-10-31; `korehan-reporter.html` markup/CSS +
+  `js/features/reporter-page.js`, `20261031_reporter_feed.sql`): posts are admin-write only (RLS was open to any
+  signed-in user before); a post carries `caption_en`, `vocab` [{ko,en}] (tappable words → My Words) and `quiz`
+  {q,a,w[]}. Follows / likes are own-row tables, counts via `kh_reporter_feed_stats()`. Comments reuse `comments`
+  with `article_id = 'rpost:<post id>'` through `submit_comment` (cooldown) and must contain Hangul. QA:
+  `scripts/qa/reporter-page.mjs` (network mocked). The page's shared light-theme colour overrides are pinned at the top
+  of its CSS (b / h2 / [lang=ko]).
 - **Special shop** (card payments for digital items, owner 2026-10-31; `20261031_cash_shop.sql`, shop tab `special` in
   shop-client.js): products in `cash_products` (inactive until their art lands), billing `item_checkout` → Stripe
   (mode payment, Premium gets `premium_discount_pct`) → billing-webhook `kh_grant_cash_order` (items into

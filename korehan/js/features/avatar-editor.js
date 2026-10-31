@@ -265,7 +265,10 @@
   function renderChar() {
     var seq = ++_charSeq;
     var av = A().cleanAvatar(E.av);
-    A().frameUrls(av).then(function (us) {
+    // A stale cached avatar-art.js (no frameUrls) must not break the editor.
+    var urls = A().frameUrls ? A().frameUrls(av)
+      : A().compose(av).then(function (c) { try { return c ? [c.toDataURL('image/png')] : []; } catch (_) { return []; } });
+    urls.then(function (us) {
       if (seq !== _charSeq || !us || !us[0] || !E) return;
       var im = document.getElementById('kav-char');
       if (!im) return;
