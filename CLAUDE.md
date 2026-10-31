@@ -402,6 +402,7 @@ supabase functions deploy claude-proxy
   `khRoomAnim(el, urls, ms)` (korehan-shared.js) swaps them; off with prefers-reduced-motion, paused in hidden tabs.
   New pose frames need SPRITE metrics, the hair-halo fix and skin masks like any sprite.
   New outfit pictures also get `scripts/avatar/defringe.py` (white background fringe on the hair's outer edge).
+  and `scripts/avatar/hair-gaps.py` (white gaps enclosed BETWEEN long-hair strands beside the arms), then skin-masks.py.
   Swapped frame areas must leave out anything in front of the moving part (the fireplace grate stays frame 1).
   Admin test grants: `kh_admin_grant_product` / `kh_admin_reset_product` (`20261031_admin_grant_product.sql`,
   amount 0 orders) behind the "Admin test" row in the Special sheet.
