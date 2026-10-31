@@ -56,6 +56,14 @@ body{margin:0;font-family:'Happy Monkey','Jua','DM Sans',Inter,'Noto Sans KR',sa
 .sh-ov.open .sh-sheet{transform:none;opacity:1}
 .sh-st{font-family:'DM Sans',sans-serif;font-weight:800;font-size:19px;color:#fff;margin-top:2px}
 .sh-sd{font-size:12.5px;color:rgba(255,255,255,.55);margin-top:3px}
+.sh-cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:-4px 0 12px;padding-bottom:2px}.sh-cats::-webkit-scrollbar{display:none}
+.sh-cat{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:10px;border:0;background:rgba(255,255,255,.06);color:#cbd5e1;font:inherit;font-size:12px;cursor:pointer;transition:background .15s}
+.sh-cat em{font-style:normal;font-size:11px;opacity:.6}
+.sh-cat.on{background:#fff;color:#0f172a;font-weight:700}
+.sh-stand{position:relative;height:200px;border-radius:16px;margin:12px 0;background:radial-gradient(120% 90% at 50% 30%,#fdf6e9 0%,#f3e6cf 70%,#e8d6b8 100%);display:flex;align-items:flex-end;justify-content:center;padding-bottom:30px;box-sizing:border-box;overflow:hidden}
+.sh-disc{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:62%;height:26px;border-radius:50%;background:radial-gradient(closest-side,rgba(120,84,40,.35),rgba(120,84,40,0))}
+.sh-stand img{position:relative;max-height:126px;max-width:66%;object-fit:contain}
+.sh-stand.wall{align-items:center;padding-bottom:0}.sh-stand.wall .sh-disc{display:none}.sh-stand.wall img{filter:drop-shadow(0 6px 6px rgba(80,50,20,.25))}
 .sh-room{height:170px;border-radius:14px;margin:12px 0;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover;display:flex;align-items:flex-end;justify-content:center;padding-bottom:22px}
 .sh-room img{max-height:96px;max-width:46%;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.35))}
 .sh-big{display:flex;align-items:center;justify-content:center;gap:12px;height:120px;border-radius:14px;margin:12px 0;background:rgba(255,255,255,.04)}
@@ -168,7 +176,7 @@ body{margin:0;font-family:'Happy Monkey','Jua','DM Sans',Inter,'Noto Sans KR',sa
 <script src="js/features/fill-blank.js?v=20261030qa"></script>
 <script src="korehan-shared.js?v=20261031e"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
-<script src="shop-client.js?v=20261030qa"></script>
+<script src="shop-client.js?v=20261031ct"></script>
 <script>
 function shopHowToEarn() {
   var ov = document.createElement('div'); ov.className = 'sh-ov'; ov.id = 'sh-ov';

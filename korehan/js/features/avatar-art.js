@@ -514,15 +514,127 @@
     });
   }
 
+
+  // ── Room theme effects (owner, 2026-10-31) ─────────────────────────
+  // Small, slow touches drawn on a canvas between the theme picture and the
+  // items, in the picture's own 1000x900 pixels: a few city windows switch off
+  // and on now and then, the N Seoul Tower beacon blinks, and snow falls only
+  // inside the winter window panes. Nothing moves in the room itself. Off with
+  // prefers-reduced-motion; paused while the room is off screen or the tab hidden.
+  // Window boxes were measured from the pictures: [x0, y0, x1, y1, r, g, b of the dark wall around].
+  var FX = {
+    'seoul-night': { lights: [[548,275,553,281,83,74,90],[554,275,560,281,76,76,90],[554,291,560,294,92,76,97],[553,292,556,298,162,113,95],[555,293,560,299,106,77,96],[742,311,746,315,61,64,86],[548,312,554,316,133,104,103],[555,312,560,320,91,85,101],[576,315,582,319,75,65,71],[598,315,603,319,79,70,71],[609,315,617,319,88,70,76],[622,315,627,319,86,71,73],[632,315,637,319,88,73,79],[854,325,860,329,78,72,90],[548,333,554,342,90,81,98],[554,333,560,342,80,75,95],[854,343,859,348,92,88,106],[864,343,868,349,82,75,93],[938,349,945,354,147,94,72],[948,350,953,354,138,94,85],[548,352,553,360,86,78,90],[553,352,560,360,85,79,93],[946,355,953,360,129,84,80],[864,360,868,365,96,93,106],[735,362,743,368,77,64,71],[801,363,808,372,96,72,75],[808,363,815,373,77,65,74],[645,364,649,368,120,110,107],[745,364,751,372,106,78,72],[736,368,742,373,78,67,76],[937,368,945,375,98,68,73],[946,369,953,374,144,97,81],[576,373,585,378,90,72,81],[548,375,554,380,100,76,93],[553,375,560,382,85,75,91],[640,379,645,383,91,88,103],[645,380,652,386,80,74,86],[735,382,742,388,70,62,71],[809,382,816,392,73,63,74],[801,383,806,387,122,93,80],[745,384,750,391,79,63,69],[808,385,811,392,166,97,80],[736,387,742,392,74,63,71],[639,397,643,402,98,90,103],[576,398,580,406,75,72,76],[646,398,652,403,92,86,96],[548,401,553,409,92,79,92],[553,402,560,409,92,80,98],[855,402,862,408,173,101,100],[736,403,742,411,73,62,68],[862,403,865,412,183,123,104],[937,403,944,408,94,65,73],[801,404,807,413,72,63,71],[745,405,750,410,72,61,61],[946,405,953,412,117,86,71],[671,406,677,412,98,92,102],[679,407,683,412,102,92,97]], beacons: [[893, 114], [920, 182]] },
+    'winter': { lights: [[719,283,722,301,159,92,59],[633,297,643,317,107,92,100],[617,298,623,305,82,77,90],[655,299,660,304,90,82,93],[655,307,660,315,91,83,89],[618,308,622,313,94,88,97],[649,309,653,314,107,97,103],[884,339,889,346,128,97,99],[891,339,897,346,114,91,99],[890,349,897,358,123,96,98],[884,350,889,356,149,110,96],[807,352,814,361,105,84,92],[815,352,823,361,104,87,94],[710,362,716,369,136,109,110],[577,363,582,367,100,86,97],[807,363,814,374,111,92,91],[815,363,823,374,112,96,97],[766,364,770,369,131,115,120],[568,370,574,378,111,99,104],[577,371,581,379,110,106,110]], panes: [[519, 28, 715, 198], [761, 28, 941, 198], [519, 220, 715, 413], [761, 220, 941, 413]] },
+    'attic': { lights: [[505,249,508,261,86,53,57],[645,276,650,282,90,51,43],[639,280,648,293,90,52,44],[387,281,391,285,33,46,82],[505,303,508,312,97,55,52],[581,306,585,310,35,47,81],[598,306,602,310,35,49,85],[612,312,626,330,92,54,45],[425,313,430,319,35,48,85],[436,314,440,318,36,48,83],[425,322,430,327,39,54,94],[435,322,440,327,37,50,85],[472,329,477,335,41,50,79],[482,329,487,335,43,50,84],[605,329,610,333,91,53,45],[600,333,607,338,93,53,46],[521,335,526,341,37,50,86],[533,335,537,341,40,52,89],[559,335,563,339,39,53,91],[472,339,477,344,40,53,86],[481,339,487,345,39,52,87],[456,356,465,360,87,55,48],[463,358,474,362,85,55,49],[532,359,538,362,89,56,52],[526,360,533,363,90,57,54],[478,361,486,364,87,54,50],[486,362,493,365,86,52,49],[509,362,519,365,90,57,49]], beacons: [[605, 207]] }
+  };
+  var _fxRun = [];
+  function fxStop(host) {
+    if (!host || !host._khFx) return;
+    host._khFx.dead = true;
+    if (host._khFx.cv && host._khFx.cv.parentNode) host._khFx.cv.parentNode.removeChild(host._khFx.cv);
+    if (host._khFx.io) host._khFx.io.disconnect();
+    host._khFx = null;
+  }
+  function fxStart(host, theme) {
+    fxStop(host);
+    var cfg = FX[theme];
+    if (!cfg || !host) return;
+    try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (_) {}
+    var cv = document.createElement('canvas');
+    cv.className = 'kh-room-fx';
+    cv.setAttribute('aria-hidden', 'true');
+    cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0';
+    host.insertBefore(cv, host.firstChild);
+    var st = { cv: cv, dead: false, vis: true, t0: 0, last: 0, cfg: cfg, off: {}, flakes: [] };
+    host._khFx = st;
+    // Each light: 0 = lit, fading to 1 = off. Roughly one window changes every few seconds.
+    (cfg.lights || []).forEach(function (l, i) { st.off[i] = { v: 0, to: 0 }; });
+    (cfg.panes || []).forEach(function (p, pi) {
+      var n = Math.round((p[2] - p[0]) * (p[3] - p[1]) / 2600);
+      for (var k = 0; k < n; k++) st.flakes.push({ p: pi, x: p[0] + Math.random() * (p[2] - p[0]), y: p[1] + Math.random() * (p[3] - p[1]),
+        s: Math.random() < 0.3 ? 4 : 3, v: 14 + Math.random() * 16, ph: Math.random() * 6.28, a: 0.55 + Math.random() * 0.4 });
+    });
+    if ('IntersectionObserver' in window) {
+      st.io = new IntersectionObserver(function (es) { st.vis = es[0] && es[0].isIntersecting; if (st.vis) loop(); });
+      st.io.observe(host);
+    }
+    var nextSwitch = 0;
+    function loop(ts) {
+      if (st.dead || !st.vis || document.hidden) { st.raf = 0; return; }
+      if (st.raf && ts === undefined) return;
+      st.raf = requestAnimationFrame(loop);
+      if (ts === undefined) return;
+      if (ts - st.last < 50) return;            // ~20 fps is plenty for slow effects
+      var dt = st.last ? Math.min(0.2, (ts - st.last) / 1000) : 0.05;
+      st.last = ts;
+      if (!cv.isConnected) { st.dead = true; if (st.io) st.io.disconnect(); return; }   // room redrawn: a new effect owns the host
+      var w = host.clientWidth, h = host.clientHeight;
+      if (!w || !h) return;
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+      var g = cv.getContext('2d');
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, cv.width, cv.height);
+      // background-size: cover of a 1000x900 picture
+      var sc = Math.max(cv.width / 1000, cv.height / 900), ox = (cv.width - 1000 * sc) / 2, oy = (cv.height - 900 * sc) / 2;
+      g.setTransform(sc, 0, 0, sc, ox, oy);
+      var lights = cfg.lights || [];
+      if (lights.length && ts > nextSwitch) {
+        nextSwitch = ts + 2500 + Math.random() * 3500;
+        var i = Math.floor(Math.random() * lights.length), o = st.off[i];
+        var offNow = 0; Object.keys(st.off).forEach(function (k) { if (st.off[k].to) offNow++; });
+        o.to = o.to ? 0 : (offNow < Math.ceil(lights.length * 0.15) ? 1 : 0);
+      }
+      lights.forEach(function (l, i) {
+        var o = st.off[i];
+        o.v += (o.to - o.v) * Math.min(1, dt * 1.6);
+        if (o.v < 0.02) return;
+        g.fillStyle = 'rgba(' + l[4] + ',' + l[5] + ',' + l[6] + ',' + (o.v * 0.92).toFixed(3) + ')';
+        g.fillRect(l[0], l[1], l[2] - l[0], l[3] - l[1]);
+      });
+      (cfg.beacons || []).forEach(function (b, bi) {
+        var ph = ((ts / 1000) + bi * 0.7) % 2.4;                    // on for 0.9 s every 2.4 s
+        var a = ph < 0.9 ? Math.sin(ph / 0.9 * Math.PI) : 0;
+        if (a < 0.02) return;
+        var gr = g.createRadialGradient(b[0], b[1], 0, b[0], b[1], 9);
+        gr.addColorStop(0, 'rgba(255,90,90,' + (0.95 * a).toFixed(3) + ')');
+        gr.addColorStop(0.35, 'rgba(255,70,70,' + (0.45 * a).toFixed(3) + ')');
+        gr.addColorStop(1, 'rgba(255,60,60,0)');
+        g.fillStyle = gr; g.fillRect(b[0] - 9, b[1] - 9, 18, 18);
+      });
+      var panes = cfg.panes || [];
+      if (panes.length) {
+        var tsec = ts / 1000;
+        st.flakes.forEach(function (f) {
+          var p = panes[f.p];
+          f.y += f.v * dt;
+          if (f.y > p[3]) { f.y = p[1] - f.s; f.x = p[0] + Math.random() * (p[2] - p[0]); }
+          var x = f.x + Math.sin(tsec * 0.8 + f.ph) * 4;
+          if (x < p[0] || x + f.s > p[2] || f.y < p[1]) return;
+          g.fillStyle = 'rgba(255,255,255,' + f.a.toFixed(2) + ')';
+          g.fillRect(Math.round(x), Math.round(f.y), f.s, f.s);
+        });
+      }
+    }
+    if (!st.io) loop();
+    if (!_fxRun.length) document.addEventListener('visibilitychange', function () {
+      _fxRun.forEach(function (s) { if (!s.dead && !document.hidden && !s.raf) s.kick(); });
+    });
+    st.kick = function () { loop(); };
+    _fxRun = _fxRun.filter(function (x) { return !x.dead; });
+    _fxRun.push(st);
+  }
+
   // ── Room background ────────────────────────────────────────────────
   // Picture theme → it replaces the wallpaper + floor; 'classic' → leave the
   // wallpaper / floor the page already drew.
   function applyThemeBg(host, theme, floorEl) {
     if (!host) return false;
     var it = find('room', theme);
-    if (!it || it.classic) return false;
+    if (!it || it.classic) { fxStop(host); return false; }
     host.style.background = 'url("' + themeUrl(it.id) + '") center / cover no-repeat';
     if (floorEl) floorEl.style.opacity = '0';
+    if (!host._khFx || host._khFx.theme !== it.id || !host._khFx.cv.isConnected) { fxStart(host, it.id); if (host._khFx) host._khFx.theme = it.id; }
     return true;
   }
   // My Page hook (end of _applyRoomTheme).

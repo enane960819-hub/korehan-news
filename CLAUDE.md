@@ -343,7 +343,8 @@ supabase functions deploy claude-proxy
   the server-written `coin_transactions` ledger, saved words, real articles read, TOPIK tests) and only ever adds
   items; unlock items can't be bought (`UNLOCK_ONLY`). Other people's rooms are read only through
   `get_public_room` (room fields only); likes are `room_likes` (own-row RLS) + `get_room_likes` / `toggle_room_like`. Prices are tuned to the nyang earn rate (~50/day regular study) — see that
-  migration's comment before changing them. No particle effects, pets don't wander.
+  migration's comment before changing them. No particle effects in the room, pets don't wander. Only exception (owner
+  2026-10-31): the theme pictures' own windows (`FX` in avatar-art.js: city lights, tower beacon, snow inside the panes).
 - **My Room character + room themes** (`js/features/avatar-art.js` drawing/catalogue, `avatar-editor.js` = My Room →
   Customize): outfits / accessories / theme pictures live in `avatar_items` (ids `av_outfit_*`, `av_acc_*`,
   `av_room_*`, `20261030_avatar_catalog.sql`), bought only through `buy_room_item` (refuses unlock-only items and
@@ -369,6 +370,8 @@ supabase functions deploy claude-proxy
   was uploaded stays broken on that device. Bump `KH_ROOM_ART_V` (and shared.js `?v=`) whenever art is added.
   The props catalogue migration (`20261029_room_props.sql`, written by `scripts/room-art/catalog.py`) ships
   together with its art.
+  Shop chips come from `room_items.shop_category` (`20261031_room_items_shop_category.sql`); new art → set its
+  category in the same PR (no category = All only).
 - **Production wraps every .js file in its own scope** (`vite build` on Cloudflare Pages → `isolateMinifiedBundle`
   in vite.config.js; top-level names are re-exported onto window). So a later file's `function foo` does NOT
   replace calls to `foo` made inside an earlier file that also declares it — raw local serving hides this (My

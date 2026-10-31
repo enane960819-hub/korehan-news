@@ -194,7 +194,7 @@
       + '</header>'
       + '<div class="kav-body">'
       +   '<div class="kav-left">'
-      +     '<div class="kav-prev" id="kav-prev"><div class="kav-room-v" id="kav-room-v"></div><img class="kav-char" id="kav-char" alt="Your character"></div>'
+      +     '<div class="kav-stick"><div class="kav-prev" id="kav-prev"><div class="kav-room-v" id="kav-room-v"></div><img class="kav-char" id="kav-char" alt="Your character"></div></div>'
       +     '<div class="kav-row">'
       +       '<label class="kav-prof"><img class="kav-pface" id="kav-pface" alt="">'
       +         '<span class="kav-pt"><b>Use as profile picture</b><small>Shown on your profile instead of your photo</small></span>'
@@ -546,6 +546,12 @@
       '.kav-h{padding:10px 16px}.kav-back span{display:none}.kav-reset-d{display:none}',
       '.kav-body{display:flex;flex-direction:column;padding:12px 16px 90px;gap:12px;flex:1}',
       '.kav-left,.kav-right{flex:none}.kav-right{min-height:auto}.kav-panel{overflow:visible}',
+      '.kav-left{display:contents}',
+      '.kav-stick{position:sticky;top:-12px;z-index:6;margin:-12px -16px 0;padding:12px 16px 8px;background:#0b1426;display:flex;justify-content:center}',
+
+      // Phone: the preview stays pinned at a fixed size while the list scrolls, so every change shows
+      // at once without scrolling back up (owner, 2026-10-31). Fixed, not shrinking: nothing jumps under a tap.
+      '.kav-prev{width:72%}.kav-body{scroll-padding-top:calc((100vw - 32px) * .72 * .9 + 24px)}',
       '.kav-save-d{display:none}',
       '.kav-g5{grid-template-columns:repeat(4,1fr)}',
       '.kav-right{padding:10px}',

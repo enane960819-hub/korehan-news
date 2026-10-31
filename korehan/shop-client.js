@@ -333,7 +333,51 @@
   // art (room_items), frames, titles, reporter gifts and Streak Freeze.
   // Badges / themes / sticker packs / art-less room items had no effect
   // anywhere in the app, so they're not sold.
-  var _shop = { catalog: [], owned: {}, roomOwned: null, coin: 0, xp: 0, preview: false, tab: 'room' };
+  var _shop = { catalog: [], owned: {}, roomOwned: null, coin: 0, xp: 0, preview: false, tab: 'room', cat: 'all' };
+  // Room tab categories (room_items.shop_category, 20261031_room_items_shop_category.sql).
+  // An item without one shows under All only.
+  var SHOP_CATS = [['furniture', 'Furniture'], ['wall', 'Wall'], ['light', 'Lights'], ['study', 'Study'], ['korean', 'Korean'],
+    ['food', 'Snacks'], ['hobby', 'Hobbies'], ['plush', 'Plushies'], ['pets', 'Pets & plants'], ['season', 'Seasons']];
+  function _catLabel(k) { for (var i = 0; i < SHOP_CATS.length; i++) if (SHOP_CATS[i][0] === k) return SHOP_CATS[i][1]; return ''; }
+
+  // Sprites sit on a padded square canvas; the preview crops that padding away so the
+  // item stands on its shadow instead of floating above it. Cached per picture.
+  // Items whose picture isn't uploaded yet drop out of the grid and the chip counts.
+  var _shMissing = {}, _shRecount = 0;
+  window._shMiss = function (img, id) {
+    _shMissing[id] = 1;
+    var t = img.closest('.sh-tile'); if (t) t.remove();
+    clearTimeout(_shRecount);
+    _shRecount = setTimeout(function () {
+      var sale = ROOM_ITEMS_SHOP.filter(function(it){ return it.img && it.price > 0 && !_shMissing[it.id]; });
+      document.querySelectorAll('.sh-cat[data-cat]').forEach(function (b) {
+        var k = b.getAttribute('data-cat'), n = sale.filter(function(it){ return k === 'all' || it.cat === k; }).length;
+        var em = b.querySelector('em'); if (em) em.textContent = n;   // All has no count
+        if (!n && k !== 'all') b.remove();
+      });
+    }, 250);
+  };
+  var _trimCache = {};
+  window._shTrim = function (img) {
+    var src = img.getAttribute('data-src') || img.src;
+    if (img.dataset.trimmed) return;
+    img.dataset.trimmed = '1';
+    if (_trimCache[src]) { img.src = _trimCache[src]; return; }
+    try {
+      var w = img.naturalWidth, h = img.naturalHeight; if (!w || !h) return;
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      var g = c.getContext('2d'); g.drawImage(img, 0, 0);
+      var d = g.getImageData(0, 0, w, h).data, x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+      if (x1 < 0) return;
+      var o = document.createElement('canvas'); o.width = x1 - x0 + 1; o.height = y1 - y0 + 1;
+      o.getContext('2d').drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height);
+      _trimCache[src] = o.toDataURL('image/png');
+      img.src = _trimCache[src];
+    } catch (_) {}
+  };
   // Owned room item ids: the server list once loaded, else the local cache.
   function _roomOwnedIds() {
     if (Array.isArray(_shop.roomOwned)) return _shop.roomOwned;
@@ -393,12 +437,19 @@
       var owned = _roomOwnedIds();
       // Free (price 0) starters are owned by everyone and not sold; items whose
       // art isn't uploaded yet remove their own tile (onerror) until it lands.
-      html += '<div class="sh-grid">' + ROOM_ITEMS_SHOP.filter(function(it){ return it.img && it.price > 0; }).map(function(it) {
+      var sale = ROOM_ITEMS_SHOP.filter(function(it){ return it.img && it.price > 0 && !_shMissing[it.id]; });
+      var counts = {};
+      sale.forEach(function(it){ if (it.cat) counts[it.cat] = (counts[it.cat] || 0) + 1; });
+      if (_shop.cat !== 'all' && !counts[_shop.cat]) _shop.cat = 'all';
+      html += '<div class="sh-cats" role="tablist">' + [['all', 'All', sale.length]].concat(SHOP_CATS.filter(function(c){ return counts[c[0]]; }).map(function(c){ return [c[0], c[1], counts[c[0]]]; })).map(function(c) {
+        return '<button type="button" role="tab" class="sh-cat' + (_shop.cat === c[0] ? ' on' : '') + '" aria-selected="' + (_shop.cat === c[0]) + '" data-cat="' + c[0] + '" onclick="shopSetCat(\'' + c[0] + '\')">' + _esc(c[1]) + (c[0] === 'all' ? '' : '<em>' + c[2] + '</em>') + '</button>';
+      }).join('') + '</div>';
+      html += '<div class="sh-grid">' + sale.filter(function(it){ return _shop.cat === 'all' || it.cat === _shop.cat; }).map(function(it) {
         var isOwned = owned.indexOf(it.id) >= 0;
         var study = !!ROOM_UNLOCKS[it.id];
         return '<button type="button" class="sh-tile" onclick="shopOpen(\'room\',\'' + it.id + '\')">'
           + (isOwned ? '<span class="sh-own sh-own-abs">Owned</span>' : '')
-          + '<span class="sh-art"><img src="' + _esc(it.img) + '" alt="" loading="lazy" onerror="this.closest(\'.sh-tile\').remove()"></span>'
+          + '<span class="sh-art"><img src="' + _esc(it.img) + '" alt="" loading="lazy" onerror="_shMiss(this,\'' + it.id + '\')"></span>'
           + '<b>' + _esc(it.name) + '</b>'
           + (study ? '<small class="sh-study">' + khIcon('graduation-cap') + 'Study unlock</small>' : '<small>' + Number(it.price).toLocaleString() + '</small>')
           + '</button>';
@@ -418,6 +469,10 @@
     if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
   }
   window.shopSetTab = function(tab) { _shop.tab = tab; renderTab(); };
+  window.shopSetCat = function(cat) {
+    _shop.cat = cat; renderTab();
+    var on = document.querySelector('.sh-cat.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+  };
 
   // Bottom sheet: preview + balance after + one Buy button.
   window.shopOpen = function(kind, id) {
@@ -425,7 +480,8 @@
     if (kind === 'room') {
       item = ROOM_ITEMS_SHOP.find(function(x){ return x.id === id; }); if (!item) return;
       title = item.name; price = Number(item.price) || 0; owned = _roomOwnedIds().indexOf(id) >= 0;
-      preview = '<div class="sh-room"><img src="' + _esc(item.img) + '" alt=""></div>';
+      // Display stand (owner pick A, 2026-10-31): wall items hang centred, the rest stand on a shadow.
+      preview = '<div class="sh-stand' + (item.cat === 'wall' ? ' wall' : '') + '"><span class="sh-disc"></span><img src="' + _esc(item.img) + '" alt="" onload="_shTrim(this)"></div>';
       buy = 'window.buyRoomItem(\'' + id + '\')';
       if (ROOM_UNLOCKS[id] && !owned) {
         // Earned by studying, not bought: show the goal instead of a price.
@@ -455,7 +511,7 @@
     var ov = document.createElement('div');
     ov.className = 'sh-ov'; ov.id = 'sh-ov';
     ov.innerHTML = '<div class="sh-sheet" role="dialog" aria-modal="true">'
-      + '<div class="sh-k">' + (kind === 'room' ? 'Room item' : item.item_type === 'profile_title' ? 'Title' : item.item_type === 'profile_cosmetic' ? 'Frame' : item.item_type === 'reporter_item' ? 'Reporter gift' : 'Boost') + '</div>'
+      + '<div class="sh-k">' + (kind === 'room' ? 'Room item' + (_catLabel(item.cat) ? ' · ' + _esc(_catLabel(item.cat)) : '') : item.item_type === 'profile_title' ? 'Title' : item.item_type === 'profile_cosmetic' ? 'Frame' : item.item_type === 'reporter_item' ? 'Reporter gift' : 'Boost') + '</div>'
       + '<div class="sh-st">' + _esc(title) + '</div>'
       + (item.description ? '<div class="sh-sd">' + _esc(item.description) + '</div>' : '')
       + preview
@@ -580,7 +636,7 @@
       var res = await sb.from('room_items').select('*').eq('active', true).order('sort_order');
       if (!res.error && res.data && res.data.length) {
         ROOM_ITEMS_SHOP = res.data.map(function(r) {
-          return { id: r.id, name: r.name, price: r.price_nyang, img: (typeof khRoomImg === 'function' ? khRoomImg(r.image_url) : r.image_url), size: r.base_size };
+          return { id: r.id, name: r.name, price: r.price_nyang, img: (typeof khRoomImg === 'function' ? khRoomImg(r.image_url) : r.image_url), size: r.base_size, cat: r.shop_category || '' };
         });
         _shopRoomItemsLoaded = true;
       }
