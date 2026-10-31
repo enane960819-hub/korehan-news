@@ -391,6 +391,11 @@ supabase functions deploy claude-proxy
   (`_roomFreeIds`, room-view, `isFree`, `kh_avatar_item_ok`, get_public_room) — or everyone owns them.
   Products start inactive; the admin sees them as DRAFT in the Special tab. Art round 1:
   `20261031_special_shop_art_1.sql`.
+  Reporter photocards: a `photocard_set` product lists card ids `pc_<reporter>_s<set>_NN` in `items` and the
+  matching pictures in `preview` (same order; art in `assets/photocards/<reporter>/`, 768x1152 webp from the
+  owner's 1024x1536 originals). The reporter page Cards tab is the card book: owned cards (`user_photocards`,
+  server-written) open big, the rest are locked and link to the Special shop. Photocards must be face-forward
+  (close-up / chest-up / selfie): full-body art is for acrylic stands and posters, not cards.
 - **Animated room pieces** (owner 2026-10-31, the second exception to "nothing moves"): `KH_ROOM_FRAMES`
   (room item id → `assets/room/<name>-1..n.png`, e.g. the Christmas fireplace's fire, only the flames differ) and
   outfits with `frames` (idol: `<hair>-idol-1..8` dance poses, eyes kept on the centre line, `ANIM_MS` each).
