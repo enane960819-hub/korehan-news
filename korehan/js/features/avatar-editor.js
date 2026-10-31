@@ -93,8 +93,10 @@
 
   // ── Panels ─────────────────────────────────────────────────────────
   var _hairFaces = {};
+  // Skin tone picker: off until the skin masks leave no original-tone pixels (owner 2026-10-31).
+  var SKIN_ON = false;
   function hairFace(h) {
-    var skin = (E && E.av && E.av.skin) || 'light', key = h + '|' + skin;
+    var skin = (SKIN_ON && E && E.av && E.av.skin) || 'light', key = h + '|' + skin;
     if (!_hairFaces[key]) _hairFaces[key] = A().faceUrl({ hair: h, outfit: 'tee', acc: [], skin: skin }, 120);
     return _hairFaces[key];
   }
@@ -123,7 +125,7 @@
       return '<button type="button" class="kav-skin' + (on ? ' on' : '') + '" data-act="skin" data-id="' + k + '" aria-pressed="' + on + '" aria-label="Skin tone ' + (i + 1) + '" style="background:' + A().SKIN_SWATCH[k] + '"></button>';
     }).join('');
     return '<div class="kav-sec"><b>Hair</b><span>4 styles, all free</span></div><div class="kav-g kav-g4">' + hair + '</div>'
-      + '<div class="kav-sec"><b>Skin</b><span>free</span></div><div class="kav-skins">' + skins + '</div>'
+      + (SKIN_ON ? '<div class="kav-sec"><b>Skin</b><span>free</span></div><div class="kav-skins">' + skins + '</div>' : '')
       + '<div class="kav-sec"><b>Outfit</b><span>' + A().OUTFITS.length + ' looks · try any on</span></div><div class="kav-g kav-g5">' + outfits + '</div>';
   }
   var ACC_SECTIONS = [
