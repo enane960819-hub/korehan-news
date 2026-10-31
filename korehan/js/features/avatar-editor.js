@@ -104,11 +104,17 @@
       return '<button type="button" class="kav-t kav-hair' + (on ? ' on' : '') + '" data-act="hair" data-id="' + h.id + '" aria-pressed="' + on + '" aria-label="' + esc(h.name) + ' hair">'
         + '<img alt="" data-face="' + h.id + '"></button>';
     }).join('');
+    // Every outfit at the same scale, feet on the tile floor (owner, 2026-10-31: sizes looked
+    // different because each picture was shrunk to fit its tile).
+    function figH(hair, id) {
+      var m = A().SPRITE[A().spriteName(hair, id)];
+      return m ? Math.min(100, m[1] / 4.1).toFixed(1) : 90;
+    }
     var outfits = A().OUTFITS.map(function (o) {
       var on = av.outfit === o.id;
       return '<button type="button" class="kav-t kav-outfit' + (on ? ' on' : '') + (lockOf('outfit', o) ? ' locked' : '') + '" data-act="outfit" data-id="' + o.id + '" aria-pressed="' + on + '" title="' + esc(tileTitle('outfit', o)) + '">'
         + badge('outfit', o, on)
-        + '<img alt="" loading="lazy" src="' + esc(A().spriteUrl(av.hair, o.id)) + '">'
+        + '<span class="kav-ofig"><img alt="" loading="lazy" src="' + esc(A().spriteUrl(av.hair, o.id)) + '" style="height:' + figH(av.hair, o.id) + '%"></span>'
         + '<span class="kav-n">' + esc(o.name) + '</span></button>';
     }).join('');
     return '<div class="kav-sec"><b>Hair</b><span>4 styles, all free</span></div><div class="kav-g kav-g4">' + hair + '</div>'
@@ -513,7 +519,7 @@
       '.kav-t.on{border-color:#fbbf24}',
       '.kav-t:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}',
       '.kav-hair{aspect-ratio:1/1}.kav-hair img{width:100%;height:100%;object-fit:cover;display:block}',
-      '.kav-outfit{aspect-ratio:3/4;padding:20px 4px 4px}.kav-outfit img{height:calc(100% - 16px);width:100%;object-fit:contain;object-position:center bottom;display:block}',
+      '.kav-outfit{aspect-ratio:3/4;padding:20px 4px 4px}.kav-ofig{position:relative;flex:1;width:100%;min-height:0;overflow:hidden}.kav-outfit img{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:auto;max-width:none;display:block}',
       '.kav-acc{aspect-ratio:1/1.05;padding:20px 6px 4px}.kav-acc img{width:80%;height:calc(100% - 16px);object-fit:contain;display:block}',
       '.kav-t.locked img{opacity:.78}',
       '.kav-none{flex:1;display:flex;align-items:center;justify-content:center;color:#475569}.kav-none .kav-i{width:26px;height:26px}',
