@@ -14,14 +14,14 @@ values (
   299,
   array['pc_cr5_s1_01', 'pc_cr5_s1_02', 'pc_cr5_s1_03', 'pc_cr5_s1_04', 'pc_cr5_s1_05', 'pc_cr5_s1_06'],
   '[
-    {"id": "pc_cr5_s1_01", "label": "Rooftop heart",   "img": "assets/photocards/cr5/s1-01.webp"},
-    {"id": "pc_cr5_s1_02", "label": "Night newsroom",  "img": "assets/photocards/cr5/s1-02.webp"},
-    {"id": "pc_cr5_s1_03", "label": "Rainy street",    "img": "assets/photocards/cr5/s1-03.webp"},
-    {"id": "pc_cr5_s1_04", "label": "Library",         "img": "assets/photocards/cr5/s1-04.webp"},
-    {"id": "pc_cr5_s1_05", "label": "Last train",      "img": "assets/photocards/cr5/s1-05.webp"},
-    {"id": "pc_cr5_s1_06", "label": "3 a.m. store",    "img": "assets/photocards/cr5/s1-06.webp"}
+    {"id": "pc_cr5_s1_01", "label": "Rooftop heart",   "img": "assets/photocards/cr5/s1-01-p.webp"},
+    {"id": "pc_cr5_s1_02", "label": "Night newsroom",  "img": "assets/photocards/cr5/s1-02-p.webp"},
+    {"id": "pc_cr5_s1_03", "label": "Rainy street",    "img": "assets/photocards/cr5/s1-03-p.webp"},
+    {"id": "pc_cr5_s1_04", "label": "Library",         "img": "assets/photocards/cr5/s1-04-p.webp"},
+    {"id": "pc_cr5_s1_05", "label": "Last train",      "img": "assets/photocards/cr5/s1-05-p.webp"},
+    {"id": "pc_cr5_s1_06", "label": "3 a.m. store",    "img": "assets/photocards/cr5/s1-06-p.webp"}
   ]'::jsonb,
-  'assets/photocards/cr5/s1-01.webp', 'cr5', '1ST SET', false, 50, false
+  'assets/photocards/cr5/s1-01-p.webp', 'cr5', '1ST SET', false, 50, false
 )
 on conflict (id) do update set kind = excluded.kind, name = excluded.name, description = excluded.description,
   price_cents = excluded.price_cents, items = excluded.items, preview = excluded.preview, image_url = excluded.image_url,

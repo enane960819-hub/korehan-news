@@ -204,7 +204,7 @@
           + '</button>';
       }).join('') + '</div>';
   }
-  // Photocard sets (cash_products kind photocard_set): preview[i] is the picture of items[i].
+  // Photocard sets (cash_products kind photocard_set): preview[i] is the BLURRED picture of items[i].
   // Owned cards (user_photocards, written only by the server on purchase) show in full;
   // the rest are locked with a link to the Special shop. The admin also sees drafts.
   async function loadSets() {
@@ -212,11 +212,18 @@
     var res = await c.from('cash_products').select('id, name, description, price_cents, items, preview, active, sort')
       .eq('reporter_id', R.id).eq('kind', 'photocard_set').order('sort', { ascending: true }).then(function (x) { return x; }, function () { return null; });
     R.sets = (res && Array.isArray(res.data)) ? res.data : [];
-    R.owned = {};
+    R.owned = {}; R.art = {};
     var u = me();
     if (u && R.sets.length) {
       var oc = await c.from('user_photocards').select('card_id').eq('user_id', u.id).then(function (x) { return x; }, function () { return null; });
       ((oc && Array.isArray(oc.data)) ? oc.data : []).forEach(function (x) { R.owned[x.card_id] = 1; });
+      // Full pictures: photocard_art is readable only for cards you own (RLS); everyone
+      // else only ever gets the blurred preview from cash_products.preview.
+      var ids = Object.keys(R.owned);
+      if (ids.length) {
+        var ar = await c.from('photocard_art').select('card_id, img').in('card_id', ids).then(function (x) { return x; }, function () { return null; });
+        ((ar && Array.isArray(ar.data)) ? ar.data : []).forEach(function (x) { if (x.img) R.art[x.card_id] = x.img; });
+      }
     }
     R.setsLoaded = true;
     if (R.tab === 'cards') { var el = document.getElementById('rp-panel'); if (el) { el.innerHTML = cardsHtml(); icons(); } }
@@ -224,7 +231,7 @@
   function pcImg(u) { return (typeof khRoomImg === 'function' && /^assets\//.test(u)) ? khRoomImg(u) : u; }
   function setCards(p) {
     var ids = p.items || [], pv = p.preview || [];
-    return ids.map(function (id, i) { var x = pv[i] || {}; return { id: id, img: x.img || '', label: x.label || '' }; });
+    return ids.map(function (id, i) { var x = pv[i] || {}; return { id: id, img: (R.owned[id] && R.art && R.art[id]) || x.img || '', label: x.label || '' }; });
   }
   function setsHtml() {
     if (!R.setsLoaded) return '<div class="rp-empty">Loading cards…</div>';

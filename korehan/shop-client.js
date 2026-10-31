@@ -821,7 +821,7 @@
     if (sets.length) {
       var withSets = _sp.reporters.filter(function (r) { return sets.some(function (p) { return p.reporter_id === r.id; }); });
       if (!_sp.card || !withSets.some(function (r) { return r.id === _sp.card; })) _sp.card = withSets.length ? withSets[0].id : null;
-      h += '<div class="sp-sec"><h3>Reporter photocards</h3><span>Digital · all cards shown</span></div>';
+      h += '<div class="sp-sec"><h3>Reporter photocards</h3><span>Digital · revealed when you buy</span></div>';
       h += '<div class="sp-chips">' + withSets.map(function (r) {
         return '<button type="button" class="sp-chip' + (_sp.card === r.id ? ' on' : '') + '" onclick="shopSpecialCard(\'' + r.id + '\')"><img src="' + _esc(r.img) + '" alt="">' + _esc(r.name) + '</button>';
       }).join('') + '</div>';

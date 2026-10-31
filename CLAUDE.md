@@ -396,6 +396,10 @@ supabase functions deploy claude-proxy
   owner's 1024x1536 originals). The reporter page Cards tab is the card book: owned cards (`user_photocards`,
   server-written) open big, the rest are locked and link to the Special shop. Photocards must be face-forward
   (close-up / chest-up / selfie): full-body art is for acrylic stands and posters, not cards.
+  Sets are on sale BLURRED (owner 2026-11-01): `preview` points at `s1-NN-p.webp` (pre-blurred, 384x576); the full
+  picture has a random file name and its address lives only in `photocard_art` (RLS: owners of that card + admin).
+  Never put a full picture's path in `cash_products` or any public column. The repo is public, so its files are
+  reachable on GitHub; keep that in mind for unreleased art.
 - **Animated room pieces** (owner 2026-10-31, the second exception to "nothing moves"): `KH_ROOM_FRAMES`
   (room item id → `assets/room/<name>-1..n.png`, e.g. the Christmas fireplace's fire, only the flames differ) and
   outfits with `frames` (idol: `<hair>-idol-1..8` dance poses, eyes kept on the centre line, `ANIM_MS` each).
