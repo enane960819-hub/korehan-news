@@ -343,7 +343,8 @@ supabase functions deploy claude-proxy
   the server-written `coin_transactions` ledger, saved words, real articles read, TOPIK tests) and only ever adds
   items; unlock items can't be bought (`UNLOCK_ONLY`). Other people's rooms are read only through
   `get_public_room` (room fields only); likes are `room_likes` (own-row RLS) + `get_room_likes` / `toggle_room_like`. Prices are tuned to the nyang earn rate (~50/day regular study) — see that
-  migration's comment before changing them. No particle effects, pets don't wander.
+  migration's comment before changing them. No particle effects in the room, pets don't wander. Only exception (owner
+  2026-10-31): the theme pictures' own windows (`FX` in avatar-art.js: city lights, tower beacon, snow inside the panes).
 - **My Room character + room themes** (`js/features/avatar-art.js` drawing/catalogue, `avatar-editor.js` = My Room →
   Customize): outfits / accessories / theme pictures live in `avatar_items` (ids `av_outfit_*`, `av_acc_*`,
   `av_room_*`, `20261030_avatar_catalog.sql`), bought only through `buy_room_item` (refuses unlock-only items and
