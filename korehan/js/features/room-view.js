@@ -44,12 +44,13 @@
     if (_itemsP) return _itemsP;
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb) return Promise.resolve({});
-    _itemsP = sb.from('room_items').select('id, name, image_url, base_size, price_nyang, effect, category').eq('active', true)
+    // select('*'): immune to column drift (and carries cash_only).
+    _itemsP = sb.from('room_items').select('*').eq('active', true)
       .then(function (r) {
         var map = {};
         ((r && r.data) || []).forEach(function (it) {
           var sz = (typeof khRoomItemSize === 'function') ? khRoomItemSize(it.base_size, it.category) : ((it.base_size || 60) < 100 ? (it.base_size || 60) * 2 : it.base_size);
-          map[it.id] = { id: it.id, name: it.name, img: (typeof khRoomImg === 'function' ? khRoomImg(it.image_url) : it.image_url), size: sz, price: Number(it.price_nyang) || 0, effect: it.effect || 'none', category: it.category || 'deco' };
+          map[it.id] = { id: it.id, name: it.name, img: (typeof khRoomImg === 'function' ? khRoomImg(it.image_url) : it.image_url), size: sz, price: Number(it.price_nyang) || 0, cash: it.cash_only === true, effect: it.effect || 'none', category: it.category || 'deco' };
         });
         return map;
       }, function () { _itemsP = null; return {}; });
@@ -112,7 +113,7 @@
     var owned = Array.isArray(room.owned) ? room.owned : [];
     var layout = (Array.isArray(room.layout) ? room.layout : []).filter(function (p) {
       var d = p && items[p.id];
-      return d && (owned.indexOf(p.id) !== -1 || d.price === 0);
+      return d && (owned.indexOf(p.id) !== -1 || (d.price === 0 && !d.cash));   // card items are never free
     }).slice(0, 60);
     var ok = await Promise.all(layout.map(function (p) { return imgOk(items[p.id].img); }));
     if (stale()) return;
@@ -142,6 +143,7 @@
       var sp = document.createElement('div');
       sp.className = 'kh-rv-sprite';
       sp.style.backgroundImage = 'url("' + String(d.img).replace(/"/g, '%22') + '")';
+      if (typeof khRoomFrames === 'function') { var fr = khRoomFrames(d); if (fr) khRoomAnim(sp, fr.urls, fr.ms); }
       sp.style.transform = 'scale(' + ((p.flipped ? -1 : 1) * scale) + ',' + scale + ')';
       div.appendChild(sp);
       host.appendChild(div);

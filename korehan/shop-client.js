@@ -434,7 +434,7 @@
     var tab = _shop.tab;
     document.querySelectorAll('.shop-tab').forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab') === tab); });
     var el = document.getElementById('shop-grid'); if (!el) return;
-    if (tab === 'special') { el.innerHTML = _spRender(); if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons(); return; }
+    if (tab === 'special') { el.innerHTML = _spRender(); _spAnimate(el); if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons(); return; }
     var html = _shop.preview ? '<div class="sh-note">The shop is being restocked — items are a preview and can\'t be bought yet.</div>' : '';
     if (tab === 'room') {
       var owned = _roomOwnedIds();
@@ -721,15 +721,18 @@
     var items = p.items || [];
     return items.length > 0 && items.every(function (i) { return /^pc_/.test(i) ? !!_sp.cards[i] : owned.indexOf(i) >= 0; });
   }
+  function _spAdmin() { return typeof khNyangUnlimited === 'function' && khNyangUnlimited(); }
   function _spLive(p) {
     var now = Date.now();
-    return p.active && (!p.starts_at || new Date(p.starts_at).getTime() <= now) && (!p.ends_at || new Date(p.ends_at).getTime() > now);
+    return (p.active || p._draft) && (!p.starts_at || new Date(p.starts_at).getTime() <= now) && (!p.ends_at || new Date(p.ends_at).getTime() > now);
   }
   async function _spLoad() {
     var sb = getSupa(); if (!sb) return;
     var uid = window.supaUser && supaUser.id;
     var reqs = [
-      sb.from('cash_products').select('*').eq('active', true).order('sort', { ascending: true }),
+      // The admin also sees inactive products (drafts) to check them before they go on sale.
+      _spAdmin() ? sb.from('cash_products').select('*').order('sort', { ascending: true })
+                 : sb.from('cash_products').select('*').eq('active', true).order('sort', { ascending: true }),
       sb.from('character_reporters').select('id, data')
     ];
     if (uid) reqs.push(
@@ -739,7 +742,7 @@
     );
     var r = await Promise.all(reqs.map(function (q) { return q.then(function (x) { return x; }, function () { return { data: null }; }); }));
     var rows = function (i) { return (r[i] && Array.isArray(r[i].data)) ? r[i].data : []; };
-    _sp.products = rows(0).filter(_spLive);
+    _sp.products = rows(0).map(function (p) { p._draft = !p.active; return p; }).filter(_spLive);
     _sp.reporters = rows(1).map(function (x) { var d = x.data || {}; return { id: x.id, name: d.name || x.id, img: d.image || '', color: d.color || '#64748b' }; })
       .filter(function (x) { return /^cr\d+$/.test(x.id) && x.img && !/picsum\.photos/.test(x.img); })
       .sort(function (a, b) { return Number(a.id.slice(2)) - Number(b.id.slice(2)); });
@@ -760,8 +763,16 @@
     return _spOwned(p) ? '<span class="sp-owned">' + khIcon('check') + 'Owned</span>'
       : '<button type="button" class="sp-btn" onclick="shopSpecialOpen(\'' + _esc(p.id) + '\')">Buy</button>';
   }
+  // Preview pictures with frames (the fireplace fire, idol dance poses) move like in the room.
+  function _spFr(x) { return (x && Array.isArray(x.frames) && x.frames.length > 1) ? ' data-frames="' + _esc(JSON.stringify(x.frames)) + '"' : ''; }
+  function _spAnimate(root) {
+    if (typeof khRoomAnim !== 'function' || !root) return;
+    root.querySelectorAll('img[data-frames]').forEach(function (im) {
+      try { var fr = JSON.parse(im.getAttribute('data-frames')); khRoomAnim(im, fr.map(_spImg), fr.length > 6 ? 1100 : 150); } catch (_) {}
+    });
+  }
   function _spThumbs(p, n) {
-    return (p.preview || []).slice(0, n || 5).map(function (x) { return '<span class="sp-th"><img src="' + _esc(_spImg(x.img)) + '" alt="" loading="lazy"></span>'; }).join('');
+    return (p.preview || []).slice(0, n || 5).map(function (x) { return '<span class="sp-th"><img src="' + _esc(_spImg(x.img)) + '" alt="" loading="lazy"' + _spFr(x) + '></span>'; }).join('');
   }
   function _spDays(p) {
     if (!p.ends_at) return '';
@@ -780,7 +791,7 @@
         var own = _spOwned(p);
         return '<div class="sp-hero">'
           + '<div class="sp-hero-bg"' + (p.image_url ? ' style="background-image:url(\'' + _esc(_spImg(p.image_url)) + '\')"' : '') + '>'
-          + (own ? '<span class="sp-badge sp-badge-own">OWNED</span>' : (p.badge ? '<span class="sp-badge">' + _esc(p.badge) + '</span>' : ''))
+          + (own ? '<span class="sp-badge sp-badge-own">OWNED</span>' : (p._draft ? '<span class="sp-badge sp-badge-draft">DRAFT · not on sale</span>' : (p.badge ? '<span class="sp-badge">' + _esc(p.badge) + '</span>' : '')))
           + (p.ends_at && !own ? '<span class="sp-cd">' + _esc(_spDays(p)) + '</span>' : '') + '</div>'
           + '<div class="sp-hero-bd"><h4>' + _esc(p.name) + '</h4><div class="sp-ths">' + _spThumbs(p, 5) + '</div>'
           + (p.description ? '<p>' + _esc(p.description) + '</p>' : '')
@@ -791,18 +802,19 @@
       if (_sp.paid[p.id]) return;   // one time only: gone once bought
       var art = (p.preview && p.preview[0]) ? '<img src="' + _esc(_spImg(p.image_url || p.preview[0].img)) + '" alt="">' : khIcon('gift');
       h += '<div class="sp-card"><div class="sp-art">' + art + '</div><div class="sp-card-bd">'
-        + (p.one_per_account ? '<span class="sp-once">ONE TIME ONLY</span>' : '')
+        + (p._draft ? '<span class="sp-once sp-draft">DRAFT · not on sale</span>' : '') + (p.one_per_account ? '<span class="sp-once">ONE TIME ONLY</span>' : '')
         + '<h5>' + _esc(p.name) + '</h5>' + (p.description ? '<p>' + _esc(p.description) + '</p>' : '')
         + '<div class="sp-row"><div>' + _spPriceHtml(p) + '</div>' + _spBtn(p) + '</div></div></div>';
     });
     if (outfits.length) {
       h += '<div class="sp-sec"><h3>Outfits</h3><span>Wear them in My Room</span></div><div class="sp-grid">'
         + outfits.map(function (p) {
-          var img = p.image_url || (p.preview && p.preview[0] && p.preview[0].img) || '';
+          var pv0 = (p.preview && p.preview[0]) || {};
+          var img = p.image_url || pv0.img || '';
           return '<button type="button" class="sp-it" onclick="shopSpecialOpen(\'' + _esc(p.id) + '\')">'
-            + (p.badge ? '<span class="sp-lim">' + _esc(p.badge) + '</span>' : '')
+            + (p._draft ? '<span class="sp-lim sp-draft">DRAFT</span>' : (p.badge ? '<span class="sp-lim">' + _esc(p.badge) + '</span>' : ''))
             + (_spOwned(p) ? '<span class="sh-own sh-own-abs">Owned</span>' : '')
-            + '<img src="' + _esc(_spImg(img)) + '" alt="" loading="lazy"><b>' + _esc(p.name) + '</b>'
+            + '<img src="' + _esc(_spImg(img)) + '" alt="" loading="lazy"' + (pv0.img === img ? _spFr(pv0) : '') + '><b>' + _esc(p.name) + '</b>'
             + '<span>' + (_spOwned(p) ? 'Owned' : _spMoney(_spPrice(p))) + '</span></button>';
         }).join('') + '</div>';
     }
@@ -855,7 +867,7 @@
       + '<div class="sh-st">' + _esc(p.name) + '</div>'
       + (p.description ? '<p class="sp-sheet-d">' + _esc(p.description) + '</p>' : '')
       + '<div class="sp-li">' + (p.preview || []).map(function (x) {
-          return '<div><span><img src="' + _esc(_spImg(x.img)) + '" alt=""></span>' + _esc(x.label || '') + '</div>';
+          return '<div><span><img src="' + _esc(_spImg(x.img)) + '" alt=""' + _spFr(x) + '></span>' + _esc(x.label || '') + '</div>';
         }).join('') + '</div>'
       + (own ? '<div class="sp-total"><span>Already in your account</span></div><button type="button" class="sh-buy" onclick="location.href=\'korehan-mypage.html\'">Go to My Room</button>'
              : '<div class="sp-total"><span>Total</span><span>' + _spMoney(price) + (price < p.price_cents ? ' <s>' + _spMoney(p.price_cents) + '</s>' : '') + '</span></div>'
@@ -864,6 +876,7 @@
       + '<button type="button" class="sh-cancel" onclick="shopClose()">Close</button></div>';
     ov.addEventListener('click', function (e) { if (e.target === ov) shopClose(); });
     document.body.appendChild(ov);
+    _spAnimate(ov);
     requestAnimationFrame(function () { ov.classList.add('open'); });
   };
   window.shopSpecialPay = async function (id) {
@@ -927,6 +940,8 @@
     requestAnimationFrame(function () { ov.classList.add('open'); });
   }
   window.addEventListener('kh-plan-loaded', function () { if (_shop.tab === 'special') renderTab(); });
+  // Roles arrive after the first load: the admin then also gets the draft products.
+  window.addEventListener('kh:roles', function () { if (_spAdmin() && _sp.loaded) _spLoad(); });
 
   // Esc closes the open sheet (item, bought, how to earn) like the backdrop tap.
   document.addEventListener('keydown', function(e) {
