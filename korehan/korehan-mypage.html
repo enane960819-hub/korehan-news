@@ -1345,8 +1345,8 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261030fx"></script>
 <script src="js/features/room-view.js?v=20261031it"></script>
-<script src="js/features/avatar-art.js?v=20261031on"></script>
-<script src="js/features/avatar-editor.js?v=20261031on"></script>
+<script src="js/features/avatar-art.js?v=20261031sp"></script>
+<script src="js/features/avatar-editor.js?v=20261031sp"></script>
 <script src="js/features/room-tabs.js?v=20261031it"></script>
 <script src="js/features/room-learn.js?v=20261031rx"></script>
 <script>
@@ -2998,7 +2998,7 @@ async function loadRoomItemsFromDB() {
     if (!res.error && res.data && res.data.length) {
       ROOM_ITEMS = res.data.map(function(r) {
         var sz = (typeof khRoomItemSize === 'function') ? khRoomItemSize(r.base_size, r.category) : ((r.base_size || 60) < 100 ? (r.base_size || 60) * 2 : r.base_size);
-        return { id: r.id, name: r.name, price: r.price_nyang, img: (typeof khRoomImg === 'function' ? khRoomImg(r.image_url) : r.image_url), size: sz, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco', cat: r.shop_category || '' };
+        return { id: r.id, name: r.name, price: r.price_nyang, img: (typeof khRoomImg === 'function' ? khRoomImg(r.image_url) : r.image_url), size: sz, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco', cat: r.shop_category || '', cash: !!r.cash_only };
       });
       _roomItemsLoaded = true;
     }
@@ -4519,6 +4519,7 @@ async function openRoomShop(ownedOnly) {
     if (roomImgMissing(it)) return false;
     var isOwned = owned.indexOf(it.id) !== -1;
     if (!isOwned && unlockIds.indexOf(it.id) !== -1) return false;
+    if (!isOwned && it.cash) return false;   // Special shop (card) items, never nyang
     return ownedOnly ? isOwned : (isOwned || Number(it.price) > 0);
   });
 

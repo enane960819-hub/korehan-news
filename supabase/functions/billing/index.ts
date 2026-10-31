@@ -24,6 +24,10 @@
 //                                          seat (status 'comp') while booking is open
 //   live_cancel { session_id }             included seat → freed while booking is open;
 //                                          legacy $5 paid seat, 24 h+ before → refund
+//   item_checkout { product_id }           Special shop (digital items, owner 2026-10-31):
+//                                          pending cash_orders row + one-time Stripe Checkout
+//                                          (mode payment); Premium members get the product's
+//                                          discount. billing-webhook grants the items when paid.
 //
 // The Stripe secret key comes from app_settings 'stripe_secret_key' (saved from
 // the admin CMS → Settings) or the STRIPE_SECRET_KEY function secret. Prices are
@@ -204,6 +208,62 @@ Deno.serve(async (req) => {
     const sc = await stripeClient(sb)
     if (!sc) return json({ ok: false, error: 'billing_not_configured' }, 503)
     const stripe = sc.stripe
+
+    if (action === 'item_checkout') {
+      const productId = String(body?.product_id || '')
+      if (!/^[a-z0-9_]{3,60}$/.test(productId)) return json({ ok: false, error: 'bad_product' }, 400)
+      const { data: p } = await sb.from('cash_products').select('*').eq('id', productId).maybeSingle()
+      const now = Date.now()
+      if (!p || !p.active) return json({ ok: false, error: 'not_for_sale' }, 404)
+      if ((p.starts_at && new Date(p.starts_at).getTime() > now) || (p.ends_at && new Date(p.ends_at).getTime() <= now)) {
+        return json({ ok: false, error: 'not_for_sale' }, 409)
+      }
+      const items: string[] = Array.isArray(p.items) ? p.items : []
+      if (!items.length) return json({ ok: false, error: 'not_for_sale' }, 409)
+      if (p.one_per_account) {
+        const { data: prev } = await sb.from('cash_orders').select('id').eq('user_id', user.id).eq('product_id', productId).eq('status', 'paid').limit(1)
+        if (prev && prev.length) return json({ ok: false, error: 'already_bought' }, 409)
+      }
+      // Everything in it already owned → nothing to sell.
+      const { data: rs } = await sb.from('user_room_state').select('owned').eq('user_id', user.id).maybeSingle()
+      const owned: string[] = Array.isArray(rs?.owned) ? rs.owned : []
+      const { data: cards } = await sb.from('user_photocards').select('card_id').eq('user_id', user.id).in('card_id', items.filter((i) => i.startsWith('pc_')))
+      const haveCards = new Set((cards || []).map((c: any) => c.card_id))
+      if (items.every((i) => i.startsWith('pc_') ? haveCards.has(i) : owned.includes(i))) return json({ ok: false, error: 'already_owned' }, 409)
+
+      const { data: prem } = await sb.rpc('kh_is_premium', { p_user: user.id })
+      const pct = prem ? Math.max(0, Math.min(90, Number(p.premium_discount_pct) || 0)) : 0
+      const amount = Math.max(50, Math.round(Number(p.price_cents) * (100 - pct) / 100))
+      const { data: order, error: oErr } = await sb.from('cash_orders')
+        .insert({ user_id: user.id, product_id: productId, items, amount_cents: amount, currency: 'usd' })
+        .select('id').single()
+      if (oErr || !order) throw new Error('order: ' + (oErr?.message || 'insert failed'))
+      const meta = { kind: 'kh-cash', order_id: order.id, user_id: user.id, product_id: productId }
+      try {
+        const session = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          client_reference_id: user.id,
+          customer_email: user.email || undefined,
+          line_items: [{
+            quantity: 1,
+            price_data: {
+              currency: 'usd',
+              unit_amount: amount,
+              product_data: { name: String(p.name).slice(0, 120), ...(p.description ? { description: String(p.description).slice(0, 300) } : {}) },
+            },
+          }],
+          metadata: meta,
+          payment_intent_data: { metadata: meta },
+          success_url: `${APP_BASE_URL}/korehan-shop.html?tab=special&order=${order.id}`,
+          cancel_url: `${APP_BASE_URL}/korehan-shop.html?tab=special&canceled=1`,
+        })
+        await sb.from('cash_orders').update({ stripe_session_id: session.id }).eq('id', order.id)
+        return json({ ok: true, url: session.url, order_id: order.id, amount_cents: amount, premium_discount: pct })
+      } catch (e) {
+        await sb.from('cash_orders').update({ status: 'canceled' }).eq('id', order.id)
+        throw e
+      }
+    }
 
     if (action === 'status' || action === 'setup') {
       if (!isAdmin) return json({ ok: false, error: 'forbidden' }, 403)

@@ -36,7 +36,7 @@
     if (A().isFree(it)) return true;
     return E.owned.indexOf(A().serverId(kind, it.id)) !== -1;
   }
-  // Why an item is locked: null (wearable), {type:'buy', price}, {type:'goal'}, {type:'season'}.
+  // Why an item is locked: null (wearable), {type:'buy', price}, {type:'goal'}, {type:'season'}, {type:'cash'} (Special shop).
   // Admin = unlimited nyang (owner, 2026-10-31): anything not owned is a free buy;
   // buy_room_item gives it to the admin at 0. Badges still show the real price / goal.
   function unlimited() { return typeof khNyangUnlimited === 'function' && khNyangUnlimited(); }
@@ -47,6 +47,7 @@
   function realLock(kind, it) {
     if (!it || owns(kind, it)) return null;
     if (it.goal) return { type: 'goal' };
+    if (it.cash) return { type: 'cash' };
     if (!A().inSeason(it)) return { type: 'season' };
     return { type: 'buy', price: Number(it.price) || 0 };
   }
@@ -81,6 +82,7 @@
     if (selected) return '<span class="kav-b kav-b-try">Trying on</span>';
     if (lock.type === 'goal') return '<span class="kav-b kav-b-goal">' + ic(GOAL_IC[it.goal.key] || 'gift') + esc(it.goal.short || 'Unlock') + '</span>';
     if (lock.type === 'season') return '<span class="kav-b kav-b-season">' + ic('calendar') + esc(it.season || 'Seasonal') + '</span>';
+    if (lock.type === 'cash') return '<span class="kav-b kav-b-season">' + ic('sparkles') + 'Special</span>';
     return '<span class="kav-b kav-b-buy">' + ic('coins') + nf(lock.price) + '</span>';
   }
   function tileTitle(kind, it) {
@@ -88,6 +90,7 @@
     if (!lock) return it.name;
     if (lock.type === 'goal') return it.name + ' — earned by studying: ' + goalText(it);
     if (lock.type === 'season') return it.name + ' — ' + seasonText(it);
+    if (lock.type === 'cash') return it.name + ' — in the Special shop';
     return it.name + ' — ' + nf(lock.price) + ' nyang';
   }
 
@@ -326,7 +329,8 @@
     var total = buyTotal(list), short = Math.max(0, total - coin());
     var rows = list.map(function (x) {
       var right = x.lock.type === 'buy' ? ic('coins') + nf(x.lock.price)
-        : x.lock.type === 'goal' ? '<em>' + esc(goalText(x.it)) + '</em>' : '<em>' + esc(seasonText(x.it)) + '</em>';
+        : x.lock.type === 'goal' ? '<em>' + esc(goalText(x.it)) + '</em>'
+        : x.lock.type === 'cash' ? '<em><a href="korehan-shop.html?tab=special">In the Special shop</a></em>' : '<em>' + esc(seasonText(x.it)) + '</em>';
       return '<li><span>' + esc(x.it.name) + '</span><span class="kav-dr">' + right + '</span></li>';
     }).join('');
     var msg = cant.length
