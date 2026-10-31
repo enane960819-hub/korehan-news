@@ -351,7 +351,11 @@ supabase functions deploy claude-proxy
   out-of-season ones), study unlocks granted by `kh_claim_room_unlocks`, ownership in the same server-only
   `owned` list. What's worn is client prefs (`prefs.avatar`, `prefs.rooms[].theme`) + layout entry `kh_avatar`;
   `get_public_room` drops worn items the owner doesn't own. Streak for unlocks = `kh_user_streak`. No placed-on
-  hats (owner rule). New sprite/theme art: bump `KH_ROOM_ART_V`.
+  hats (owner rule). New sprite/theme art: bump `KH_ROOM_ART_V`. Skin tone (`prefs.avatar.skin`, free:
+  light/tan/brown/deep) tints the sprite through a per-sprite mask (`assets/avatar/skin/<sprite>.png`,
+  `scripts/avatar/skin-masks.py`) — re-run it for every new or redrawn sprite. My Page room: look mode shows only the
+  room + Edit; tools (My items / Character / Theme / Shop, room tabs, item toolbar) appear in edit mode, which also
+  hides the bottom tab bar. No Daily Mission pill on My Page.
 - **Several rooms** (`js/features/room-tabs.js`, `20261030_room_slots.sql`): `prefs.rooms` = tab order (rooms[0]
   id `main` = everyone's original room); all rooms share the one `layout` array and an entry's `room` field says
   where it stands (none = room 1), so an item is in one room at a time. My Page's `getRoomLayout`/`setRoomLayout`

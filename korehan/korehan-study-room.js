@@ -10914,7 +10914,15 @@ async function renderFeedbackInboxContent() {
       .order('submitted_at', { ascending: false })
       .limit(20);
     if (res.error) throw res.error;
-    var items = res.data || [];
+    // Only things that get feedback belong here (owner 2026-10-31). Article Study rows are a
+    // completion log (no text, never reviewed) and per-piece 'writing' rows repeat their Daily
+    // Package; both used to fall back to the "Topic Yum Yum · Submitted" label. A piece a tutor
+    // actually answered still shows.
+    var items = (res.data || []).filter(function(it) {
+      if (it.content_type === 'article_study') return false;
+      if (it.content_type === 'writing') return !!it.admin_feedback;
+      return true;
+    });
     if (!items.length) {
       content.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">No submissions yet.</div>';
       return;
@@ -10936,7 +10944,8 @@ async function renderFeedbackInboxContent() {
       article: { icon: '📰', label: 'Article Writing', color: '#fbbf24' },
       conversation: { icon: '💬', label: 'Conversation', color: '#38bdf8' },
       story: { icon: '📚', label: 'Story Writing', color: '#c084fc' },
-      speaking: { icon: '🎙️', label: 'Speaking', color: '#fb923c' }
+      speaking: { icon: '🎙️', label: 'Speaking', color: '#fb923c' },
+      writing: { icon: '✍️', label: 'Writing', color: '#a78bfa' }
     };
 
     var STATUS_LABELS = {
@@ -10969,7 +10978,7 @@ async function renderFeedbackInboxContent() {
 
       // Submission cards for this date
       dayItems.forEach(function(item, idx) {
-        var type = TYPE_LABELS[item.content_type] || TYPE_LABELS.topic;
+        var type = TYPE_LABELS[item.content_type] || TYPE_LABELS.writing;
         var status = STATUS_LABELS[item.status] || STATUS_LABELS.submitted;
         var fb = null;
         try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}

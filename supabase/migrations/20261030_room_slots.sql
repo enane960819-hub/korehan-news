@@ -286,6 +286,7 @@ declare
   v_prefs   jsonb;
   v_viewer  uuid := auth.uid();
   v_av      jsonb;
+  v_skin text;
   v_hair    text;
   v_outfit  text;
   v_acc     jsonb := '[]'::jsonb;
@@ -326,7 +327,9 @@ begin
          limit 6
       ) x;
     end if;
-    v_avatar := jsonb_build_object('hair', v_hair, 'outfit', v_outfit, 'acc', v_acc,
+    v_skin := v_av ->> 'skin';   -- skin tone (free, 2026-10-31)
+    if v_skin is null or v_skin not in ('light', 'tan', 'brown', 'deep') then v_skin := 'light'; end if;
+    v_avatar := jsonb_build_object('hair', v_hair, 'outfit', v_outfit, 'acc', v_acc, 'skin', v_skin,
                                    'profile', coalesce(case when jsonb_typeof(v_av -> 'profile') = 'boolean'
                                                             then (v_av ->> 'profile')::boolean end, false));
   end if;

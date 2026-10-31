@@ -371,6 +371,8 @@ function injectDailyMission() {
   // Pages with their own fixed bottom dock: Word Bank (drill dock) and the
   // article reader (action bar) — the pill covered their buttons.
   if (page === 'korehan-learn' || page === 'korehan-article') return;
+  // My Page: the pill sat on top of My Room (owner 2026-10-31).
+  if (page === 'korehan-mypage') return;
   if (document.getElementById('kh-daily-mission')) return;
   var el = document.createElement('div');
   el.id = 'kh-daily-mission';
