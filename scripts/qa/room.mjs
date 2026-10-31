@@ -356,7 +356,7 @@ try {
           const r = document.getElementById('miniroom-container').getBoundingClientRect();
           for (let y = r.top + r.height * 0.3; y < r.bottom - 8; y += 9) for (let x = r.left + 8; x < r.right - 8; x += 9) {
             const t = document.elementFromPoint(x, y);
-            if (t && t.closest('#miniroom-container') && !t.closest('.room-placed-item, #room-sel-controls, button, a, input, .rw, #room-edit-bar')) return { x, y };
+            if (t && t.closest('#miniroom-container') && !t.closest('.room-placed-item, #room-sel-controls, button, a, input, .rw')) return { x, y };
           }
           return null;
         });
@@ -610,8 +610,9 @@ try {
         check(await page.evaluate(() => !document.getElementById('room-theme-drawer').classList.contains('open')), T('wallpaper drawer: Esc closes'));
         await editOff(page, mobile);   // the light switch shows when not editing
         // lights off / on → wallpaper comes back (Brick), not the default
+        check(await page.evaluate(() => ['room-light-switch', 'room-bgm-btn', 'room-edit-btn'].every((id) => { const b = document.getElementById(id).getBoundingClientRect(), r = document.getElementById('miniroom-container').getBoundingClientRect(); return b.width > 0 && b.bottom <= r.top; })), T('lights / music / Edit sit above the room, not on it'));
         await tapEl(page, '#room-light-switch', mobile); await sleep(150);
-        check(await page.evaluate(() => document.getElementById('miniroom-container').classList.contains('room-lights-off')), T('light switch: lights off'));
+        check(await page.evaluate(() => document.getElementById('miniroom-container').classList.contains('room-lights-off') && document.getElementById('room-light-switch').getAttribute('aria-pressed') === 'true'), T('light switch: lights off'));
         await tapEl(page, '#room-light-switch', mobile); await sleep(150);
         check(await page.evaluate(() => !document.getElementById('miniroom-container').classList.contains('room-lights-off') && /repeating-linear-gradient/.test(document.getElementById('miniroom-container').style.background)), T('light switch on: your wallpaper comes back'));
         // persists
