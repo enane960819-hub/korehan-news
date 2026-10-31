@@ -231,7 +231,7 @@
   function pcImg(u) { return (typeof khRoomImg === 'function' && /^assets\//.test(u)) ? khRoomImg(u) : u; }
   function setCards(p) {
     var ids = p.items || [], pv = p.preview || [];
-    return ids.map(function (id, i) { var x = pv[i] || {}; return { id: id, img: (R.owned[id] && R.art && R.art[id]) || x.img || '', label: x.label || '' }; });
+    return ids.map(function (id, i) { var x = pv[i] || {}; return { id: id, img: (R.owned[id] && R.art && R.art[id]) || x.img || '', label: x.label || '', open: x.open === true }; });
   }
   function setsHtml() {
     if (!R.setsLoaded) return '<div class="rp-empty">Loading cards…</div>';
@@ -242,11 +242,13 @@
       return '<div class="rp-pcset" style="--c:' + r.color + '"><div class="rp-pcset-h"><span><b>' + esc(p.name) + '</b>' + (p.active ? '' : '<em class="rp-g-draft">Draft</em>') + '</span>'
         + '<small>' + got + ' / ' + n + ' collected</small></div>'
         + '<div class="rp-cards">' + cards.map(function (c, i) {
-          var own = !!R.owned[c.id], no = String(i + 1).padStart(2, '0') + ' / ' + pad;
-          return '<button type="button" class="rp-card' + (own ? '' : ' rp-card-lock') + '" style="--c:' + r.color + '"'
-            + (own ? ' onclick="khRp.card(\'' + esc(p.id) + '\',' + i + ')"' : ' onclick="location.href=\'korehan-shop.html?tab=special\'"')
-            + ' aria-label="' + esc(c.label + (own ? '' : ' (locked)')) + '"><img src="' + esc(pcImg(c.img)) + '" alt="" loading="lazy"><span class="rp-card-n">' + no + '</span>'
-            + (own ? '' : '<span class="rp-card-lk">' + ic('lock') + '</span>')
+          // The set's open teaser card (preview.open) shows in full to everyone.
+          var own = !!R.owned[c.id], see = own || c.open, no = String(i + 1).padStart(2, '0') + ' / ' + pad;
+          return '<button type="button" class="rp-card' + (see ? '' : ' rp-card-lock') + '" style="--c:' + r.color + '"'
+            + (see ? ' onclick="khRp.card(\'' + esc(p.id) + '\',' + i + ')"' : ' onclick="location.href=\'korehan-shop.html?tab=special\'"')
+            + ' aria-label="' + esc(c.label + (see ? '' : ' (locked)')) + '"><img src="' + esc(pcImg(c.img)) + '" alt="" loading="lazy"><span class="rp-card-n">' + no + '</span>'
+            + (see ? '' : '<span class="rp-card-lk">' + ic('lock') + '</span>')
+            + (!own && c.open ? '<span class="rp-card-free">FREE PREVIEW</span>' : '')
             + '<span class="rp-card-b"><em>' + esc(c.label.toUpperCase()) + '</em><b lang="ko">' + esc(r.name) + '</b></span></button>';
         }).join('') + '</div>'
         + (got < n ? '<a class="rp-pcset-buy" href="korehan-shop.html?tab=special">' + ic('sparkles') + 'Get all ' + n + ' cards · $' + (p.price_cents / 100).toFixed(2) + ic('chevron-right') + '</a>' : '')
@@ -268,7 +270,7 @@
   // Big view of an owned photocard.
   function card(pid, i) {
     var p = (R.sets || []).filter(function (x) { return x.id === pid; })[0]; if (!p) return;
-    var c = setCards(p)[i]; if (!c || !R.owned[c.id]) return;
+    var c = setCards(p)[i]; if (!c || !(R.owned[c.id] || c.open)) return;
     var ov = sheet('<button type="button" class="rp-x rp-pcv-x" onclick="khRp.close()" aria-label="Close">' + ic('x') + '</button>'
       + '<div class="rp-pcv" style="--c:' + R.r.color + '"><img src="' + esc(pcImg(c.img)) + '" alt="' + esc(c.label) + '"></div>'
       + '<div class="rp-pcv-b"><b>' + esc(c.label) + '</b><small>' + esc(p.name) + ' · ' + String(i + 1).padStart(2, '0') + ' / ' + String(setCards(p).length).padStart(2, '0') + '</small></div>', 'rp-ov-pc');
