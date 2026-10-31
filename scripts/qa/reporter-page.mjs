@@ -20,7 +20,8 @@ const POSTS = [
 ];
 const SET = { id: 'pc_cr5_midnight', name: 'Midnight', description: '', price_cents: 299, active: false, sort: 50, kind: 'photocard_set', reporter_id: 'cr5',
   items: [1, 2, 3, 4, 5, 6].map((i) => 'pc_cr5_s1_0' + i),
-  preview: [1, 2, 3, 4, 5, 6].map((i) => ({ id: 'pc_cr5_s1_0' + i, label: 'Card ' + i, img: 'assets/photocards/cr5/s1-0' + i + '.webp' })) };
+  preview: [1, 2, 3, 4, 5, 6].map((i) => ({ id: 'pc_cr5_s1_0' + i, label: 'Card ' + i, img: 'assets/photocards/cr5/s1-0' + i + '-p.webp' })) };
+const ART1 = 'assets/photocards/cr5/e0ad8aa97715c0164584.webp', ART3 = 'assets/photocards/cr5/b5a35b575512bad64f3a.webp';
 async function page(opts = {}) {
   const ctx = await br.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const st = { follow: [], like: [], comment: null, postWrite: null };
@@ -32,6 +33,7 @@ async function page(opts = {}) {
     if (/\/reporter_post_images/.test(u)) return m === 'GET' ? J([{ post_id: PID, image_url: BASE + '/assets/room/themes/winter.webp', sort_order: 0 }, { post_id: PID, image_url: BASE + '/assets/room/themes/cafe.webp', sort_order: 1 }]) : J({});
     if (/\/cash_products/.test(u)) return J([SET]);
     if (/\/user_photocards/.test(u)) return J([{ card_id: 'pc_cr5_s1_01' }, { card_id: 'pc_cr5_s1_03' }]);
+    if (/\/photocard_art/.test(u)) return J([{ card_id: 'pc_cr5_s1_01', img: ART1 }, { card_id: 'pc_cr5_s1_03', img: ART3 }]);
     if (/rpc\/kh_reporter_feed_stats/.test(u)) return J({ followers: 12, following: false, likes: { [PID]: 3 }, liked: [], comments: { [PID]: 1 } });
     if (/\/reporter_follows/.test(u)) { st.follow.push(m); return r.fulfill({ status: 201, body: '' }); }
     if (/\/reporter_post_likes/.test(u)) { st.like.push(m); return r.fulfill({ status: 201, body: '' }); }
@@ -91,10 +93,12 @@ async function page(opts = {}) {
     official: /Official/.test(document.getElementById('rp-panel').innerText) }));
   check(/Midnight/.test(cb.head) && /2 \/ 6 collected/.test(cb.head) && cb.n === 6 && cb.locked === 4, 'card book: set with 2 of 6 owned, 4 locked', cb);
   check(cb.imgs === 6, 'card book: all 6 card pictures load', cb);
+  const srcs = await p.evaluate(() => [...document.querySelectorAll('.rp-pcset .rp-card')].map((b) => ({ lock: b.classList.contains('rp-card-lock'), src: b.querySelector('img').src })));
+  check(srcs.filter((x) => !x.lock).every((x) => /e0ad8a|b5a35b/.test(x.src)) && srcs.filter((x) => x.lock).every((x) => /-p\.webp/.test(x.src)), 'owned cards show the full picture, locked ones only the blurred preview', srcs);
   check(/Get all 6 cards/.test(cb.buy) && cb.official, 'card book: buy link + free official cards below', cb);
   await p.screenshot({ path: SHOTS + '03-cards.png', fullPage: true });
   await p.click('.rp-pcset .rp-card:not(.rp-card-lock)'); await sleep(500);
-  check(await p.evaluate(() => { const i = document.querySelector('.rp-pcv img'); return !!i && /s1-01/.test(i.src) && /01 \/ 06/.test(document.querySelector('.rp-pcv-b').innerText); }), 'tap owned card opens the big view');
+  check(await p.evaluate(() => { const i = document.querySelector('.rp-pcv img'); return !!i && /e0ad8a/.test(i.src) && /01 \/ 06/.test(document.querySelector('.rp-pcv-b').innerText); }), 'tap owned card opens the big view');
   await p.screenshot({ path: SHOTS + '04-card-view.png' });
   await p.keyboard.press('Escape'); await sleep(200);
   check(/korehan-shop\.html\?tab=special/.test(await p.getAttribute('.rp-card-lock', 'onclick')), 'locked card goes to the Special shop');
