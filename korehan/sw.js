@@ -38,7 +38,9 @@
 // `touch-action: pan-x` that trapped vertical swipes. Bumping the version
 // makes activate delete every pre-v14 cache; skipWaiting + clients.claim
 // take over in one navigation so stuck clients self-heal on next load.
-const CACHE_VERSION = 'kh-v14';
+// v15: purge after the 2026-10-31 Special-shop deploys. A phone that fell back to a cached
+// avatar-art.js (8 themes, no frameUrls) next to a fresh avatar-editor.js broke Customize.
+const CACHE_VERSION = 'kh-v15';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
