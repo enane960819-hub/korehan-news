@@ -92,7 +92,7 @@
   // Skin tones (free, 2026-10-31): the drawn skin is multiplied by these RGB factors,
   // weighted by a per-sprite mask (assets/avatar/skin/<sprite>.png, built by
   // scripts/avatar/skin-masks.py) so clothes that are skin-coloured stay as they are.
-  var SKIN_ON = false;   // off until the masks are clean (owner 2026-10-31)
+  var SKIN_ON = true;   // owner approved the cleaned masks (2026-10-31)
   var SKINS = { light: null, tan: [0.92, 0.84, 0.76], brown: [0.74, 0.60, 0.48], deep: [0.54, 0.40, 0.31] };
   var SKIN_SWATCH = { light: '#f6d3b8', tan: '#e0b48f', brown: '#b07a55', deep: '#7c5039' };
   var KIND_PREFIX = { outfit: 'av_outfit_', acc: 'av_acc_', room: 'av_room_' };

@@ -93,8 +93,8 @@
 
   // ── Panels ─────────────────────────────────────────────────────────
   var _hairFaces = {};
-  // Skin tone picker: off until the skin masks leave no original-tone pixels (owner 2026-10-31).
-  var SKIN_ON = false;
+  // Skin tone picker (owner approved the cleaned masks, 2026-10-31).
+  var SKIN_ON = true;
   function hairFace(h) {
     var skin = (SKIN_ON && E && E.av && E.av.skin) || 'light', key = h + '|' + skin;
     if (!_hairFaces[key]) _hairFaces[key] = A().faceUrl({ hair: h, outfit: 'tee', acc: [], skin: skin }, 120);
