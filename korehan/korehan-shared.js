@@ -10117,7 +10117,13 @@ function khActivityStreak(userId) {
         lsSet('kh_srv_streak', { uid: me, n: n, day: _khKstDay() });
         // Streak badges read khStreakNow() synchronously — re-check once the
         // server number lands or changes.
-        if (prev !== n) { try { if (typeof checkBadges === 'function') checkBadges('streak_sync'); } catch (_) {} }
+        if (prev !== n) {
+          try { if (typeof checkBadges === 'function') checkBadges('streak_sync'); } catch (_) {}
+          // Numbers already drawn from the device-only guess (khStreakNow before the server
+          // answered) are repainted, so every screen and every device shows the server number.
+          try { window.dispatchEvent(new CustomEvent('kh:streak', { detail: { streak: n } })); } catch (_) {}
+          try { _khBadgeViewsRefresh(); } catch (_) {}
+        }
         return n;
       }
       // Both server reads failed (offline): local walk, and retry next call.
@@ -10135,6 +10141,10 @@ function khStreakNow() {
   var me = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : null;
   if (me) {
     if (_khSrvStreak && _khSrvStreak.uid === me) return _khSrvStreak.n;
+    // No server answer on this page yet: ask for it now. When it lands, 'kh:streak'
+    // repaints whatever showed the guess below (this device's own study log, which
+    // can differ from other devices).
+    try { khActivityStreak(); } catch (_) {}
     var c = lsGet('kh_srv_streak', null);
     if (c && c.uid === me && c.day === _khKstDay() && typeof c.n === 'number') return c.n;
   }
