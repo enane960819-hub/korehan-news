@@ -53,4 +53,4 @@ More outfits (2026-10-31, owner sheets A / B / D, cut by `template matching` aga
 base so the face sits at scale 1.0): cowboy, hijab, hijab-sport, aodai, taekwondo, chef,
 christmas, padding, graduation (x4 hairs = 36). Headwear drawn in (head accessories hidden):
 cowboy, hijab, hijab-sport, chef, christmas, graduation on every hair. Sheet C (doctor,
-astronaut, kpop) not drawn yet.
+astronaut, kpop) added the same day; none of them has headwear.

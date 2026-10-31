@@ -810,7 +810,7 @@ try {
       }
       await sleep(500);
       const outfits = await page.$$eval('.kav-panel [data-act="outfit"]', (e) => e.map((x) => ({ id: x.dataset.id, locked: x.classList.contains('locked'), badge: (x.querySelector('.kav-b') || {}).textContent || '' })));
-      check(outfits.length === 19, T('Look: 19 outfits'), outfits.length);
+      check(outfits.length === 22, T('Look: 22 outfits'), outfits.length);
       let srcPrev = '';
       for (const o of outfits) {
         await tapEl(page, '.kav-panel [data-act="outfit"][data-id="' + o.id + '"]', mobile); await sleep(350);
