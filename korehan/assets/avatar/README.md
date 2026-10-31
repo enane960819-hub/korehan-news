@@ -60,3 +60,10 @@ matches its base-<hair> face (face scale 1.0 in SPRITE). The A-D sheets were re-
 scale search (the first cut's search started at 1.05, so those faces came out too big); the older
 outfits at 0.94/0.97 were enlarged to 1.0. Customize tiles draw every outfit at one fixed scale with
 the feet on the tile floor (avatar-editor.js figH), so a hat no longer shrinks the figure.
+
+REDRAWN (2026-10-31, replaces everything above about cutting / normalizing): the owner redrew the
+basic tee and 19 outfits as edits of one template picture (docs/reference/avatar-template-4.png,
+prompts in docs/reference/avatar-redraw-prompts.md), so every sprite has the same face, head and
+body. Sheets list the figures long, bob, short, curly; all are cut at one fixed scale (0.5).
+avatar-art.js keeps the first base-long's metrics as REF for the accessory anchors. Chef and
+doctor were dropped (20261031_avatar_drop_chef_doctor.sql refunds buyers).
