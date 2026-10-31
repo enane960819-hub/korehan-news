@@ -355,7 +355,9 @@ supabase functions deploy claude-proxy
   light/tan/brown/deep) tints the sprite through a per-sprite mask (`assets/avatar/skin/<sprite>.png`,
   `scripts/avatar/skin-masks.py`) — re-run it for every new or redrawn sprite. My Page room: look mode shows only the
   room + Edit; tools (My items / Character / Theme / Shop, room tabs, item toolbar) appear in edit mode, which also
-  hides the bottom tab bar. No Daily Mission pill on My Page.
+  hides the bottom tab bar. No Daily Mission pill on My Page. My items = inline panel under the room (room-tabs.js
+  tray, category chips), not a pop-up. Drawn item size = `khRoomItemSize(base_size, category)` (characters keep the old
+  doubling; everything else 0.85 x base_size).
 - **Several rooms** (`js/features/room-tabs.js`, `20261030_room_slots.sql`): `prefs.rooms` = tab order (rooms[0]
   id `main` = everyone's original room); all rooms share the one `layout` array and an entry's `room` field says
   where it stands (none = room 1), so an item is in one room at a time. My Page's `getRoomLayout`/`setRoomLayout`
