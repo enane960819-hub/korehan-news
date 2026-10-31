@@ -83,11 +83,11 @@ var _KH_DEFAULT_REPORTERS_LIST = [
   { id:'cr4', name:'앨리샤', role:'Culture Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#db2777' },
   { id:'cr1', name:'이리안', role:'Nature & Travel Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#2563eb' },
   { id:'cr7', name:'오지훈', role:'History Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#ea580c' },
-  { id:'cr6', name:'송유나', role:'Tech & Science Editor', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#0891b2' },
+  { id:'cr6', name:'송유나', role:'Tech & Science Editor', image:'https://korehani.com/assets/reporters/cr6-v1.webp', profilePage:'', color:'#0891b2' },
   { id:'cr9', name:'강태양', role:'World Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#4338ca' },
   { id:'cr10', name:'류하늘', role:'Culture & Life Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#c026d3' },
   { id:'cr3', name:'오관식', role:'Editor-in-Chief · Economy', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#059669' },
-  { id:'cr2', name:'한다온', role:'Easy News Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#7c3aed' },
+  { id:'cr2', name:'한다온', role:'Easy News Reporter', image:'https://korehani.com/assets/reporters/cr2-v1.webp', profilePage:'', color:'#7c3aed' },
   { id:'cr8', name:'모래', role:'KoreHani Mascot', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#16a34a' },
 ];
 
