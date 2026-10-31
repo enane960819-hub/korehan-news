@@ -25,7 +25,7 @@
   function ic(n, cls) { return '<i data-lucide="' + n + '" class="kav-i' + (cls ? ' ' + cls : '') + '" aria-hidden="true"></i>'; }
   function icons() { if (typeof renderKhLucideIcons === 'function') { try { renderKhLucideIcons(); } catch (_) {} } }
   function user() { return (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null; }
-  function coin() { return (typeof _userCoin !== 'undefined') ? Number(_userCoin) || 0 : 0; }
+  function coin() { return (typeof khNyangUnlimited === 'function' && khNyangUnlimited()) ? Infinity : (typeof _userCoin !== 'undefined') ? Number(_userCoin) || 0 : 0; }
   function nf(n) { return Number(n || 0).toLocaleString(); }
   function say(msg) { if (typeof toast === 'function') toast(msg); }
   var GOAL_IC = { streak_days: 'flame', saved_words: 'library', topik_tests: 'award', articles_read: 'newspaper', games_played: 'gamepad-2' };
@@ -37,7 +37,14 @@
     return E.owned.indexOf(A().serverId(kind, it.id)) !== -1;
   }
   // Why an item is locked: null (wearable), {type:'buy', price}, {type:'goal'}, {type:'season'}.
+  // Admin = unlimited nyang (owner, 2026-10-31): anything not owned is a free buy;
+  // buy_room_item gives it to the admin at 0. Badges still show the real price / goal.
+  function unlimited() { return typeof khNyangUnlimited === 'function' && khNyangUnlimited(); }
   function lockOf(kind, it) {
+    var l = realLock(kind, it);
+    return l && unlimited() ? { type: 'buy', price: 0 } : l;
+  }
+  function realLock(kind, it) {
     if (!it || owns(kind, it)) return null;
     if (it.goal) return { type: 'goal' };
     if (!A().inSeason(it)) return { type: 'season' };
@@ -66,7 +73,7 @@
 
   // ── Badges on tiles ────────────────────────────────────────────────
   function badge(kind, it, selected) {
-    var lock = lockOf(kind, it);
+    var lock = realLock(kind, it);
     if (!lock) {
       if (A().isFree(it)) return '';
       return '<span class="kav-b kav-b-own">' + ic('check') + 'Owned</span>';
@@ -182,6 +189,7 @@
     var list = lockedWorn(), total = buyTotal(list);
     if (!list.length) return '<b>Save</b>';
     if (total > 0) return '<b>Save</b><small>' + nf(total) + ' nyang</small>';
+    if (unlimited()) return '<b>Save</b><small>free (admin)</small>';
     return '<b>Save</b><small>locked items</small>';
   }
   function shell() {
@@ -297,7 +305,7 @@
     if (!E || E.busy) return;
     if (!user()) { say('Please sign in first'); return; }
     var list = lockedWorn();
-    if (!list.length) return commit(false);
+    if (!list.length || unlimited()) return commit(false);
     var buy = list.filter(function (x) { return x.lock.type === 'buy'; });
     var cant = list.filter(function (x) { return x.lock.type !== 'buy'; });
     var total = buyTotal(list), short = Math.max(0, total - coin());

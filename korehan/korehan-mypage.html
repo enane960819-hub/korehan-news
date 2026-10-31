@@ -1316,12 +1316,12 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261030qa"></script>
-<script src="korehan-shared.js?v=20261031e"></script>
+<script src="korehan-shared.js?v=20261031f"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261030fx"></script>
 <script src="js/features/room-view.js?v=20261030qa"></script>
 <script src="js/features/avatar-art.js?v=20261031fx"></script>
-<script src="js/features/avatar-editor.js?v=20261031st"></script>
+<script src="js/features/avatar-editor.js?v=20261031ad"></script>
 <script src="js/features/room-tabs.js?v=20261030rt"></script>
 <script src="js/features/room-learn.js?v=20261031rl"></script>
 <script>
@@ -4541,7 +4541,7 @@ async function buyRoomItem(itemId) {
   var def = getRoomItemDef(itemId);
   if (!def) return;
   if (isRoomItemOwned(itemId)) { if (typeof toast === 'function') toast('Already owned!'); return; }
-  if (_userCoin < def.price) { if (typeof toast === 'function') toast('Not enough nyang!'); return; }
+  if (_userCoin < def.price && !(typeof khNyangUnlimited === 'function' && khNyangUnlimited())) { if (typeof toast === 'function') toast('Not enough nyang!'); return; }
   var sb = getSupa();
   if (!sb || !supaUser) { if (typeof toast === 'function') toast('Please sign in first'); return; }
 

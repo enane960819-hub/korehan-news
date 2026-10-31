@@ -403,8 +403,10 @@
     var m = String(it.name || '').match(/Title\s*·\s*([^(]+)/);
     return (m ? m[1] : (it.name || '')).trim();
   }
+  // Admin = unlimited nyang (owner, 2026-10-31); the server charges the admin 0.
+  function _unl() { return typeof khNyangUnlimited === 'function' && khNyangUnlimited(); }
   function renderBalance() {
-    var c = document.getElementById('shop-coin'); if (c) c.textContent = _shop.coin.toLocaleString();
+    var c = document.getElementById('shop-coin'); if (c) c.textContent = _unl() ? '\u221e' : _shop.coin.toLocaleString();
     var x = document.getElementById('shop-xp'); if (x) x.textContent = _shop.xp.toLocaleString() + ' XP';
   }
   function _items(type) {
@@ -469,6 +471,8 @@
     if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
   }
   window.shopSetTab = function(tab) { _shop.tab = tab; renderTab(); };
+  // Roles arrive after the first paint: redraw so the admin sees unlimited nyang.
+  window.addEventListener('kh:roles', function () { try { renderBalance(); renderTab(); } catch (_) {} });
   window.shopSetCat = function(cat) {
     _shop.cat = cat; renderTab();
     var on = document.querySelector('.sh-cat.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
@@ -483,7 +487,7 @@
       // Display stand (owner pick A, 2026-10-31): wall items hang centred, the rest stand on a shadow.
       preview = '<div class="sh-stand' + (item.cat === 'wall' ? ' wall' : '') + '"><span class="sh-disc"></span><img src="' + _esc(item.img) + '" alt="" onload="_shTrim(this)"></div>';
       buy = 'window.buyRoomItem(\'' + id + '\')';
-      if (ROOM_UNLOCKS[id] && !owned) {
+      if (ROOM_UNLOCKS[id] && !owned && !_unl()) {
         // Earned by studying, not bought: show the goal instead of a price.
         var ov0 = document.createElement('div');
         ov0.className = 'sh-ov'; ov0.id = 'sh-ov';
@@ -507,6 +511,7 @@
         : '<div class="sh-big"><span class="sh-ic">' + khIcon(item.item_type === 'consumable' ? 'snowflake' : 'gift') + '</span></div>';
       buy = 'window.buyWithCoin(\'' + id + '\')';
     }
+    if (_unl()) price = 0;
     var after = _shop.coin - price, short = after < 0;
     var ov = document.createElement('div');
     ov.className = 'sh-ov'; ov.id = 'sh-ov';
@@ -515,12 +520,13 @@
       + '<div class="sh-st">' + _esc(title) + '</div>'
       + (item.description ? '<div class="sh-sd">' + _esc(item.description) + '</div>' : '')
       + preview
-      + (owned ? '' : '<div class="sh-bal-row"><span>' + _shop.coin.toLocaleString() + ' → ' + (short ? '—' : after.toLocaleString()) + ' nyang</span><b>' + price.toLocaleString() + '</b></div>')
+      + (owned ? '' : _unl() ? '<div class="sh-bal-row"><span>Admin · unlimited nyang</span><b>Free</b></div>'
+        : '<div class="sh-bal-row"><span>' + _shop.coin.toLocaleString() + ' → ' + (short ? '—' : after.toLocaleString()) + ' nyang</span><b>' + price.toLocaleString() + '</b></div>')
       + (owned ? (kind === 'room'
           ? '<button type="button" class="sh-buy" onclick="location.href=\'korehan-mypage.html?place=' + encodeURIComponent(id) + '\'">Owned · Go to My Room</button>'
           : '<button type="button" class="sh-buy" disabled>Owned</button>')
         : short ? '<button type="button" class="sh-buy" disabled>Need ' + (price - _shop.coin).toLocaleString() + ' more nyang</button>'
-        : '<button type="button" class="sh-buy"' + (_shop.preview ? ' disabled' : '') + ' onclick="' + buy + ';shopClose()">Buy for ' + price.toLocaleString() + ' nyang</button>')
+        : '<button type="button" class="sh-buy"' + (_shop.preview ? ' disabled' : '') + ' onclick="' + buy + ';shopClose()">' + (_unl() ? 'Get it free (admin)' : 'Buy for ' + price.toLocaleString() + ' nyang') + '</button>')
       + '<button type="button" class="sh-cancel" onclick="shopClose()">Not now</button></div>';
     ov.addEventListener('click', function(e){ if (e.target === ov) shopClose(); });
     document.body.appendChild(ov);
