@@ -1209,16 +1209,20 @@ async function dbDeleteArticle(id) {
 
 // ── Section → default reporter mapping ───────────────────────
 var SECTION_REPORTER_MAP = {
-  '사회'   : 'cr1',   // 박서진 — 기자
-  '국제'   : 'cr2',   // 김지원 — 특파원
-  '문화'   : 'cr4',   // 최유나 — 기자
-  '역사'   : 'cr4',   // 역사 → 문화 reporter for now
-  'nature' : 'cr10',  // nature → 류하늘 (lifestyle)
-  'K-pop'  : 'cr4',   // 최유나
-  'Korea'  : 'cr4',   // 최유나
-  'beauty' : 'cr6',   // 한소희 — 뷰티·트래블 에디터
-  'travel' : 'cr10',  // 류하늘 — 문화·라이프 기자
-  '오피니언': 'cr8',  // 신지은 — 사회·환경 전문기자
+  '사회'    : 'cr5',   // 서도윤 — 사회·탐사보도
+  '국제'    : 'cr9',   // 강태양 — 국제부
+  '문화'    : 'cr10',  // 류하늘 — 문화·생활
+  'buzz'    : 'cr10',
+  '역사'    : 'cr7',   // 오지훈 — 역사
+  'nature'  : 'cr1',   // 이리안 — 자연·여행
+  'travel'  : 'cr1',
+  'IT과학'  : 'cr6',   // 송유나 — IT·과학
+  'K-pop'   : 'cr4',   // 앨리샤 — 문화부 (K-pop·연예·뷰티)
+  '연예'    : 'cr4',
+  'beauty'  : 'cr4',
+  'Korea'   : 'cr2',   // 한다온 — 쉬운 뉴스
+  '오피니언': 'cr3',   // 오관식 — 편집장
+  '경제'    : 'cr3',
 };
 
 async function batchAssignReporters() {
@@ -2918,13 +2922,16 @@ async function runStripeSetup() {
 
 // ══ CHARACTER REPORTERS ══════════════════════════════════════
 var DEF_CHAR_REPORTERS = [
-  { id:'cr1',  name:'박서진',   role:'기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'KoreHani 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.',             personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.',    tone:'Friendly and approachable',  tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
-  { id:'cr2',  name:'김지원',   role:'특파원',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.',                          personality:'분석적이고 논리적. 데이터와 사실 중심.',               tone:'Analytical and precise',     tags:['국제','travel'],  profilePage:'', color:'#7c3aed' },
-  { id:'cr4',  name:'최유나',   role:'기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.',          tone:'Energetic and trendy',       tags:['문화'],  profilePage:'', color:'#db2777' },
-  { id:'cr6',  name:'한소희',   role:'뷰티·트래블 에디터', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'뷰티 트렌드와 여행 라이프스타일 뉴스를 누구나 이해할 수 있게 쉽고 감각적으로 전달합니다.', personality:'호기심 넘치고 쉬운 설명. 비유와 예시를 즐겨 사용.',   tone:'Curious and explanatory',    tags:['beauty','travel'], profilePage:'', color:'#0891b2' },
-  { id:'cr8',  name:'신지은',   role:'사회·환경 전문기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'기후 위기, 환경 정책, 복지 이슈를 사람 중심으로 취재합니다.',                          personality:'진지하고 공감 중심. 사람의 이야기를 중요시합니다.',   tone:'Empathetic and serious',     tags:['사회','오피니언'], profilePage:'', color:'#16a34a' },
-  { id:'cr9',  name:'강태양',   role:'국제·외교 기자',    image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'미국, 중국, 일본 등 주요국 외교 뉴스를 심층 분석합니다.',                              personality:'통찰력 있고 비교 시각 강함. 맥락을 중시합니다.',     tone:'Insightful and contextual',  tags:['국제','정치'],    profilePage:'', color:'#4338ca' },
-  { id:'cr10', name:'류하늘',   role:'문화·라이프 기자',  image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'한국의 생활 문화, 음식, 여행, 트렌드를 친근하게 소개합니다.',                          personality:'가볍고 유머러스. 일상적인 언어를 선호합니다.',        tone:'Light and relatable',        tags:['문화','사회'],    profilePage:'', color:'#c026d3' },
+  { id:'cr5', name:'서도윤', role:'사회·탐사보도 기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'사회의 숨은 이야기를 끝까지 취재합니다. 팩트만 정확하게 전해요.', personality:'말수 적고 정확함. 취재원에게는 끝까지 의리.', tone:'Calm and precise', tags:['사회'], profilePage:'', color:'#dc2626' },
+  { id:'cr4', name:'앨리샤', role:'문화부 기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.', tone:'Energetic and trendy', tags:['K-pop', '연예', 'beauty'], profilePage:'', color:'#db2777' },
+  { id:'cr1', name:'이리안', role:'자연·여행 기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'한국의 산과 바다, 숨은 여행지를 발로 뛰며 소개합니다.', personality:'즉흥적이고 다정함. 마감은 늘 아슬아슬.', tone:'Warm and free-spirited', tags:['nature', 'travel'], profilePage:'', color:'#2563eb' },
+  { id:'cr7', name:'오지훈', role:'역사 기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'옛이야기 속에서 오늘의 한국을 찾습니다.', personality:'조용한 역사 덕후. 옛날이야기만 나오면 말이 많아짐.', tone:'Calm and thoughtful', tags:['역사'], profilePage:'', color:'#ea580c' },
+  { id:'cr6', name:'송유나', role:'IT·과학 에디터', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'AI, 반도체, 우주과학까지. 복잡한 기술 뉴스를 누구나 이해할 수 있게 씁니다.', personality:'천재인데 일상은 허당. 설명할 때 눈이 반짝임.', tone:'Curious and explanatory', tags:['IT과학'], profilePage:'', color:'#0891b2' },
+  { id:'cr9', name:'강태양', role:'국제부 기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'세계 곳곳의 소식을 한국어로 쉽게 전합니다.', personality:'믿음직한 리더. 후배들 밥은 꼭 챙김.', tone:'Confident and clear', tags:['국제'], profilePage:'', color:'#4338ca' },
+  { id:'cr10', name:'류하늘', role:'문화·생활 기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'한국의 생활 문화, 음식, 여행, 트렌드를 친근하게 소개합니다.', personality:'막내. 붙임성 좋고 맛집 지도가 머릿속에.', tone:'Light and relatable', tags:['문화', 'buzz'], profilePage:'', color:'#c026d3' },
+  { id:'cr3', name:'오관식', role:'편집장 · 경제', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'경제 지표와 금융 시장을 알기 쉽게 분석합니다. 30년 경력의 경제 전문 편집장.', personality:'원고에 빨간 줄 가득. 몰래 간식 사 오는 보스.', tone:'Strict but caring', tags:['경제', '오피니언'], profilePage:'', color:'#059669' },
+  { id:'cr2', name:'한다온', role:'쉬운 뉴스 기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'한국어를 막 시작한 분들을 위해 가장 쉬운 말로 뉴스를 씁니다.', personality:'수줍지만 끝까지 해내는 신입 기자.', tone:'Gentle and simple', tags:['Korea'], profilePage:'', color:'#7c3aed' },
+  { id:'cr8', name:'모래', role:'코리하니 마스코트', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'자연 소식에 귀 기울이는 사막여우 마스코트예요.', personality:'소리를 잘 듣는 자연 탐험가.', tone:'Bright and simple', tags:[], profilePage:'', color:'#16a34a' },
 ];
 
 // ── Admin reporter cache ─────────────────────────────────────
@@ -3021,7 +3028,7 @@ function crEditModal(idx) {
     <input type="hidden" id="cr-idx" value="${idx}">
     <input type="hidden" id="cr-id" value="${esc(r.id||'')}">
     <div class="fg-row">
-      <div class="fg"><label>Name *</label><input id="cr-name" type="text" value="${esc(r.name)}" placeholder="e.g. 박서진"></div>
+      <div class="fg"><label>Name *</label><input id="cr-name" type="text" value="${esc(r.name)}" placeholder="e.g. 서도윤"></div>
       <div class="fg"><label>Role / Title *</label><input id="cr-role" type="text" value="${esc(r.role)}" placeholder="e.g. 기자"></div>
     </div>
     <div class="fg">
