@@ -48,8 +48,7 @@
       .then(function (r) {
         var map = {};
         ((r && r.data) || []).forEach(function (it) {
-          var sz = it.base_size || 60;
-          if (sz < 100) sz = sz * 2;
+          var sz = (typeof khRoomItemSize === 'function') ? khRoomItemSize(it.base_size, it.category) : ((it.base_size || 60) < 100 ? (it.base_size || 60) * 2 : it.base_size);
           map[it.id] = { id: it.id, name: it.name, img: (typeof khRoomImg === 'function' ? khRoomImg(it.image_url) : it.image_url), size: sz, price: Number(it.price_nyang) || 0, effect: it.effect || 'none', category: it.category || 'deco' };
         });
         return map;

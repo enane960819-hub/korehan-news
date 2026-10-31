@@ -494,6 +494,7 @@ body.kh-neon-on .mypage-hero {
 @media(min-width:760px){.room-dock{max-width:920px}}
 #mp-miniroom-section .room-dk{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 2px;border-radius:14px;border:1px solid rgba(255,255,255,.1) !important;background:rgba(255,255,255,.06) !important;color:#e2e8f0 !important;font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap;min-width:0}
 #mp-miniroom-section .room-dk svg,#mp-miniroom-section .room-dk i{width:22px;height:22px;color:#fbbf24}
+#mp-miniroom-section .room-dk.on{border-color:#fbbf24 !important;background:rgba(251,191,36,.12) !important}
 #mp-miniroom-section #room-edit-btn{background:#fbbf24 !important;color:#1a1300 !important;border:0 !important}
 #mp-miniroom-section:not(.is-editing) .rt-new,#mp-miniroom-section:not(.is-editing) .rt-pen{display:none !important}
 #mp-miniroom-section:not(.is-editing) .rt-tabs.rt-single{display:none !important}
@@ -1232,7 +1233,7 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
     <!-- Edit dock (owner mockup 2026-10-31): looking = just the room + one Edit button;
          editing = Done bar on the room and every tool in this dock. -->
     <div class="room-dock" id="room-dock">
-      <button type="button" class="room-dk" onclick="openRoomShop(true)"><i data-lucide="package" aria-hidden="true"></i><span>My items</span></button>
+      <button type="button" class="room-dk" id="room-items-btn" onclick="if(window.khRoomTabs&&khRoomTabs.toggleTray)khRoomTabs.toggleTray();else openRoomShop(true)"><i data-lucide="package" aria-hidden="true"></i><span>My items</span></button>
       <button type="button" class="room-dk" id="room-customize-btn" onclick="if(window.khAvatarEditor)khAvatarEditor.open()"><i data-lucide="shirt" aria-hidden="true"></i><span>Character</span></button>
       <button type="button" class="room-dk" id="room-bg-btn" onclick="openRoomBackground(event)"><i data-lucide="image" aria-hidden="true"></i><span>Theme</span></button>
       <a class="room-dk" href="korehan-shop.html"><i data-lucide="shopping-bag" aria-hidden="true"></i><span>Shop</span></a>
@@ -1350,13 +1351,13 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="js/features/analyze-mode.js?v=20261029s"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261030qa"></script>
-<script src="korehan-shared.js?v=20261031n"></script>
+<script src="korehan-shared.js?v=20261031o"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261030fx"></script>
-<script src="js/features/room-view.js?v=20261030qa"></script>
+<script src="js/features/room-view.js?v=20261031it"></script>
 <script src="js/features/avatar-art.js?v=20261031on"></script>
 <script src="js/features/avatar-editor.js?v=20261031on"></script>
-<script src="js/features/room-tabs.js?v=20261031mr"></script>
+<script src="js/features/room-tabs.js?v=20261031it"></script>
 <script src="js/features/room-learn.js?v=20261031rl"></script>
 <script>
 
@@ -3006,9 +3007,8 @@ async function loadRoomItemsFromDB() {
     var res = await sb.from('room_items').select('*').eq('active', true).order('sort_order');
     if (!res.error && res.data && res.data.length) {
       ROOM_ITEMS = res.data.map(function(r) {
-        var sz = r.base_size || 60;
-        if (sz < 100) sz = sz * 2; // Auto-double if DB hasn't been migrated yet
-        return { id: r.id, name: r.name, price: r.price_nyang, img: (typeof khRoomImg === 'function' ? khRoomImg(r.image_url) : r.image_url), size: sz, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco' };
+        var sz = (typeof khRoomItemSize === 'function') ? khRoomItemSize(r.base_size, r.category) : ((r.base_size || 60) < 100 ? (r.base_size || 60) * 2 : r.base_size);
+        return { id: r.id, name: r.name, price: r.price_nyang, img: (typeof khRoomImg === 'function' ? khRoomImg(r.image_url) : r.image_url), size: sz, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco', cat: r.shop_category || '' };
       });
       _roomItemsLoaded = true;
     }
@@ -4379,6 +4379,14 @@ function updateRoomSizeUI() {
   if (selCtl) selCtl.style.display = (_roomEditing && _selectedRoomItemId) ? '' : 'none';
   _placeRoomSelTools();
 }
+// Select a placed item from outside the room (the My items panel): same as tapping it.
+function selectRoomItem(id) {
+  if (!_roomEditing) return;
+  _selectedRoomItemId = id;
+  document.querySelectorAll('.room-placed-item').forEach(function(el) { el.classList.toggle('room-selected', el.dataset.itemId === id); });
+  updateRoomSizeUI();
+  var rmBtn = document.getElementById('room-remove-btn'); if (rmBtn) rmBtn.style.display = '';
+}
 // The selected item's tools float over the room, just above (or below) the item.
 function _placeRoomSelTools(again) {
   var selCtl = document.getElementById('room-sel-controls');
@@ -4700,7 +4708,7 @@ function placeRoomItem(itemId) {
 
   renderRoomItems();
   updateRoomSizeUI();
-  if (typeof toast === 'function') toast(def.name + ' placed! Use Edit to move it.');
+  if (typeof toast === 'function') toast(def.name + (_roomEditing ? ' placed! Drag it where you like.' : ' placed! Use Edit to move it.'));
   if (typeof _fjMarkDone === 'function') _fjMarkDone('room');
 
   // Refresh shop — preserve the drawer mode (My Items vs full Shop). Calling

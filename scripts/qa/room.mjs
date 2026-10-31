@@ -277,8 +277,7 @@ try {
       await noEmoji(page, '#mp-miniroom-section', T('room section'));
 
       // ── My Items drawer: filters, place every owned item ──
-      await editOn(page, mobile);   // My items lives in the edit dock (2026-10-31)
-      await tapEl(page, 'button[onclick="openRoomShop(true)"]', mobile);
+      await page.evaluate(() => openRoomShop(true));   // the drawer still exists (shop deep links); the dock opens the inline panel
       await page.waitForSelector('.room-shop-overlay', { timeout: 8000 });
       check(/My Items/.test(await page.textContent('.room-shop-header h3')), T('My Items: drawer opens as My Items'));
       await shot(page, kind + '-02-myitems');
@@ -302,8 +301,7 @@ try {
       // Esc closes the drawer
       await page.keyboard.press('Escape'); await sleep(200);
       check(!(await page.$('.room-shop-overlay')), T('My Items: Esc closes'));
-      await editOn(page, mobile);   // My items lives in the edit dock (2026-10-31)
-      await tapEl(page, 'button[onclick="openRoomShop(true)"]', mobile);
+      await page.evaluate(() => openRoomShop(true));   // the drawer still exists (shop deep links); the dock opens the inline panel
       await page.waitForSelector('.room-shop-overlay');
       await page.mouse.click(5, 5); await sleep(200);
       check(!(await page.$('.room-shop-overlay')), T('My Items: backdrop tap closes'));
@@ -695,8 +693,10 @@ try {
 
       // Edit mode tray: move an item from room 1 into room 2
       await editOn(page, mobile);
-      const tray = await page.$$eval('#rt-tray .rt-ti', (els) => els.map((e) => ({ id: e.dataset.item, lab: e.textContent.trim() })));
-      check(tray.length > 0 && tray.every((t) => /^In |Not placed|Here/.test(t.lab)), T('edit tray lists your items with where they are'), tray.slice(0, 4));
+      await tapEl(page, '#room-items-btn', mobile); await sleep(300);   // My items opens the inline panel (2026-10-31)
+      const tray = await page.$$eval('#rt-tray .rt-ti', (els) => els.map((e) => ({ id: e.dataset.item, lab: (e.querySelector('.rt-tl') || e).textContent.trim() })));
+      check(tray.length > 0 && tray.every((t) => /^In |Place|In room/.test(t.lab)), T('My items panel lists your items with where they are'), tray.slice(0, 4));
+      check(!(await page.$('.room-shop-overlay')), T('My items: no pop-up, the panel opens under the room'));
       const mv = tray.find((t) => /^In /.test(t.lab));
       if (mv) {
         await tapEl(page, '#rt-tray .rt-ti[data-item="' + mv.id + '"]', mobile); await sleep(400);

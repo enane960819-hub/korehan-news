@@ -80,7 +80,7 @@
     if (!document.getElementById('rt-tray')) {
       var tray = document.createElement('div');
       tray.id = 'rt-tray'; tray.className = 'rt-tray'; tray.hidden = true;
-      var after = document.getElementById('room-size-controls');
+      var after = document.getElementById('room-dock') || document.getElementById('room-size-controls');
       if (after && after.parentNode) after.parentNode.insertBefore(tray, after.nextSibling);
       else room.parentNode.appendChild(tray);
       tray.addEventListener('click', onTrayClick);
@@ -146,36 +146,67 @@
       return true;
     });
   }
+  // My items panel (owner 2026-10-31: opens under the room like the other tools, no pop-up).
+  // Tap: not placed → place it here; in another room → move it here; here → select it in the room.
+  var S_TRAY = { open: false, cat: 'all' };
+  var TRAY_CATS = [['furniture', 'Furniture'], ['wall', 'Wall'], ['light', 'Lights'], ['study', 'Study'], ['korean', 'Korean'],
+    ['food', 'Snacks'], ['hobby', 'Hobbies'], ['plush', 'Plushies'], ['pets', 'Pets & plants'], ['season', 'Seasons'], ['character', 'Characters']];
+  function itemCat(it) { return it.cat || (it.category === 'character' ? 'character' : ''); }
   function renderTray() {
     var el = document.getElementById('rt-tray');
     var sec = document.getElementById('mp-miniroom-section');
     if (!el || !A()) return;
     var editing = !!(sec && sec.classList.contains('is-editing'));
-    el.hidden = !editing;
-    if (!editing) { el.innerHTML = ''; return; }
+    if (!editing) S_TRAY.open = false;
+    var btn = document.getElementById('room-items-btn'); if (btn) btn.classList.toggle('on', S_TRAY.open);
+    el.hidden = !(editing && S_TRAY.open);
+    if (el.hidden) { el.innerHTML = ''; return; }
     var all = (typeof _getRoomLayoutAll === 'function') ? _getRoomLayoutAll() : [];
     var cur = A().currentRoom().id;
     var items = trayItems();
-    var rank = function (it) { var r = A().whereIs(it.id, all); return !r ? 1 : (r.id === cur ? 0 : 2); };
-    items.sort(function (a, b) { return rank(a) - rank(b); });
-    el.innerHTML = '<div class="rt-th"><b>Your items</b><span>Tap an item from another room to move it here.</span></div>'
-      + '<div class="rt-tg">' + items.map(function (it) {
+    var counts = {}; items.forEach(function (it) { var c = itemCat(it); if (c) counts[c] = (counts[c] || 0) + 1; });
+    if (S_TRAY.cat !== 'all' && !counts[S_TRAY.cat]) S_TRAY.cat = 'all';
+    var shown = items.filter(function (it) { return S_TRAY.cat === 'all' || itemCat(it) === S_TRAY.cat; });
+    var rank = function (it) { var r = A().whereIs(it.id, all); return !r ? 0 : (r.id === cur ? 1 : 2); };
+    shown.sort(function (a, b) { return rank(a) - rank(b); });
+    el.innerHTML = '<div class="rt-th"><b>My items</b><span>Tap to place · tap a placed one to edit it</span>'
+      + '<button type="button" class="rt-x" data-act="close" aria-label="Close">' + ic('x') + '</button></div>'
+      + '<div class="rt-cats">' + [['all', 'All']].concat(TRAY_CATS.filter(function (c) { return counts[c[0]]; })).map(function (c) {
+          return '<button type="button" class="rt-cat' + (S_TRAY.cat === c[0] ? ' on' : '') + '" data-cat="' + c[0] + '">' + esc(c[1]) + '</button>';
+        }).join('') + '</div>'
+      + (shown.length ? '<div class="rt-tg">' + shown.map(function (it) {
         var r = A().whereIs(it.id, all);
         var st = !r ? 'none' : r.id === cur ? 'here' : 'other';
-        var lab = st === 'here' ? 'Here' : st === 'none' ? 'Not placed' : 'In ' + r.name;
-        var hiddenRoom = r && !A().visibleRooms().some(function (v) { return v.id === r.id; });
-        return '<button type="button" class="rt-ti rt-' + st + '" data-item="' + esc(it.id) + '" title="' + esc(it.name + ' — ' + lab + (hiddenRoom ? ' (hidden room)' : '')) + '">'
+        var lab = st === 'here' ? 'In room' : st === 'none' ? 'Place' : 'In ' + r.name;
+        return '<button type="button" class="rt-ti rt-' + st + '" data-item="' + esc(it.id) + '" title="' + esc(it.name) + '">'
           + '<span class="rt-tim" style="background-image:url(&quot;' + esc(it.img) + '&quot;)"></span>'
-          + '<span class="rt-tl">' + esc(lab) + '</span></button>';
-      }).join('') + '</div>';
+          + '<span class="rt-tn">' + esc(it.name) + '</span>'
+          + '<span class="rt-tl">' + (st === 'none' ? ic('plus') : '') + esc(lab) + '</span></button>';
+      }).join('') + '</div>' : '<div class="rt-empty">Nothing here yet. <a href="korehan-shop.html">Visit the shop</a></div>');
+    icons();
   }
+  function toggleTray(force) {
+    S_TRAY.open = typeof force === 'boolean' ? force : !S_TRAY.open;
+    renderTray();
+    var el = document.getElementById('rt-tray');
+    if (S_TRAY.open && el && el.scrollIntoView) { try { el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {} }
+  }
+
   function onTrayClick(ev) {
+    var c = ev.target.closest('[data-cat]');
+    if (c) { S_TRAY.cat = c.dataset.cat; renderTray(); return; }
+    if (ev.target.closest('[data-act="close"]')) return toggleTray(false);
     var t = ev.target.closest('[data-item]');
     if (!t || !A()) return;
     var id = t.dataset.item;
     var all = (typeof _getRoomLayoutAll === 'function') ? _getRoomLayoutAll() : [];
     var r = A().whereIs(id, all), cur = A().currentRoom();
-    if (r && r.id === cur.id) return;
+    if (r && r.id === cur.id) {
+      if (typeof selectRoomItem === 'function') selectRoomItem(id);
+      var room = document.getElementById('miniroom-container');
+      if (room && room.scrollIntoView) { try { room.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {} }
+      return;
+    }
     if (r) {
       A().moveTo(id, cur.id);
       if (typeof _syncRoomToServer === 'function') _syncRoomToServer();
@@ -395,13 +426,19 @@
       '.rt-tray{max-width:920px;margin:12px auto 0;padding:12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}',
       '.rt-tray[hidden]{display:none}',
       '.rt-th{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,.55)}.rt-th b{color:#7dd3fc;font-size:11px;letter-spacing:.08em;text-transform:uppercase}',
-      '.rt-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:300px;overflow:auto}',
-      '.rt-ti{position:relative;aspect-ratio:1/1.05;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#121d35;cursor:pointer;padding:6px 4px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;font:inherit}',
+      '.rt-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;max-height:330px;overflow:auto}',
+      '.rt-ti{position:relative;aspect-ratio:1/1.2;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#121d35;cursor:pointer;padding:6px 4px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;font:inherit}',
       '.rt-ti:hover{background:#18264a}',
       '.rt-tim{flex:1;width:100%;background-size:contain;background-position:center;background-repeat:no-repeat}',
       '.rt-tl{font-size:10.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}',
-      '.rt-here .rt-tl{color:#7dd3fc}.rt-other .rt-tl{color:#fbbf24}.rt-none .rt-tl{color:#94a3b8}',
-      '.rt-here{cursor:default}.rt-other .rt-tim,.rt-none .rt-tim{opacity:.75}',
+      '.rt-here .rt-tl{color:#7dd3fc}.rt-other .rt-tl{color:#fbbf24}.rt-none .rt-tl{color:#4ade80}',
+      '.rt-tl{display:inline-flex;align-items:center;gap:2px}.rt-tl .rt-i{width:11px;height:11px}',
+      '.rt-tn{font-size:10.5px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}',
+      '.rt-here{border-color:rgba(125,211,252,.45)}',
+      '.rt-th{position:relative;padding-right:34px}.rt-x{position:absolute;right:0;top:-4px;width:30px;height:30px;border-radius:9px;border:0;background:rgba(255,255,255,.06);color:#cbd5e1;display:flex;align-items:center;justify-content:center;cursor:pointer}.rt-x .rt-i{width:16px;height:16px}',
+      '.rt-cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 10px;padding-bottom:2px}.rt-cats::-webkit-scrollbar{display:none}',
+      '.rt-cat{flex-shrink:0;padding:6px 11px;border-radius:10px;border:0;background:rgba(255,255,255,.06);color:#cbd5e1;font:inherit;font-size:12px;cursor:pointer}.rt-cat.on{background:#fff;color:#0f172a;font-weight:700}',
+      '.rt-empty{font-size:12.5px;color:#94a3b8;padding:8px 2px}.rt-empty a{color:#93c5fd}',
       '.rt-ov{position:fixed;inset:0;z-index:9600;background:rgba(2,6,23,.62);display:flex;align-items:center;justify-content:center;padding:16px}',
       '.rt-sheet{width:100%;max-width:460px;max-height:calc(100vh - 32px);overflow:auto;background:#0f1a30;border:1px solid #24304d;border-radius:18px;padding:20px;color:#e2e8f0;font-family:inherit}',
       '.rt-sheet h3{margin:0 0 6px;font-size:18px;color:#fff}.rt-sheet p{margin:0 0 12px;font-size:13px;line-height:1.55;color:#94a3b8}',
@@ -456,5 +493,5 @@
     });
   }
 
-  window.khRoomTabs = { init: init, refresh: renderAll, openAdd: openAdd, openEdit: openEdit, switchTo: switchTo };
+  window.khRoomTabs = { init: init, refresh: renderAll, openAdd: openAdd, openEdit: openEdit, switchTo: switchTo, toggleTray: toggleTray };
 })();

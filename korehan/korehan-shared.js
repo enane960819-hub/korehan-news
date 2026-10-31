@@ -3776,6 +3776,14 @@ var SECTION_ALIASES = {
 // uploaded comes back as the HTML fallback page and stays cached that way, so local room art is
 // always requested with a version. Bump KH_ROOM_ART_V whenever room/avatar art is added or changed.
 var KH_ROOM_ART_V = '20261031h3';
+// Drawn size of a room item (in the room's 400-wide units) from room_items.base_size (owner
+// 2026-10-31: props were far too big). Characters keep the old doubling (they stand next to the
+// learner's character); everything else is drawn at 85 % of base_size without the doubling.
+function khRoomItemSize(base, category) {
+  var b = Number(base) || 60;
+  if (category === 'character') return b < 100 ? b * 2 : b;
+  return Math.round(b * 0.85);
+}
 function khRoomImg(u) {
   if (!u || typeof u !== 'string' || !/^assets\//.test(u) || u.indexOf('?') !== -1) return u;
   return u + '?v=' + KH_ROOM_ART_V;
