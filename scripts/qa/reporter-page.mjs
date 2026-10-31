@@ -20,7 +20,9 @@ const POSTS = [
 ];
 const SET = { id: 'pc_cr5_midnight', name: 'Midnight', description: '', price_cents: 299, active: false, sort: 50, kind: 'photocard_set', reporter_id: 'cr5',
   items: [1, 2, 3, 4, 5, 6].map((i) => 'pc_cr5_s1_0' + i),
-  preview: [1, 2, 3, 4, 5, 6].map((i) => ({ id: 'pc_cr5_s1_0' + i, label: 'Card ' + i, img: 'assets/photocards/cr5/s1-0' + i + '-p.webp' })) };
+  preview: [1, 2, 3, 4, 5, 6].map((i) => i === 2
+    ? { id: 'pc_cr5_s1_02', label: 'Card 2', img: 'assets/photocards/cr5/b51254e3818175209ed9.webp', open: true }   // the set's free teaser
+    : { id: 'pc_cr5_s1_0' + i, label: 'Card ' + i, img: 'assets/photocards/cr5/s1-0' + i + '-p.webp' }) };
 const ART1 = 'assets/photocards/cr5/e0ad8aa97715c0164584.webp', ART3 = 'assets/photocards/cr5/b5a35b575512bad64f3a.webp';
 async function page(opts = {}) {
   const ctx = await br.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -91,10 +93,11 @@ async function page(opts = {}) {
     locked: document.querySelectorAll('.rp-pcset .rp-card-lock').length, buy: (document.querySelector('.rp-pcset-buy') || {}).innerText || '',
     imgs: [...document.querySelectorAll('.rp-pcset .rp-card img')].map((i) => i.complete && i.naturalWidth > 0).filter(Boolean).length,
     official: /Official/.test(document.getElementById('rp-panel').innerText) }));
-  check(/Midnight/.test(cb.head) && /2 \/ 6 collected/.test(cb.head) && cb.n === 6 && cb.locked === 4, 'card book: set with 2 of 6 owned, 4 locked', cb);
+  check(/Midnight/.test(cb.head) && /2 \/ 6 collected/.test(cb.head) && cb.n === 6 && cb.locked === 3, 'card book: 2 of 6 owned + 1 free teaser, 3 locked', cb);
   check(cb.imgs === 6, 'card book: all 6 card pictures load', cb);
   const srcs = await p.evaluate(() => [...document.querySelectorAll('.rp-pcset .rp-card')].map((b) => ({ lock: b.classList.contains('rp-card-lock'), src: b.querySelector('img').src })));
-  check(srcs.filter((x) => !x.lock).every((x) => /e0ad8a|b5a35b/.test(x.src)) && srcs.filter((x) => x.lock).every((x) => /-p\.webp/.test(x.src)), 'owned cards show the full picture, locked ones only the blurred preview', srcs);
+  check(srcs.filter((x) => !x.lock).every((x) => /e0ad8a|b5a35b|b51254/.test(x.src)) && srcs.filter((x) => x.lock).every((x) => /-p\.webp/.test(x.src)), 'owned + teaser cards show the full picture, locked ones only the blurred preview', srcs);
+  check(await p.evaluate(() => /FREE PREVIEW/.test(document.querySelectorAll('.rp-pcset .rp-card')[1].innerText)), 'teaser card is marked FREE PREVIEW');
   check(/Get all 6 cards/.test(cb.buy) && cb.official, 'card book: buy link + free official cards below', cb);
   await p.screenshot({ path: SHOTS + '03-cards.png', fullPage: true });
   await p.click('.rp-pcset .rp-card:not(.rp-card-lock)'); await sleep(500);
