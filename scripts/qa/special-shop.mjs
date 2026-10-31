@@ -134,6 +134,23 @@ async function open(p, q = '') {
   check(!errs.length, 'no page errors (guest)', errs);
   await ctx.close();
 }
+// 6. Admin: drafts visible, "Get it free" calls kh_admin_grant_product
+{
+  const drafts = PRODUCTS.map((p) => ({ ...p, active: false }));
+  const { ctx, p, errs } = await page({ login: true, products: drafts });
+  let rpc = null;
+  await ctx.route(/rpc\/kh_admin_grant_product/, async (r) => { rpc = JSON.parse(r.request().postData() || '{}'); await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, granted: ['x'] }) }); });
+  await p.addInitScript(() => { Object.defineProperty(window, 'khNyangUnlimited', { configurable: true, get() { return () => true; }, set() {} }); });
+  await open(p, '?tab=special');
+  const t = await p.evaluate(() => document.getElementById('shop-grid').innerText);
+  check(/DRAFT/.test(t) && /Christmas Pack/.test(t), 'admin sees draft products', t.slice(0, 200));
+  await p.click('.sp-hero .sp-btn'); await sleep(300);
+  check(await p.evaluate(() => /Get it free/.test(document.querySelector('.sh-sheet').innerText)), 'admin sheet has "Get it free"');
+  await p.click('.sp-admin button'); await sleep(1500);
+  check(rpc && rpc.p_product === 'xmas_pack_2026', 'Get it free calls kh_admin_grant_product', rpc);
+  check(!errs.length, 'no page errors (admin)', errs);
+  await ctx.close();
+}
 // 5. canceled return
 {
   const { ctx, p } = await page({ login: true });
